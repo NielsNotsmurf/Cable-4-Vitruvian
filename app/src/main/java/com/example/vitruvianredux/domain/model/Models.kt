@@ -8,13 +8,14 @@ import com.example.vitruvianredux.data.local.PRType
  */
 data class PersonalRecord(
     val id: Long = 0,
+    val profileId: String = "default",
     val exerciseId: String,
     val weightPerCableKg: Float,
     val reps: Int,
     val timestamp: Long,
     val workoutMode: String,
     val prType: PRType = PRType.MAX_WEIGHT,
-    val volume: Float = weightPerCableKg * reps  // weight × reps
+    val volume: Float = weightPerCableKg * reps
 )
 
 /**

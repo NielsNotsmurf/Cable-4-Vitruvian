@@ -51,6 +51,7 @@ fun ActiveWorkoutScreen(
     val userPreferences by viewModel.userPreferences.collectAsState()
     val workoutParticipants by viewModel.workoutParticipants.collectAsState()
     val currentPerformer by viewModel.currentPerformer.collectAsState()
+    val currentPerformerSetDisplay by viewModel.currentPerformerSetDisplay.collectAsState()
 
     // State for confirmation dialog
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -153,7 +154,9 @@ fun ActiveWorkoutScreen(
                 name = currentPerformer!!.name,
                 colorInt = currentPerformer!!.colorInt,
                 participantIndex = workoutParticipants.indexOf(currentPerformer),
-                total = workoutParticipants.size
+                total = workoutParticipants.size,
+                setNumber = currentPerformerSetDisplay?.first,
+                totalSets = currentPerformerSetDisplay?.second
             )
         }
         WorkoutTab(
@@ -270,7 +273,9 @@ private fun CurrentPerformerBanner(
     name: String,
     colorInt: Int,
     participantIndex: Int,
-    total: Int
+    total: Int,
+    setNumber: Int? = null,
+    totalSets: Int? = null
 ) {
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -303,11 +308,19 @@ private fun CurrentPerformerBanner(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Text(
-                text = "• ${participantIndex + 1} of $total",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
+            if (setNumber != null && totalSets != null && totalSets > 0) {
+                Text(
+                    text = "• Set $setNumber of $totalSets",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            } else {
+                Text(
+                    text = "• ${participantIndex + 1} of $total",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

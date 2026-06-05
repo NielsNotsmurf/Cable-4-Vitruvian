@@ -179,6 +179,7 @@ class PersonalRecordRepository @Inject constructor(
 // Extension functions for mapping between entities and domain models
 private fun PersonalRecordEntity.toPersonalRecord() = PersonalRecord(
     id = id,
+    profileId = profileId,
     exerciseId = exerciseId,
     weightPerCableKg = weightPerCableKg,
     reps = reps,

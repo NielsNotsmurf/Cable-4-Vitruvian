@@ -281,6 +281,25 @@ class MainViewModel @Inject constructor(
             else participants[index % participants.size]
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    // Tracks how many sets have been completed in the current exercise across all participants.
+    // Used to derive per-participant set index and to handle set multiplication for multi-user.
+    private val _exerciseTurnCount = MutableStateFlow(0)
+    val exerciseTurnCount: StateFlow<Int> = _exerciseTurnCount.asStateFlow()
+
+    // Derived: (currentSetNumber 1-indexed, totalSetsPerParticipant) for the active performer.
+    // Null when solo (≤1 participant).
+    val currentPerformerSetDisplay: StateFlow<Pair<Int, Int>?> =
+        combine(_exerciseTurnCount, _workoutParticipants, _loadedRoutine, _currentExerciseIndex) {
+            turnCount, participants, routine, exerciseIdx ->
+            if (participants.size <= 1) null
+            else {
+                val numParticipants = participants.size
+                val totalSets = routine?.exercises?.getOrNull(exerciseIdx)?.setReps?.size ?: 1
+                val setNumber = turnCount / numParticipants + 1
+                Pair(setNumber, totalSets)
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     // ========== Stats for HomeScreen ==========
 
     // All workout sessions for stats calculation
@@ -331,6 +350,45 @@ class MainViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+
+    // ========== Analytics profile filter ==========
+
+    private val _analyticsProfileId = MutableStateFlow<String?>(null) // null = all profiles
+    val analyticsProfileId: StateFlow<String?> = _analyticsProfileId.asStateFlow()
+
+    fun setAnalyticsProfile(profileId: String?) {
+        _analyticsProfileId.value = profileId
+    }
+
+    val analyticsWorkoutSessions: StateFlow<List<WorkoutSession>> =
+        combine(allWorkoutSessions, _analyticsProfileId) { sessions, profileId ->
+            if (profileId == null) sessions else sessions.filter { it.profileId == profileId }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val analyticsPersonalRecords: StateFlow<List<PersonalRecord>> =
+        combine(allPersonalRecords, _analyticsProfileId) { records, profileId ->
+            if (profileId == null) records else records.filter { it.profileId == profileId }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val analyticsGroupedHistory: StateFlow<List<HistoryItem>> =
+        analyticsWorkoutSessions.map { sessions ->
+            val groupedByRoutine = sessions.filter { it.routineSessionId != null }
+                .groupBy { it.routineSessionId!! }
+                .map { (id, sessionList) ->
+                    GroupedRoutineHistoryItem(
+                        routineSessionId = id,
+                        routineName = sessionList.first().routineName ?: "Unnamed Routine",
+                        sessions = sessionList.sortedBy { it.timestamp },
+                        totalDuration = sessionList.sumOf { it.duration },
+                        totalReps = sessionList.sumOf { it.totalReps },
+                        exerciseCount = sessionList.mapNotNull { it.exerciseId }.distinct().count(),
+                        timestamp = sessionList.minOf { it.timestamp }
+                    )
+                }
+            val singleSessions = sessions.filter { it.routineSessionId == null }
+                .map { SingleSessionHistoryItem(it) }
+            (groupedByRoutine + singleSessions).sortedByDescending { it.timestamp }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Total completed workouts
     val completedWorkouts: StateFlow<Int?> = allWorkoutSessions.map { sessions ->
@@ -1695,13 +1753,11 @@ class MainViewModel @Inject constructor(
             }
 
             // Check if there are more sets or exercises remaining
+            val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
             val hasMoreSets = routine?.let {
                 val currentExercise = it.exercises.getOrNull(_currentExerciseIndex.value)
-                // IMPORTANT: isAMRAPExercise is true ONLY if ALL sets in the exercise have null reps
-                // If only some sets are AMRAP, this should be FALSE
                 val isAMRAPExercise = currentExercise?.isAMRAP == true
 
-                // Log warning if exercise-level isAMRAP might be incorrectly set
                 val hasNullReps = currentExercise?.setReps?.any { it == null } == true
                 val hasNonNullReps = currentExercise?.setReps?.any { it != null } == true
                 if (isAMRAPExercise && hasNonNullReps) {
@@ -1711,11 +1767,10 @@ class MainViewModel @Inject constructor(
                     Timber.e("⚠️ BUG DETECTED: exercise.isAMRAP=false but ALL setReps are null! setReps=${currentExercise?.setReps}")
                 }
 
-                // Issue #221: AMRAP exercises have a finite number of sets defined by setReps.size
-                // The isAMRAP flag only means "user decides when to stop each set" (no rep target)
-                // but the SET count is still defined by the number of entries in setReps
-                val result = currentExercise != null && _currentSetIndex.value < currentExercise.setReps.size - 1
-                Timber.d("  hasMoreSets calculation: currentExercise=$currentExercise, isAMRAPExercise=$isAMRAPExercise, currentSetIndex=${_currentSetIndex.value}, setReps.size=${currentExercise?.setReps?.size}, setReps=${currentExercise?.setReps}, result=$result")
+                // Multi-participant: total turns = setReps.size * numParticipants
+                val totalTurns = (currentExercise?.setReps?.size ?: 0) * numParticipants
+                val result = currentExercise != null && _exerciseTurnCount.value < totalTurns
+                Timber.d("  hasMoreSets: exerciseTurnCount=${_exerciseTurnCount.value}, totalTurns=$totalTurns, numParticipants=$numParticipants, result=$result")
                 result
             } ?: false
 
@@ -1790,140 +1845,107 @@ class MainViewModel @Inject constructor(
     }
 
     private fun startRestTimer() {
-        // Cancel any existing rest timer
         restTimerJob?.cancel()
 
         restTimerJob = viewModelScope.launch {
             val routine = _loadedRoutine.value
             val currentExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value)
+            val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
 
-            // Determine rest duration and autoplay
-            // Use per-set rest time for the set that was just completed
             val completedSetIndex = _currentSetIndex.value
             val restDuration = currentExercise?.getRestForSet(completedSetIndex)?.takeIf { it > 0 } ?: 90
             val autoplay = userPreferences.value.autoplayEnabled
 
-            // For single exercise mode (no routine or temp routine), we always "continue" the same exercise
             val isSingleExercise = isSingleExerciseMode()
 
             Timber.d("???????????????????????????????????????????????????")
             Timber.d("REST TIMER STARTING")
-            if (isSingleExercise) {
-                Timber.d("  Mode: Single Exercise")
-            } else {
-                Timber.d("  Exercise: ${currentExercise?.exercise?.displayName}")
-                Timber.d("  Current set: ${_currentSetIndex.value + 1}/${currentExercise?.setReps?.size}")
-            }
-            Timber.d("  Rest duration: ${restDuration}s")
-            Timber.d("  Autoplay enabled: $autoplay")
+            Timber.d("  Mode: ${if (isSingleExercise) "Single Exercise" else currentExercise?.exercise?.displayName}")
+            Timber.d("  exerciseTurnCount=${_exerciseTurnCount.value}, numParticipants=$numParticipants")
+            Timber.d("  Rest duration: ${restDuration}s, autoplay=$autoplay")
             Timber.d("???????????????????????????????????????????????????")
 
-            for (i in restDuration downTo 1) {
-                val nextName = if (isSingleExercise) {
-                    "Next Set"
-                } else {
-                    val isLastSet = _currentSetIndex.value >= (currentExercise?.setReps?.size ?: 0) - 1
-                    val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
-                    if (isLastSet) {
-                        nextExercise?.exercise?.name ?: "Workout Complete"
-                    } else {
-                        "Set ${_currentSetIndex.value + 2} of ${currentExercise?.exercise?.name}"
-                    }
+            // Helper to compute display values for the Resting state.
+            // upcomingSetIdx: 0-indexed per-participant set number for the next performer.
+            // isLastSet: true when this rest leads to the last turn before the exercise ends
+            //            (used to decide whether to show the next exercise name).
+            fun computeRestingDisplay(): Triple<Int, Boolean, String> {
+                val upcomingSetIdx = _exerciseTurnCount.value / numParticipants
+                val totalTurns = (currentExercise?.setReps?.size ?: 0) * numParticipants
+                val isLastSet = _exerciseTurnCount.value >= totalTurns
+                val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
+                val nextName = when {
+                    isSingleExercise -> "Next Set"
+                    isLastSet -> nextExercise?.exercise?.name ?: "Workout Complete"
+                    else -> "Set ${upcomingSetIdx + 1} of ${currentExercise?.exercise?.name}"
                 }
+                return Triple(upcomingSetIdx, isLastSet, nextName)
+            }
+
+            for (i in restDuration downTo 1) {
+                val (upcomingSetIdx, isLastSet, nextName) = computeRestingDisplay()
+                val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
 
                 _workoutState.value = if (isSingleExercise) {
-                    // For single exercise temp routines, show proper set count
                     WorkoutState.Resting(
                         restSecondsRemaining = i,
                         nextExerciseName = nextName,
                         isLastExercise = false,
-                        currentSet = _currentSetIndex.value + 1,
+                        currentSet = upcomingSetIdx,
                         totalSets = currentExercise?.setReps?.size ?: 0
                     )
                 } else {
-                    val isLastSet = _currentSetIndex.value >= (currentExercise?.setReps?.size ?: 0) - 1
-                    val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
                     WorkoutState.Resting(
                         restSecondsRemaining = i,
                         nextExerciseName = nextName,
                         isLastExercise = isLastSet && nextExercise == null,
-                        currentSet = _currentSetIndex.value + 1,
+                        currentSet = upcomingSetIdx,
                         totalSets = currentExercise?.setReps?.size ?: 0
                     )
                 }
 
-                // Play "rest ending" sound at 5 seconds remaining
                 if (i == 5) {
                     _hapticEvents.emit(HapticEvent.REST_ENDING)
                 }
-
                 delay(1000)
             }
 
-            // Only auto-advance if autoplay is enabled
-            // If autoplay is disabled, user must manually start next set via skipRest()
             if (autoplay) {
                 Timber.d("Autoplay enabled - starting next set/exercise")
                 if (isSingleExercise) {
-                    // For single exercise, only restart if there are more sets remaining
-                    // Otherwise this creates an infinite loop
                     val currentExerciseSets = routine?.exercises?.getOrNull(_currentExerciseIndex.value)
-                    if (currentExerciseSets != null && _currentSetIndex.value < currentExerciseSets.setReps.size - 1) {
-                        _currentSetIndex.value++
-                        // CRITICAL: Update workout parameters for the new set (Issue #147 fix)
+                    val nextSetIdx = _exerciseTurnCount.value / numParticipants
+                    if (currentExerciseSets != null && nextSetIdx < currentExerciseSets.setReps.size) {
+                        _currentSetIndex.value = nextSetIdx
                         val targetReps = currentExerciseSets.setReps[_currentSetIndex.value]
-
-                        // Check if user modified parameters during rest
                         val userModified = _parametersModifiedDuringRest.value
-                        if (userModified) {
-                            Timber.d("Autoplay: User modified parameters during rest - preserving their changes")
-                        }
-
                         val setWeight = if (userModified) {
                             workoutParameters.value.weightPerCableKg
                         } else {
                             currentExerciseSets.setWeightsPerCableKg.getOrNull(_currentSetIndex.value)
                                 ?: currentExerciseSets.weightPerCableKg
                         }
-                        val finalReps = if (userModified) {
-                            workoutParameters.value.reps
-                        } else {
-                            targetReps ?: 0
-                        }
-
-                        Timber.d("Autoplay: Advancing to set ${_currentSetIndex.value + 1}, targetReps=$finalReps, isAMRAP=${!userModified && targetReps == null}")
+                        val finalReps = if (userModified) workoutParameters.value.reps else (targetReps ?: 0)
+                        Timber.d("Autoplay single exercise: setIdx=$nextSetIdx, reps=$finalReps")
                         _workoutParameters.value = workoutParameters.value.copy(
                             reps = finalReps,
                             weightPerCableKg = setWeight,
                             isAMRAP = if (userModified) workoutParameters.value.isAMRAP else (targetReps == null)
                         )
-                        // Reset the flag after applying user changes
                         _parametersModifiedDuringRest.value = false
                         startWorkout(skipCountdown = true)
                     } else {
-                        Timber.d("Single exercise complete - no more sets remaining")
+                        Timber.d("Single exercise complete - no more turns remaining")
                         _workoutState.value = WorkoutState.Completed
                     }
                 } else {
                     startNextSetOrExercise()
                 }
             } else {
-                // Stay in resting state with 0 seconds remaining
-                // User will see "Start Next Set" button in UI
+                // Stay in resting state with 0 seconds remaining — user clicks "Start Next Set"
                 Timber.d("Autoplay disabled - staying in resting state")
-
-                // Recalculate next exercise info after loop ends
-                val nextNameFinal = if (isSingleExercise) {
-                    "Next Set"
-                } else {
-                    val isLastSet = _currentSetIndex.value >= (currentExercise?.setReps?.size ?: 0) - 1
-                    val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
-                    if (isLastSet) {
-                        nextExercise?.exercise?.name ?: "Workout Complete"
-                    } else {
-                        "Set ${_currentSetIndex.value + 2} of ${currentExercise?.exercise?.name}"
-                    }
-                }
+                val (upcomingSetIdx, isLastSet, nextNameFinal) = computeRestingDisplay()
+                val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
 
                 _workoutState.value = if (isSingleExercise) {
                     WorkoutState.Resting(
@@ -1934,13 +1956,11 @@ class MainViewModel @Inject constructor(
                         totalSets = 0
                     )
                 } else {
-                    val isLastSet = _currentSetIndex.value >= (currentExercise?.setReps?.size ?: 0) - 1
-                    val nextExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value + 1)
                     WorkoutState.Resting(
                         restSecondsRemaining = 0,
                         nextExerciseName = nextNameFinal,
                         isLastExercise = isLastSet && nextExercise == null,
-                        currentSet = _currentSetIndex.value + 1,
+                        currentSet = upcomingSetIdx,
                         totalSets = currentExercise?.setReps?.size ?: 0
                     )
                 }
@@ -1978,21 +1998,19 @@ class MainViewModel @Inject constructor(
         Timber.d("  Current exercise index: ${_currentExerciseIndex.value}")
         Timber.d("  Total exercises: ${routine.exercises.size}")
 
-        if (_currentSetIndex.value < currentExercise.setReps.size - 1) {
-            // More sets in current exercise
-            Timber.d("  ? Moving to next set")
-            _currentSetIndex.value++
+        val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
+        val nextSetIndex = _exerciseTurnCount.value / numParticipants
+        if (nextSetIndex < currentExercise.setReps.size) {
+            // More sets (turns) in current exercise
+            Timber.d("  ? Moving to next turn (participant set $nextSetIndex)")
+            _currentSetIndex.value = nextSetIndex
             val targetReps = currentExercise.setReps[_currentSetIndex.value]
 
-            // Check if user modified parameters during rest - if so, use their values
             val userModified = _parametersModifiedDuringRest.value
             if (userModified) {
                 Timber.d("  User modified parameters during rest - preserving their changes")
-                Timber.d("  Using user weight: ${workoutParameters.value.weightPerCableKg} kg")
-                Timber.d("  Using user reps: ${workoutParameters.value.reps}")
             }
 
-            // Get per-set weight, falling back to exercise default (Issue #147)
             val setWeight = if (userModified) {
                 workoutParameters.value.weightPerCableKg
             } else {
@@ -2005,9 +2023,7 @@ class MainViewModel @Inject constructor(
                 targetReps ?: 0
             }
 
-            Timber.d("  New set index: ${_currentSetIndex.value}")
-            Timber.d("  Target reps: $finalReps")
-            Timber.d("  Set weight: $setWeight kg")
+            Timber.d("  Set index: ${_currentSetIndex.value}, reps: $finalReps, weight: $setWeight kg")
             _workoutParameters.value = workoutParameters.value.copy(
                 reps = finalReps,
                 weightPerCableKg = setWeight,
@@ -2016,20 +2032,18 @@ class MainViewModel @Inject constructor(
                 selectedExerciseId = workoutParameters.value.selectedExerciseId,
                 isAMRAP = if (userModified) workoutParameters.value.isAMRAP else (targetReps == null)
             )
-            // Reset the flag after applying user changes
             _parametersModifiedDuringRest.value = false
-            Timber.d("  AFTER UPDATE - isAMRAP set to: ${_workoutParameters.value.isAMRAP} (targetReps was: $targetReps)")
-            Timber.d("  AFTER UPDATE - reps set to: ${_workoutParameters.value.reps}")
+            Timber.d("  AFTER UPDATE - isAMRAP=${_workoutParameters.value.isAMRAP}, reps=${_workoutParameters.value.reps}")
             Timber.d("???????????????????????????????????????????????????")
             startWorkout(skipCountdown = true)
         } else {
-            // Move to next exercise
-            Timber.d("  No more sets in current exercise")
+            // All turns done for this exercise — move to next exercise
+            Timber.d("  No more turns in current exercise")
             if (_currentExerciseIndex.value < routine.exercises.size - 1) {
                 Timber.d("  ? Moving to next exercise")
+                _exerciseTurnCount.value = 0
                 _currentExerciseIndex.value++
                 _currentSetIndex.value = 0
-                // Reset user modification flag - new exercise uses its own parameters
                 _parametersModifiedDuringRest.value = false
                 // Update workout parameters for new exercise
                 val nextExercise = routine.exercises[_currentExerciseIndex.value]
@@ -2053,11 +2067,11 @@ class MainViewModel @Inject constructor(
             } else {
                 // Routine complete - clear routine to prevent auto-restart
                 Timber.d("  ? ROUTINE COMPLETE!")
-                Timber.d("  Clearing routine and resetting indices")
                 _workoutState.value = WorkoutState.Completed
-                _loadedRoutine.value = null  // CRITICAL: Clear routine to prevent infinite loop
+                _loadedRoutine.value = null
                 _currentSetIndex.value = 0
                 _currentExerciseIndex.value = 0
+                _exerciseTurnCount.value = 0
                 currentRoutineSessionId = null
                 currentRoutineName = null
                 repCounter.reset()
@@ -2084,45 +2098,33 @@ class MainViewModel @Inject constructor(
 
             Timber.d("Rest timer cancelled, starting next set/exercise")
 
-            // Check if this is single exercise mode (no routine or temp routine from SingleExerciseScreen)
             val isSingleExercise = isSingleExerciseMode() && !_workoutParameters.value.isJustLift
             if (isSingleExercise) {
-                // For single exercise, advance to next set with proper parameter updates
                 val routine = _loadedRoutine.value
                 val currentExercise = routine?.exercises?.getOrNull(_currentExerciseIndex.value)
-                if (currentExercise != null && _currentSetIndex.value < currentExercise.setReps.size - 1) {
-                    _currentSetIndex.value++
+                val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
+                val nextSetIdx = _exerciseTurnCount.value / numParticipants
+                if (currentExercise != null && nextSetIdx < currentExercise.setReps.size) {
+                    _currentSetIndex.value = nextSetIdx
                     val targetReps = currentExercise.setReps[_currentSetIndex.value]
-
-                    // Check if user modified parameters during rest
                     val userModified = _parametersModifiedDuringRest.value
-                    if (userModified) {
-                        Timber.d("skipRest: User modified parameters during rest - preserving their changes")
-                    }
-
                     val setWeight = if (userModified) {
                         workoutParameters.value.weightPerCableKg
                     } else {
                         currentExercise.setWeightsPerCableKg.getOrNull(_currentSetIndex.value)
                             ?: currentExercise.weightPerCableKg
                     }
-                    val finalReps = if (userModified) {
-                        workoutParameters.value.reps
-                    } else {
-                        targetReps ?: 0
-                    }
-
-                    Timber.d("skipRest: Advancing to set ${_currentSetIndex.value + 1}, targetReps=$finalReps, isAMRAP=${!userModified && targetReps == null}")
+                    val finalReps = if (userModified) workoutParameters.value.reps else (targetReps ?: 0)
+                    Timber.d("skipRest: setIdx=$nextSetIdx, reps=$finalReps")
                     _workoutParameters.value = workoutParameters.value.copy(
                         reps = finalReps,
                         weightPerCableKg = setWeight,
                         isAMRAP = if (userModified) workoutParameters.value.isAMRAP else (targetReps == null)
                     )
-                    // Reset the flag after applying user changes
                     _parametersModifiedDuringRest.value = false
                     startWorkout(skipCountdown = true)
                 } else {
-                    Timber.d("skipRest: Single exercise complete - no more sets remaining")
+                    Timber.d("skipRest: Single exercise complete - no more turns remaining")
                     _workoutState.value = WorkoutState.Completed
                 }
             } else {
@@ -2272,10 +2274,12 @@ class MainViewModel @Inject constructor(
 
         workoutRepository.saveSession(session)
 
-        // Advance participant rotation after each saved set
+        // Advance participant rotation and exercise turn count after each saved set
         if (participants.size > 1) {
-            _currentParticipantIndex.value = (_currentParticipantIndex.value + 1) % participants.size
+            val newIndex = (_currentParticipantIndex.value + 1) % participants.size
+            _currentParticipantIndex.value = newIndex
         }
+        _exerciseTurnCount.value++
 
         if (collectedMetrics.isNotEmpty()) {
             workoutRepository.saveMetrics(sessionId, collectedMetrics)
@@ -2284,9 +2288,37 @@ class MainViewModel @Inject constructor(
         // Save exercise defaults for next time (only for Just Lift and Single Exercise modes)
         // Routines have their own saved configuration and should not interfere with these defaults
         if (params.isJustLift) {
-            saveJustLiftDefaultsFromWorkout()
+            saveJustLiftDefaultsFromWorkout(effectiveProfileId)
         } else if (isSingleExerciseMode()) {
-            saveSingleExerciseDefaultsFromWorkout()
+            saveSingleExerciseDefaultsFromWorkout(effectiveProfileId)
+        }
+
+        // For multi-participant single exercise mode: auto-load next performer's defaults
+        if (participants.size > 1 && isSingleExerciseMode() && !params.isJustLift) {
+            val nextIndex = _currentParticipantIndex.value
+            val nextPerformer = participants[nextIndex % participants.size]
+            val exerciseId = params.selectedExerciseId
+            val cableConfig = _loadedRoutine.value
+                ?.exercises?.getOrNull(_currentExerciseIndex.value)
+                ?.cableConfig?.name ?: "DOUBLE"
+            if (exerciseId != null && !_parametersModifiedDuringRest.value) {
+                val nextSetIdx = _exerciseTurnCount.value / participants.size
+                val defaults = preferencesManager.getSingleExerciseDefaults(
+                    exerciseId = exerciseId,
+                    cableConfig = cableConfig,
+                    profileId = nextPerformer.id
+                )
+                if (defaults != null) {
+                    val nextWeight = defaults.setWeightsPerCableKg.getOrNull(nextSetIdx)
+                        ?: defaults.weightPerCableKg
+                    val nextReps = defaults.setReps.getOrNull(nextSetIdx) ?: _workoutParameters.value.reps
+                    _workoutParameters.value = _workoutParameters.value.copy(
+                        weightPerCableKg = nextWeight.coerceAtLeast(0.1f),
+                        reps = nextReps ?: _workoutParameters.value.reps
+                    )
+                    Timber.d("Auto-loaded defaults for ${nextPerformer.name}: weight=$nextWeight, reps=$nextReps")
+                }
+            }
         }
 
         // Track personal record if exercise is selected
@@ -2470,29 +2502,26 @@ class MainViewModel @Inject constructor(
     // ========== Just Lift & Single Exercise Defaults ==========
 
     /**
-     * Get Just Lift defaults from preferences
-     * Returns null if no defaults have been saved yet
+     * Get Just Lift defaults for the currently active profile.
      */
     suspend fun getJustLiftDefaults(): com.example.vitruvianredux.data.preferences.JustLiftDefaults? {
-        return preferencesManager.getJustLiftDefaults()
+        return preferencesManager.getJustLiftDefaults(profileId = activeProfileId.value)
     }
 
     /**
-     * Get Single Exercise defaults for a specific exercise+cableConfig combination
-     * Returns null if no defaults have been saved for this combination
+     * Get Single Exercise defaults for the active profile + exercise+cableConfig combination.
      */
     suspend fun getSingleExerciseDefaults(
         exerciseId: String,
         cableConfig: String
     ): com.example.vitruvianredux.data.preferences.SingleExerciseDefaults? {
-        return preferencesManager.getSingleExerciseDefaults(exerciseId, cableConfig)
+        return preferencesManager.getSingleExerciseDefaults(exerciseId, cableConfig, profileId = activeProfileId.value)
     }
 
     /**
-     * Save Just Lift defaults after completing a Just Lift workout
-     * Called from saveWorkoutSession when isJustLift is true
+     * Save Just Lift defaults after completing a Just Lift workout, keyed by profileId.
      */
-    private suspend fun saveJustLiftDefaultsFromWorkout() {
+    private suspend fun saveJustLiftDefaultsFromWorkout(profileId: String) {
         val params = _workoutParameters.value
         if (!params.isJustLift) return
 
@@ -2505,22 +2534,20 @@ class MainViewModel @Inject constructor(
             val defaults = com.example.vitruvianredux.data.preferences.JustLiftDefaults(
                 workoutModeId = com.example.vitruvianredux.data.preferences.WorkoutModeId.fromWorkoutType(params.workoutType),
                 weightPerCableKg = params.weightPerCableKg.coerceAtLeast(0.1f),
-                // Use roundToInt() to minimize accumulating rounding errors when converting between units
                 weightChangePerRep = kotlin.math.round(params.progressionRegressionKg).toInt(),
                 eccentricLoadPercentage = eccentricLoad,
                 echoLevelValue = echoLevel
             )
-            preferencesManager.saveJustLiftDefaults(defaults)
+            preferencesManager.saveJustLiftDefaults(defaults, profileId = profileId)
         } catch (e: IllegalArgumentException) {
             Timber.e(e, "Failed to save Just Lift defaults - validation error")
         }
     }
 
     /**
-     * Save Single Exercise defaults after completing a single exercise workout
-     * Called from saveWorkoutSession when in Single Exercise mode (temp routine)
+     * Save Single Exercise defaults after completing a single exercise workout, keyed by profileId.
      */
-    private suspend fun saveSingleExerciseDefaultsFromWorkout() {
+    private suspend fun saveSingleExerciseDefaultsFromWorkout(profileId: String) {
         val routine = _loadedRoutine.value ?: return
 
         // Only save for temp single exercise routines, not for regular routines
@@ -2567,8 +2594,8 @@ class MainViewModel @Inject constructor(
                 duration = currentExercise.duration?.takeIf { it > 0 },
                 isAMRAP = currentExercise.isAMRAP
             )
-            preferencesManager.saveSingleExerciseDefaults(defaults)
-            Timber.d("Saved Single Exercise defaults for ${currentExercise.exercise.name} (${currentExercise.cableConfig})")
+            preferencesManager.saveSingleExerciseDefaults(defaults, profileId = profileId)
+            Timber.d("Saved Single Exercise defaults for profile=$profileId, ${currentExercise.exercise.name} (${currentExercise.cableConfig})")
         } catch (e: IllegalArgumentException) {
             Timber.e(e, "Failed to save Single Exercise defaults - validation error")
         }
@@ -2604,6 +2631,7 @@ class MainViewModel @Inject constructor(
         _repCount.value = RepCount()
         _repRanges.value = null
         _currentSetIndex.value = 0
+        _exerciseTurnCount.value = 0
         resetAutoStopState()
         Timber.d("Reset for new workout - state returned to Idle")
     }
@@ -2681,6 +2709,7 @@ class MainViewModel @Inject constructor(
         _loadedRoutine.value = routine
         _currentExerciseIndex.value = 0
         _currentSetIndex.value = 0
+        _exerciseTurnCount.value = 0
 
         // Generate a new routine session ID for grouping all sets from this routine
         currentRoutineSessionId = java.util.UUID.randomUUID().toString()
@@ -2824,6 +2853,7 @@ class MainViewModel @Inject constructor(
         _loadedRoutine.value = null
         _currentExerciseIndex.value = 0
         _currentSetIndex.value = 0
+        _exerciseTurnCount.value = 0
         currentRoutineSessionId = null
         currentRoutineName = null
         Timber.d("Cleared loaded routine")
@@ -2933,11 +2963,13 @@ class MainViewModel @Inject constructor(
     fun setWorkoutParticipants(profiles: List<com.example.vitruvianredux.data.local.UserProfileEntity>) {
         _workoutParticipants.value = profiles
         _currentParticipantIndex.value = 0
+        _exerciseTurnCount.value = 0
     }
 
     fun clearWorkoutParticipants() {
         _workoutParticipants.value = emptyList()
         _currentParticipantIndex.value = 0
+        _exerciseTurnCount.value = 0
     }
 
     companion object {

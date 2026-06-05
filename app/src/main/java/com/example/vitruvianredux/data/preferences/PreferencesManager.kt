@@ -271,39 +271,44 @@ class PreferencesManager @Inject constructor(
 
     // ========== Just Lift Defaults ==========
 
-    private val JUST_LIFT_DEFAULTS_KEY = stringPreferencesKey("just_lift_defaults")
+    private val JUST_LIFT_DEFAULTS_KEY_LEGACY = stringPreferencesKey("just_lift_defaults")
+    private fun justLiftDefaultsKey(profileId: String) = stringPreferencesKey("just_lift_defaults_$profileId")
 
     /**
-     * Save Just Lift mode defaults
-     * Called when a Just Lift workout is completed
+     * Save Just Lift mode defaults, keyed by profileId
      */
-    suspend fun saveJustLiftDefaults(defaults: JustLiftDefaults) {
+    suspend fun saveJustLiftDefaults(defaults: JustLiftDefaults, profileId: String = "default") {
         context.dataStore.edit { preferences ->
-            preferences[JUST_LIFT_DEFAULTS_KEY] = Json.encodeToString(defaults)
+            preferences[justLiftDefaultsKey(profileId)] = Json.encodeToString(defaults)
         }
-        Timber.d("Just Lift defaults saved: mode=${defaults.workoutModeId}, weight=${defaults.weightPerCableKg}kg, progression=${defaults.weightChangePerRep}")
+        Timber.d("Just Lift defaults saved for profile=$profileId: mode=${defaults.workoutModeId}, weight=${defaults.weightPerCableKg}kg")
     }
 
     /**
-     * Load Just Lift mode defaults
-     * Returns null if no defaults have been saved yet
+     * Load Just Lift mode defaults for a profile.
+     * Falls back to the legacy key for the default profile (backward compatibility).
      */
-    suspend fun getJustLiftDefaults(): JustLiftDefaults? {
+    suspend fun getJustLiftDefaults(profileId: String = "default"): JustLiftDefaults? {
         return try {
             context.dataStore.data.firstOrNull()?.let { preferences ->
-                preferences[JUST_LIFT_DEFAULTS_KEY]?.let { json ->
+                preferences[justLiftDefaultsKey(profileId)]?.let { json ->
                     Json.decodeFromString<JustLiftDefaults>(json)
-                }
+                } ?: if (profileId == "default") {
+                    preferences[JUST_LIFT_DEFAULTS_KEY_LEGACY]?.let { json ->
+                        Json.decodeFromString<JustLiftDefaults>(json)
+                    }
+                } else null
             }
         } catch (e: Exception) {
-            Timber.w(e, "Failed to load Just Lift defaults, returning null")
+            Timber.w(e, "Failed to load Just Lift defaults for profile=$profileId, returning null")
             null
         }
     }
 
     // ========== Single Exercise Defaults (per exercise+equipment) ==========
 
-    private val SINGLE_EXERCISE_DEFAULTS_KEY = stringPreferencesKey("single_exercise_defaults_map")
+    private val SINGLE_EXERCISE_DEFAULTS_KEY_LEGACY = stringPreferencesKey("single_exercise_defaults_map")
+    private fun singleExerciseDefaultsMapKey(profileId: String) = stringPreferencesKey("single_exercise_defaults_map_$profileId")
 
     /**
      * Generate a unique key for exercise + cable config combination
@@ -313,85 +318,85 @@ class PreferencesManager @Inject constructor(
     }
 
     /**
-     * Save Single Exercise mode defaults for a specific exercise+equipment combination
-     * Called when a Single Exercise workout is completed (not routine-based)
-     *
-     * Uses mutex to prevent concurrent save race conditions
+     * Save Single Exercise mode defaults for a specific exercise+equipment combination, keyed by profileId.
      */
-    suspend fun saveSingleExerciseDefaults(defaults: SingleExerciseDefaults) {
+    suspend fun saveSingleExerciseDefaults(defaults: SingleExerciseDefaults, profileId: String = "default") {
         exerciseDefaultsSaveMutex.withLock {
-            val key = getExerciseKey(defaults.exerciseId, defaults.cableConfig)
+            val exerciseKey = getExerciseKey(defaults.exerciseId, defaults.cableConfig)
+            val storeKey = singleExerciseDefaultsMapKey(profileId)
             context.dataStore.edit { preferences ->
-                // Load existing map
-                val existingJson = preferences[SINGLE_EXERCISE_DEFAULTS_KEY]
+                val existingJson = preferences[storeKey]
                 val existingMap: MutableMap<String, SingleExerciseDefaults> = if (existingJson != null) {
                     try {
                         Json.decodeFromString<Map<String, SingleExerciseDefaults>>(existingJson).toMutableMap()
                     } catch (e: Exception) {
-                        // Data corruption or schema change - log error but preserve raw data
-                        Timber.e(e, "Failed to parse existing exercise defaults - raw data preserved, saving only new entry")
-                        // Instead of discarding all data, we'll just save the new entry
-                        // The old corrupted data will be overwritten with just this one entry
-                        // This is a data recovery strategy: lose old entries but don't crash
+                        Timber.e(e, "Failed to parse existing exercise defaults for profile=$profileId - resetting map")
                         mutableMapOf()
                     }
                 } else {
                     mutableMapOf()
                 }
-
-                // Update with new defaults
-                existingMap[key] = defaults
-
-                // Monitor map size for potential cleanup
+                existingMap[exerciseKey] = defaults
                 if (existingMap.size > MAX_EXERCISE_DEFAULTS_SIZE) {
-                    Timber.w("Exercise defaults map has ${existingMap.size} entries - consider implementing cleanup strategy")
+                    Timber.w("Exercise defaults map for profile=$profileId has ${existingMap.size} entries")
                 }
-
-                // Save back
-                preferences[SINGLE_EXERCISE_DEFAULTS_KEY] = Json.encodeToString(existingMap)
+                preferences[storeKey] = Json.encodeToString(existingMap)
             }
-            Timber.d("Single Exercise defaults saved: exerciseId=${defaults.exerciseId}, cableConfig=${defaults.cableConfig}, mode=${defaults.workoutModeId}")
+            Timber.d("Single Exercise defaults saved for profile=$profileId: exerciseId=${defaults.exerciseId}, cableConfig=${defaults.cableConfig}")
         }
     }
 
     /**
-     * Load Single Exercise mode defaults for a specific exercise+equipment combination
-     * Returns null if no defaults have been saved for this combination
+     * Load Single Exercise mode defaults for a specific exercise+equipment+profile combination.
+     * Falls back to the legacy key for the default profile (backward compatibility).
      */
-    suspend fun getSingleExerciseDefaults(exerciseId: String, cableConfig: String): SingleExerciseDefaults? {
-        val key = getExerciseKey(exerciseId, cableConfig)
+    suspend fun getSingleExerciseDefaults(exerciseId: String, cableConfig: String, profileId: String = "default"): SingleExerciseDefaults? {
+        val exerciseKey = getExerciseKey(exerciseId, cableConfig)
+        val storeKey = singleExerciseDefaultsMapKey(profileId)
         return try {
             context.dataStore.data.firstOrNull()?.let { preferences ->
-                preferences[SINGLE_EXERCISE_DEFAULTS_KEY]?.let { json ->
-                    val map = Json.decodeFromString<Map<String, SingleExerciseDefaults>>(json)
-                    map[key]
+                // Try profile-specific key first
+                val profileJson = preferences[storeKey]
+                val fromProfile = profileJson?.let { json ->
+                    try {
+                        Json.decodeFromString<Map<String, SingleExerciseDefaults>>(json)[exerciseKey]
+                    } catch (e: Exception) { null }
                 }
+                if (fromProfile != null) return@let fromProfile
+                // Fall back to legacy key for default profile
+                if (profileId == "default") {
+                    preferences[SINGLE_EXERCISE_DEFAULTS_KEY_LEGACY]?.let { json ->
+                        try {
+                            Json.decodeFromString<Map<String, SingleExerciseDefaults>>(json)[exerciseKey]
+                        } catch (e: Exception) { null }
+                    }
+                } else null
             }
         } catch (e: Exception) {
-            Timber.w(e, "Failed to load Single Exercise defaults for $key, returning null")
+            Timber.w(e, "Failed to load Single Exercise defaults for $exerciseKey profile=$profileId, returning null")
             null
         }
     }
 
     /**
-     * Clear all saved Single Exercise defaults
-     * Useful for testing or resetting to system defaults
+     * Clear all saved Single Exercise defaults (legacy key + all profile keys not tracked here,
+     * but at least clears the legacy key).
      */
     suspend fun clearAllSingleExerciseDefaults() {
         context.dataStore.edit { preferences ->
-            preferences.remove(SINGLE_EXERCISE_DEFAULTS_KEY)
+            preferences.remove(SINGLE_EXERCISE_DEFAULTS_KEY_LEGACY)
         }
-        Timber.d("All Single Exercise defaults cleared")
+        Timber.d("All Single Exercise defaults cleared (legacy key)")
     }
 
     /**
-     * Clear Just Lift defaults
-     * Useful for testing or resetting to system defaults
+     * Clear Just Lift defaults for a profile (and the legacy key for default).
      */
-    suspend fun clearJustLiftDefaults() {
+    suspend fun clearJustLiftDefaults(profileId: String = "default") {
         context.dataStore.edit { preferences ->
-            preferences.remove(JUST_LIFT_DEFAULTS_KEY)
+            preferences.remove(justLiftDefaultsKey(profileId))
+            if (profileId == "default") preferences.remove(JUST_LIFT_DEFAULTS_KEY_LEGACY)
         }
-        Timber.d("Just Lift defaults cleared")
+        Timber.d("Just Lift defaults cleared for profile=$profileId")
     }
 }

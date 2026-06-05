@@ -8,10 +8,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -46,13 +50,14 @@ fun AnalyticsScreen(
     viewModel: MainViewModel,
     themeMode: com.example.vitruvianredux.ui.theme.ThemeMode
 ) {
-    val workoutHistory by viewModel.workoutHistory.collectAsState()
-    val groupedWorkoutHistory by viewModel.groupedWorkoutHistory.collectAsState()
-    val allWorkoutSessions by viewModel.allWorkoutSessions.collectAsState()
-    val personalRecords by viewModel.allPersonalRecords.collectAsState()
+    val groupedWorkoutHistory by viewModel.analyticsGroupedHistory.collectAsState()
+    val allWorkoutSessions by viewModel.analyticsWorkoutSessions.collectAsState()
+    val personalRecords by viewModel.analyticsPersonalRecords.collectAsState()
     val weightUnit by viewModel.weightUnit.collectAsState()
     val isAutoConnecting by viewModel.isAutoConnecting.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
+    val analyticsProfileId by viewModel.analyticsProfileId.collectAsState()
 
     // Set global title
     LaunchedEffect(Unit) {
@@ -190,6 +195,45 @@ fun AnalyticsScreen(
                 )
             }
 
+            // Profile filter chips — only show when multiple profiles exist
+            if (profiles.size > 1) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .padding(horizontal = Spacing.medium, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = analyticsProfileId == null,
+                            onClick = { viewModel.setAnalyticsProfile(null) },
+                            label = { Text("All", style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                    items(profiles) { profile ->
+                        FilterChip(
+                            selected = analyticsProfileId == profile.id,
+                            onClick = { viewModel.setAnalyticsProfile(profile.id) },
+                            label = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(profile.colorInt))
+                                    )
+                                    Text(profile.name, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
             // Tab Content with Swipe Support
         HorizontalPager(
             state = pagerState,
@@ -214,7 +258,7 @@ fun AnalyticsScreen(
                 )
                 2 -> InsightsTab(
                     prs = personalRecords,
-                    workoutSessions = workoutHistory,
+                    workoutSessions = allWorkoutSessions,
                     exerciseRepository = viewModel.exerciseRepository,
                     weightUnit = weightUnit,
                     formatWeight = viewModel::formatWeight,
