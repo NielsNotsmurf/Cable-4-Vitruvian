@@ -40,9 +40,10 @@ import androidx.room.TypeConverters
         ProgramDayEntity::class,
         ConnectionLogEntity::class,
         com.example.vitruvianredux.data.local.entity.PhaseStatisticsEntity::class,
-        com.example.vitruvianredux.data.local.entity.DiagnosticsEntity::class
+        com.example.vitruvianredux.data.local.entity.DiagnosticsEntity::class,
+        UserProfileEntity::class
     ],
-    version = 26,  // Changed positionA/B from Int to Float (mm) - Issue #197
+    version = 27,  // Added user_profiles table and profileId FK to workout_sessions and personal_records
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -53,4 +54,5 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun connectionLogDao(): ConnectionLogDao
     abstract fun phaseStatisticsDao(): com.example.vitruvianredux.data.local.dao.PhaseStatisticsDao
     abstract fun diagnosticsDao(): com.example.vitruvianredux.data.local.dao.DiagnosticsDao
+    abstract fun userProfileDao(): UserProfileDao
 }

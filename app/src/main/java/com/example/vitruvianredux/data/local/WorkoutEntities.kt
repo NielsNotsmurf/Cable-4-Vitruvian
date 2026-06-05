@@ -39,7 +39,9 @@ data class WorkoutSessionEntity(
     val safetyFlags: Int = 0,
     val deloadWarningCount: Int = 0,
     val romViolationCount: Int = 0,
-    val spotterActivations: Int = 0
+    val spotterActivations: Int = 0,
+    // Profile ownership (added in v27)
+    val profileId: String = "default"
 )
 
 /**

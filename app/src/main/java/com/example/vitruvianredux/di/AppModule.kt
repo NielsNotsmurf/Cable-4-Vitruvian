@@ -10,8 +10,10 @@ import com.example.vitruvianredux.data.local.ExerciseDao
 import com.example.vitruvianredux.data.local.ExerciseImporter
 import com.example.vitruvianredux.data.local.PersonalRecordDao
 import com.example.vitruvianredux.data.local.ConnectionLogDao
+import com.example.vitruvianredux.data.local.UserProfileDao
 import com.example.vitruvianredux.data.local.dao.PhaseStatisticsDao
 import com.example.vitruvianredux.data.local.dao.DiagnosticsDao
+import com.example.vitruvianredux.data.repository.UserProfileRepository
 import com.example.vitruvianredux.data.ble.VitruvianBleManager
 import com.example.vitruvianredux.data.logger.ConnectionLogger
 import com.example.vitruvianredux.data.preferences.PreferencesManager
@@ -764,6 +766,41 @@ object AppModule {
         }
     }
 
+    /**
+     * Migration from version 26 to 27: Add user profiles and profileId FK
+     * - Creates user_profiles table
+     * - Seeds a "default" profile that owns all existing data
+     * - Adds profileId column to workout_sessions (DEFAULT 'default')
+     * - Adds profileId column to personal_records (DEFAULT 'default')
+     * - Replaces unique index on personal_records to include profileId
+     */
+    internal val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    colorInt INTEGER NOT NULL DEFAULT -10354962,
+                    createdAt INTEGER NOT NULL
+                )
+            """.trimIndent())
+
+            db.execSQL(
+                "INSERT INTO user_profiles (id, name, colorInt, createdAt) VALUES ('default', 'Default', -10354962, ${System.currentTimeMillis()})"
+            )
+
+            db.execSQL("ALTER TABLE workout_sessions ADD COLUMN profileId TEXT NOT NULL DEFAULT 'default'")
+
+            db.execSQL("ALTER TABLE personal_records ADD COLUMN profileId TEXT NOT NULL DEFAULT 'default'")
+
+            db.execSQL("DROP INDEX IF EXISTS index_personal_records_exerciseId_workoutMode_prType")
+
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_personal_records_profileId_exerciseId_workoutMode_prType ON personal_records (profileId, exerciseId, workoutMode, prType)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideConnectionLogDao(database: WorkoutDatabase): ConnectionLogDao {
@@ -801,7 +838,7 @@ object AppModule {
             WorkoutDatabase::class.java,
             "vitruvian_workout_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27)
         .build()
     }
 
@@ -881,5 +918,17 @@ object AppModule {
     @Singleton
     fun provideDiagnosticsDao(database: WorkoutDatabase): DiagnosticsDao {
         return database.diagnosticsDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserProfileDao(database: WorkoutDatabase): UserProfileDao {
+        return database.userProfileDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserProfileRepository(dao: UserProfileDao): UserProfileRepository {
+        return UserProfileRepository(dao)
     }
 }

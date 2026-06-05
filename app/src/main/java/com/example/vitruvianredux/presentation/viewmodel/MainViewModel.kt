@@ -82,7 +82,9 @@ class MainViewModel @Inject constructor(
     val personalRecordRepository: PersonalRecordRepository,
     private val repCounter: RepCounterFromMachine,
     private val preferencesManager: PreferencesManager,
-    private val dataBackupManager: DataBackupManager
+    private val dataBackupManager: DataBackupManager,
+    private val profileManager: com.example.vitruvianredux.data.profiles.ProfileManager,
+    val userProfileRepository: com.example.vitruvianredux.data.repository.UserProfileRepository
 ) : AndroidViewModel(application) {
 
     // Use application context directly instead of storing it
@@ -252,6 +254,25 @@ class MainViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+
+    // ========== Profile & Participant Rotation ==========
+
+    val activeProfileId: StateFlow<String> = profileManager.activeProfileIdFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "default")
+
+    val profiles: StateFlow<List<com.example.vitruvianredux.data.local.UserProfileEntity>> =
+        userProfileRepository.getAllProfiles()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+
+    private val _workoutParticipants = MutableStateFlow<List<com.example.vitruvianredux.data.local.UserProfileEntity>>(emptyList())
+    val workoutParticipants: StateFlow<List<com.example.vitruvianredux.data.local.UserProfileEntity>> = _workoutParticipants.asStateFlow()
+
+    private val _currentParticipantIndex = MutableStateFlow(0)
+    val currentParticipantIndex: StateFlow<Int> = _currentParticipantIndex.asStateFlow()
 
     // ========== Stats for HomeScreen ==========
 
@@ -2191,6 +2212,13 @@ class MainViewModel @Inject constructor(
         val savedRoutineSessionId = if (isSingleExercise) null else currentRoutineSessionId
         val savedRoutineName = if (isSingleExercise) null else currentRoutineName
 
+        val participants = _workoutParticipants.value
+        val effectiveProfileId = if (participants.isNotEmpty()) {
+            participants[_currentParticipantIndex.value % participants.size].id
+        } else {
+            activeProfileId.value
+        }
+
         val session = WorkoutSession(
             id = sessionId,
             timestamp = workoutStartTime,
@@ -2209,7 +2237,8 @@ class MainViewModel @Inject constructor(
             exerciseId = params.selectedExerciseId,
             exerciseName = exerciseName,
             routineSessionId = savedRoutineSessionId,
-            routineName = savedRoutineName
+            routineName = savedRoutineName,
+            profileId = effectiveProfileId
         )
 
         // Check if this is a bodyweight exercise (for logging purposes)
@@ -2236,6 +2265,11 @@ class MainViewModel @Inject constructor(
 
         workoutRepository.saveSession(session)
 
+        // Advance participant rotation after each saved set
+        if (participants.size > 1) {
+            _currentParticipantIndex.value = (_currentParticipantIndex.value + 1) % participants.size
+        }
+
         if (collectedMetrics.isNotEmpty()) {
             workoutRepository.saveMetrics(sessionId, collectedMetrics)
         }
@@ -2257,7 +2291,8 @@ class MainViewModel @Inject constructor(
                     exerciseId = exerciseId,
                     weightPerCableKg = measuredPerCableKg,
                     reps = working,
-                    workoutMode = params.workoutType.displayName
+                    workoutMode = params.workoutType.displayName,
+                    profileId = effectiveProfileId
                 )
                 if (brokenPRs.isNotEmpty()) {
                     Timber.d("NEW PERSONAL RECORD(S)! Exercise: $exerciseId, Weight: ${measuredPerCableKg}kg, Reps: $working, Types: $brokenPRs")
@@ -2862,6 +2897,40 @@ class MainViewModel @Inject constructor(
         repEventsCollectionJob?.cancel()
         autoStartJob?.cancel()
         restTimerJob?.cancel()
+    }
+
+    // ========== Profile Management ==========
+
+    fun setActiveProfile(profileId: String) {
+        viewModelScope.launch { profileManager.setActiveProfile(profileId) }
+    }
+
+    fun createProfile(name: String, colorInt: Int) {
+        viewModelScope.launch { userProfileRepository.createProfile(name, colorInt) }
+    }
+
+    fun deleteProfile(profile: com.example.vitruvianredux.data.local.UserProfileEntity) {
+        viewModelScope.launch {
+            if (userProfileRepository.getCount() > 1) {
+                userProfileRepository.delete(profile)
+                if (activeProfileId.value == profile.id) {
+                    val remaining = userProfileRepository.getAllProfiles()
+                        .firstOrNull()
+                        ?.firstOrNull { it.id != profile.id }
+                    if (remaining != null) profileManager.setActiveProfile(remaining.id)
+                }
+            }
+        }
+    }
+
+    fun setWorkoutParticipants(profiles: List<com.example.vitruvianredux.data.local.UserProfileEntity>) {
+        _workoutParticipants.value = profiles
+        _currentParticipantIndex.value = 0
+    }
+
+    fun clearWorkoutParticipants() {
+        _workoutParticipants.value = emptyList()
+        _currentParticipantIndex.value = 0
     }
 
     companion object {

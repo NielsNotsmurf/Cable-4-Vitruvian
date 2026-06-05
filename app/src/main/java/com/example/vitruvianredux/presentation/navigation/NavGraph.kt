@@ -184,6 +184,9 @@ fun NavGraph(
             val isImporting by viewModel.isImporting.collectAsState()
             val importResult by viewModel.importResult.collectAsState()
             val showImportResultDialog by viewModel.showImportResultDialog.collectAsState()
+            val profiles by viewModel.profiles.collectAsState()
+            val activeProfileId by viewModel.activeProfileId.collectAsState()
+            val activeProfileName = profiles.find { it.id == activeProfileId }?.name ?: "Default"
 
             SettingsTab(
                 weightUnit = weightUnit,
@@ -200,6 +203,8 @@ fun NavGraph(
                 onDeleteAllWorkouts = { viewModel.deleteAllWorkouts() },
                 onNavigateToConnectionLogs = { navController.navigate(NavigationRoutes.ConnectionLogs.route) },
                 onNavigateToProtocolTester = { navController.navigate(NavigationRoutes.ProtocolTester.route) },
+                onNavigateToProfiles = { navController.navigate(NavigationRoutes.Profiles.route) },
+                activeProfileName = activeProfileName,
                 isExporting = isExporting,
                 isImporting = isImporting,
                 importResult = importResult,
@@ -252,6 +257,40 @@ fun NavGraph(
             }
         ) {
             ProtocolTesterScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Profiles screen — manage local user profiles
+        composable(
+            route = NavigationRoutes.Profiles.route,
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            ProfileSelectionScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

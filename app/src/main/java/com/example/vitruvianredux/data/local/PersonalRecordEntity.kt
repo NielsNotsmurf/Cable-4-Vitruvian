@@ -21,12 +21,13 @@ enum class PRType {
 @Entity(
     tableName = "personal_records",
     indices = [
-        Index(value = ["exerciseId", "workoutMode", "prType"], unique = true)
+        Index(value = ["profileId", "exerciseId", "workoutMode", "prType"], unique = true)
     ]
 )
 data class PersonalRecordEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val profileId: String = "default",
     val exerciseId: String,
     val weightPerCableKg: Float,
     val reps: Int,

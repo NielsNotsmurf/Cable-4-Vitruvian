@@ -22,9 +22,9 @@ class PersonalRecordRepository @Inject constructor(
     /**
      * Get the weight PR for an exercise in a specific workout mode
      */
-    suspend fun getWeightPR(exerciseId: String, workoutMode: String): PersonalRecord? {
+    suspend fun getWeightPR(exerciseId: String, workoutMode: String, profileId: String = "default"): PersonalRecord? {
         return try {
-            personalRecordDao.getPR(exerciseId, workoutMode, PRType.MAX_WEIGHT.name)?.toPersonalRecord()
+            personalRecordDao.getPR(profileId, exerciseId, workoutMode, PRType.MAX_WEIGHT.name)?.toPersonalRecord()
         } catch (e: Exception) {
             Timber.e(e, "Failed to get weight PR for exercise $exerciseId")
             null
@@ -34,9 +34,9 @@ class PersonalRecordRepository @Inject constructor(
     /**
      * Get the volume PR for an exercise in a specific workout mode
      */
-    suspend fun getVolumePR(exerciseId: String, workoutMode: String): PersonalRecord? {
+    suspend fun getVolumePR(exerciseId: String, workoutMode: String, profileId: String = "default"): PersonalRecord? {
         return try {
-            personalRecordDao.getPR(exerciseId, workoutMode, PRType.MAX_VOLUME.name)?.toPersonalRecord()
+            personalRecordDao.getPR(profileId, exerciseId, workoutMode, PRType.MAX_VOLUME.name)?.toPersonalRecord()
         } catch (e: Exception) {
             Timber.e(e, "Failed to get volume PR for exercise $exerciseId")
             null
@@ -128,10 +128,12 @@ class PersonalRecordRepository @Inject constructor(
         weightPerCableKg: Float,
         reps: Int,
         workoutMode: String,
-        timestamp: Long
+        timestamp: Long,
+        profileId: String = "default"
     ): Result<List<PRType>> {
         return try {
             val brokenPRs = personalRecordDao.updatePRsIfBetter(
+                profileId = profileId,
                 exerciseId = exerciseId,
                 weightPerCableKg = weightPerCableKg,
                 reps = reps,
@@ -154,10 +156,12 @@ class PersonalRecordRepository @Inject constructor(
         weightPerCableKg: Float,
         reps: Int,
         workoutMode: String,
-        timestamp: Long
+        timestamp: Long,
+        profileId: String = "default"
     ): Result<Boolean> {
         return try {
             val isNewPR = personalRecordDao.updatePRIfBetter(
+                profileId = profileId,
                 exerciseId = exerciseId,
                 weightPerCableKg = weightPerCableKg,
                 reps = reps,

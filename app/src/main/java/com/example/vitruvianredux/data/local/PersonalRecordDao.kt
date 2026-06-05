@@ -16,14 +16,14 @@ import timber.log.Timber
 interface PersonalRecordDao {
 
     /**
-     * Get the PR for an exercise in a specific workout mode and PR type
+     * Get the PR for a profile/exercise/mode/type combination
      */
     @Query("""
         SELECT * FROM personal_records
-        WHERE exerciseId = :exerciseId AND workoutMode = :workoutMode AND prType = :prType
+        WHERE profileId = :profileId AND exerciseId = :exerciseId AND workoutMode = :workoutMode AND prType = :prType
         LIMIT 1
     """)
-    suspend fun getPR(exerciseId: String, workoutMode: String, prType: String): PersonalRecordEntity?
+    suspend fun getPR(profileId: String, exerciseId: String, workoutMode: String, prType: String): PersonalRecordEntity?
 
     /**
      * Get both PRs (max weight and max volume) for an exercise in a specific workout mode
@@ -122,12 +122,13 @@ interface PersonalRecordDao {
     suspend fun upsertPR(pr: PersonalRecordEntity): Long
 
     /**
-     * Update PRs if new performance is better
+     * Update PRs if new performance is better (profile-scoped)
      * Checks BOTH max weight and max volume PRs
      * Returns a list of PR types that were broken (can be empty, one, or both)
      */
     @Transaction
     suspend fun updatePRsIfBetter(
+        profileId: String,
         exerciseId: String,
         weightPerCableKg: Float,
         reps: Int,
@@ -137,15 +138,16 @@ interface PersonalRecordDao {
         val brokenPRs = mutableListOf<PRType>()
         val newVolume = weightPerCableKg * reps
 
-        Timber.d("PR_CHECK: Checking PRs for $exerciseId/$workoutMode")
+        Timber.d("PR_CHECK: Checking PRs for $exerciseId/$workoutMode (profile=$profileId)")
         Timber.d("  New performance: ${weightPerCableKg}kg x $reps reps (volume: $newVolume)")
 
         // Check MAX_WEIGHT PR
-        val existingWeightPR = getPR(exerciseId, workoutMode, PRType.MAX_WEIGHT.name)
+        val existingWeightPR = getPR(profileId, exerciseId, workoutMode, PRType.MAX_WEIGHT.name)
         if (existingWeightPR == null) {
             Timber.d("  MAX_WEIGHT: No existing PR - creating first: ${weightPerCableKg}kg")
             upsertPR(
                 PersonalRecordEntity(
+                    profileId = profileId,
                     exerciseId = exerciseId,
                     weightPerCableKg = weightPerCableKg,
                     reps = reps,
@@ -161,6 +163,7 @@ interface PersonalRecordDao {
             upsertPR(
                 PersonalRecordEntity(
                     id = existingWeightPR.id,  // Preserve ID for update
+                    profileId = profileId,
                     exerciseId = exerciseId,
                     weightPerCableKg = weightPerCableKg,
                     reps = reps,
@@ -176,11 +179,12 @@ interface PersonalRecordDao {
         }
 
         // Check MAX_VOLUME PR
-        val existingVolumePR = getPR(exerciseId, workoutMode, PRType.MAX_VOLUME.name)
+        val existingVolumePR = getPR(profileId, exerciseId, workoutMode, PRType.MAX_VOLUME.name)
         if (existingVolumePR == null) {
             Timber.d("  MAX_VOLUME: No existing PR - creating first: $newVolume")
             upsertPR(
                 PersonalRecordEntity(
+                    profileId = profileId,
                     exerciseId = exerciseId,
                     weightPerCableKg = weightPerCableKg,
                     reps = reps,
@@ -196,6 +200,7 @@ interface PersonalRecordDao {
             upsertPR(
                 PersonalRecordEntity(
                     id = existingVolumePR.id,  // Preserve ID for update
+                    profileId = profileId,
                     exerciseId = exerciseId,
                     weightPerCableKg = weightPerCableKg,
                     reps = reps,
@@ -223,13 +228,14 @@ interface PersonalRecordDao {
      */
     @Transaction
     suspend fun updatePRIfBetter(
+        profileId: String,
         exerciseId: String,
         weightPerCableKg: Float,
         reps: Int,
         workoutMode: String,
         timestamp: Long
     ): Boolean {
-        val brokenPRs = updatePRsIfBetter(exerciseId, weightPerCableKg, reps, workoutMode, timestamp)
+        val brokenPRs = updatePRsIfBetter(profileId, exerciseId, weightPerCableKg, reps, workoutMode, timestamp)
         return brokenPRs.isNotEmpty()
     }
 }

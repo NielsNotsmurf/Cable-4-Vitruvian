@@ -275,7 +275,9 @@ data class WorkoutSession(
     val exerciseName: String? = null,  // Exercise name for display (avoids DB lookups)
     // Routine tracking (for grouping sets from the same routine)
     val routineSessionId: String? = null,  // Unique ID for this routine session
-    val routineName: String? = null  // Name of the routine being performed
+    val routineName: String? = null,  // Name of the routine being performed
+    // Profile ownership (added in v27)
+    val profileId: String = "default"
 )
 
 /**

@@ -42,7 +42,8 @@ internal fun WorkoutSessionEntity.toWorkoutSession(): WorkoutSession {
         exerciseId = exerciseId,
         exerciseName = exerciseName,
         routineSessionId = routineSessionId,
-        routineName = routineName
+        routineName = routineName,
+        profileId = profileId
     )
 }
 
@@ -68,7 +69,8 @@ internal fun WorkoutSession.toEntity(): WorkoutSessionEntity {
         exerciseId = exerciseId,
         exerciseName = exerciseName,
         routineSessionId = routineSessionId,
-        routineName = routineName
+        routineName = routineName,
+        profileId = profileId
     )
 }
 

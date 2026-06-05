@@ -53,7 +53,8 @@ class WorkoutRepository @Inject constructor(
                 exerciseId = session.exerciseId,
                 exerciseName = session.exerciseName,
                 routineSessionId = session.routineSessionId,
-                routineName = session.routineName
+                routineName = session.routineName,
+                profileId = session.profileId
             )
             workoutDao.insertSession(entity)
             Timber.d("Saved workout session: ${session.id}")
@@ -368,10 +369,12 @@ class WorkoutRepository @Inject constructor(
         exerciseId: String,
         weightPerCableKg: Float,
         reps: Int,
-        workoutMode: String
+        workoutMode: String,
+        profileId: String = "default"
     ): List<PRType> {
         return try {
             val brokenPRs = personalRecordDao.updatePRsIfBetter(
+                profileId = profileId,
                 exerciseId = exerciseId,
                 weightPerCableKg = weightPerCableKg,
                 reps = reps,
@@ -396,9 +399,10 @@ class WorkoutRepository @Inject constructor(
         exerciseId: String,
         weightPerCableKg: Float,
         reps: Int,
-        workoutMode: String
+        workoutMode: String,
+        profileId: String = "default"
     ): Boolean {
-        return updatePersonalRecordsIfNeeded(exerciseId, weightPerCableKg, reps, workoutMode).isNotEmpty()
+        return updatePersonalRecordsIfNeeded(exerciseId, weightPerCableKg, reps, workoutMode, profileId).isNotEmpty()
     }
 }
 
