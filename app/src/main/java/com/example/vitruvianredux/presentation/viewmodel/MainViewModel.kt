@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -273,6 +274,12 @@ class MainViewModel @Inject constructor(
 
     private val _currentParticipantIndex = MutableStateFlow(0)
     val currentParticipantIndex: StateFlow<Int> = _currentParticipantIndex.asStateFlow()
+
+    val currentPerformer: StateFlow<com.example.vitruvianredux.data.local.UserProfileEntity?> =
+        combine(_workoutParticipants, _currentParticipantIndex) { participants, index ->
+            if (participants.isEmpty()) null
+            else participants[index % participants.size]
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     // ========== Stats for HomeScreen ==========
 

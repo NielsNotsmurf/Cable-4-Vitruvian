@@ -1,11 +1,18 @@
 package com.example.vitruvianredux.presentation.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.vitruvianredux.data.repository.ExerciseRepository
 import com.example.vitruvianredux.domain.model.*
@@ -42,6 +49,8 @@ fun ActiveWorkoutScreen(
     val isAutoConnecting by viewModel.isAutoConnecting.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
     val userPreferences by viewModel.userPreferences.collectAsState()
+    val workoutParticipants by viewModel.workoutParticipants.collectAsState()
+    val currentPerformer by viewModel.currentPerformer.collectAsState()
 
     // State for confirmation dialog
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -138,7 +147,16 @@ fun ActiveWorkoutScreen(
         }
     }
 
-    WorkoutTab(
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (workoutParticipants.size > 1 && currentPerformer != null) {
+            CurrentPerformerBanner(
+                name = currentPerformer!!.name,
+                colorInt = currentPerformer!!.colorInt,
+                participantIndex = workoutParticipants.indexOf(currentPerformer),
+                total = workoutParticipants.size
+            )
+        }
+        WorkoutTab(
         connectionState = connectionState,
         workoutState = workoutState,
         currentMetric = currentMetric,
@@ -179,7 +197,8 @@ fun ActiveWorkoutScreen(
         onHideWorkoutSetupDialog = { /* Not used in ActiveWorkoutScreen */ },
         showConnectionCard = false,
         showWorkoutSetupCard = false
-    )
+        )
+    } // end Column
 
     // Exit confirmation dialog
     if (showExitConfirmation) {
@@ -243,5 +262,52 @@ fun ActiveWorkoutScreen(
             volume = volumeFormatted,
             onDismiss = { prCelebrationEvent = null }
         )
+    }
+}
+
+@Composable
+private fun CurrentPerformerBanner(
+    name: String,
+    colorInt: Int,
+    participantIndex: Int,
+    total: Int
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.medium, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(colorInt)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = name.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Text(
+                text = "• ${participantIndex + 1} of $total",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            )
+        }
     }
 }

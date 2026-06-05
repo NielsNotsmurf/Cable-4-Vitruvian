@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -25,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.vitruvianredux.data.local.UserProfileEntity
 import com.example.vitruvianredux.domain.model.WeightUnit
 import com.example.vitruvianredux.presentation.navigation.NavigationRoutes
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
@@ -61,6 +64,11 @@ fun HomeScreen(
     val activeProgram by viewModel.activeProgram.collectAsState()
     val routines by viewModel.routines.collectAsState()
     val weightUnit by viewModel.weightUnit.collectAsState()
+
+    // Participant session state
+    val profiles by viewModel.profiles.collectAsState()
+    val workoutParticipants by viewModel.workoutParticipants.collectAsState()
+    var showParticipantSheet by remember { mutableStateOf(false) }
 
     // Determine actual theme (matching Theme.kt logic)
     val useDarkColors = when (themeMode) {
@@ -132,6 +140,14 @@ fun HomeScreen(
                 }
             }
 
+            // Session participants card — full width
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SessionParticipantsCard(
+                    participants = workoutParticipants,
+                    onClick = { showParticipantSheet = true }
+                )
+            }
+
             // Cards Grid
             item {
                 WorkoutCard(
@@ -195,6 +211,19 @@ fun HomeScreen(
                 onDismiss = { viewModel.clearConnectionError() }
             )
         }
+    }
+
+    if (showParticipantSheet) {
+        ParticipantPickerSheet(
+            profiles = profiles,
+            selected = workoutParticipants,
+            onDismiss = { showParticipantSheet = false },
+            onConfirm = { selection ->
+                if (selection.isEmpty()) viewModel.clearWorkoutParticipants()
+                else viewModel.setWorkoutParticipants(selection)
+                showParticipantSheet = false
+            }
+        )
     }
 }
 
@@ -446,6 +475,174 @@ fun HomeActiveProgramCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SessionParticipantsCard(
+    participants: List<UserProfileEntity>,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(2.dp, Color(0xFFF5F3FF))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.medium, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Group,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                if (participants.isEmpty()) {
+                    Text(
+                        "Solo session",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    participants.forEach { profile ->
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(profile.colorInt)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = profile.name.take(1).uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    Text(
+                        text = participants.joinToString(", ") { it.name },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Change participants",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ParticipantPickerSheet(
+    profiles: List<UserProfileEntity>,
+    selected: List<UserProfileEntity>,
+    onDismiss: () -> Unit,
+    onConfirm: (List<UserProfileEntity>) -> Unit
+) {
+    val selectedIds = remember(selected) { selected.map { it.id }.toMutableStateList() }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.medium)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.small)
+        ) {
+            Text(
+                "Who's training?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = Spacing.small)
+            )
+            Text(
+                "Select up to 4 participants. Sets rotate automatically.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            profiles.forEach { profile ->
+                val isChecked = selectedIds.contains(profile.id)
+                val atMax = selectedIds.size >= 4 && !isChecked
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !atMax) {
+                            if (isChecked) selectedIds.remove(profile.id)
+                            else selectedIds.add(profile.id)
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(profile.colorInt)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = profile.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Text(
+                        text = profile.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                        color = if (atMax) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface
+                    )
+                    Checkbox(
+                        checked = isChecked,
+                        onCheckedChange = { checked ->
+                            if (checked && !atMax) selectedIds.add(profile.id)
+                            else if (!checked) selectedIds.remove(profile.id)
+                        },
+                        enabled = !atMax || isChecked
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small)
+            ) {
+                OutlinedButton(
+                    onClick = { onConfirm(emptyList()) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Train Alone") }
+                Button(
+                    onClick = {
+                        val result = profiles.filter { it.id in selectedIds }
+                        onConfirm(result)
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = selectedIds.isNotEmpty()
+                ) { Text("Confirm") }
             }
         }
     }
