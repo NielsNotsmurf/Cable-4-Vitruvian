@@ -97,6 +97,8 @@ fun EnhancedMainScreen(
         currentRoute == NavigationRoutes.DailyRoutines.route ||
         currentRoute == NavigationRoutes.ActiveWorkout.route ||
         currentRoute == NavigationRoutes.WeeklyPrograms.route ||
+        currentRoute == NavigationRoutes.MuscleGroupTraining.route ||
+        currentRoute == NavigationRoutes.BaselineAssessment.route ||
         currentRoute.startsWith(NavigationRoutes.ProgramBuilder.route.replace("/{programId}", ""))
     }
 

@@ -19,6 +19,8 @@ sealed class NavigationRoutes(val route: String) {
     object ConnectionLogs : NavigationRoutes("connection_logs")
     object ProtocolTester : NavigationRoutes("protocol_tester")
     object Profiles : NavigationRoutes("profiles")
+    object MuscleGroupTraining : NavigationRoutes("muscle_group_training")
+    object BaselineAssessment : NavigationRoutes("baseline_assessment")
 }
 
 /**

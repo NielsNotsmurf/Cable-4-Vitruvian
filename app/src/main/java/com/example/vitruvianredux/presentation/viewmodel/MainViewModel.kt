@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.take
@@ -85,7 +86,10 @@ class MainViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val dataBackupManager: DataBackupManager,
     private val profileManager: com.example.vitruvianredux.data.profiles.ProfileManager,
-    val userProfileRepository: com.example.vitruvianredux.data.repository.UserProfileRepository
+    val userProfileRepository: com.example.vitruvianredux.data.repository.UserProfileRepository,
+    val baselineRepository: com.example.vitruvianredux.data.baseline.BaselineRepository,
+    private val workoutGenerator: com.example.vitruvianredux.domain.usecase.WorkoutGeneratorUseCase,
+    val progressionEngine: com.example.vitruvianredux.domain.usecase.ProgressionEngine
 ) : AndroidViewModel(application) {
 
     // Use application context directly instead of storing it
@@ -2970,6 +2974,57 @@ class MainViewModel @Inject constructor(
         _workoutParticipants.value = emptyList()
         _currentParticipantIndex.value = 0
         _exerciseTurnCount.value = 0
+    }
+
+    // ========== Phase 2: Baseline & Workout Generation ==========
+
+    val baselineResults: StateFlow<com.example.vitruvianredux.data.baseline.BaselineResults?> =
+        activeProfileId.flatMapLatest { profileId ->
+            baselineRepository.baselineFlow(profileId)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val _generatedWorkout = MutableStateFlow<com.example.vitruvianredux.domain.usecase.GeneratedWorkout?>(null)
+    val generatedWorkout: StateFlow<com.example.vitruvianredux.domain.usecase.GeneratedWorkout?> = _generatedWorkout.asStateFlow()
+
+    private val _isGeneratingWorkout = MutableStateFlow(false)
+    val isGeneratingWorkout: StateFlow<Boolean> = _isGeneratingWorkout.asStateFlow()
+
+    fun saveBaselineResult(
+        profileId: String,
+        bucket: com.example.vitruvianredux.domain.model.ExerciseBucket,
+        kg: Float
+    ) {
+        viewModelScope.launch {
+            baselineRepository.saveBucketResult(profileId, bucket, kg)
+        }
+    }
+
+    fun completeBaseline(profileId: String) {
+        viewModelScope.launch {
+            baselineRepository.markComplete(profileId)
+        }
+    }
+
+    fun generateWorkout(
+        bucket: com.example.vitruvianredux.domain.model.ExerciseBucket,
+        style: com.example.vitruvianredux.domain.usecase.TrainingStyle,
+        profileId: String
+    ) {
+        viewModelScope.launch {
+            _isGeneratingWorkout.value = true
+            try {
+                val workout = workoutGenerator.generate(bucket, style, profileId)
+                _generatedWorkout.value = workout
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to generate workout for bucket=$bucket style=$style")
+            } finally {
+                _isGeneratingWorkout.value = false
+            }
+        }
+    }
+
+    fun clearGeneratedWorkout() {
+        _generatedWorkout.value = null
     }
 
     companion object {
