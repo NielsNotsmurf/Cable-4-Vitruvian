@@ -9,10 +9,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import com.example.vitruvianredux.data.repository.ExerciseRepository
 import com.example.vitruvianredux.presentation.screen.*
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
@@ -89,15 +87,6 @@ fun NavGraph(
             )
         }
 
-        // Daily Routines screen - pre-built routines
-        composable(NavigationRoutes.DailyRoutines.route) {
-            DailyRoutinesScreen(
-                navController = navController,
-                viewModel = viewModel,
-                exerciseRepository = exerciseRepository,
-                themeMode = themeMode
-            )
-        }
 
         // Active Workout screen - shows workout controls during active workout
         composable(
@@ -131,30 +120,6 @@ fun NavGraph(
                 navController = navController,
                 viewModel = viewModel,
                 exerciseRepository = exerciseRepository
-            )
-        }
-
-        // Weekly Programs screen - view and manage programs
-        composable(NavigationRoutes.WeeklyPrograms.route) {
-            WeeklyProgramsScreen(
-                navController = navController,
-                viewModel = viewModel,
-                themeMode = themeMode
-            )
-        }
-
-        // Program Builder screen - create/edit weekly program
-        composable(
-            route = NavigationRoutes.ProgramBuilder.route,
-            arguments = listOf(navArgument("programId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val programId = backStackEntry.arguments?.getString("programId") ?: "new"
-            ProgramBuilderScreen(
-                navController = navController,
-                viewModel = viewModel,
-                programId = programId,
-                exerciseRepository = exerciseRepository,
-                themeMode = themeMode
             )
         }
 
@@ -291,7 +256,8 @@ fun NavGraph(
         ) {
             MuscleGroupTrainingScreen(
                 navController = navController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                exerciseRepository = exerciseRepository
             )
         }
 

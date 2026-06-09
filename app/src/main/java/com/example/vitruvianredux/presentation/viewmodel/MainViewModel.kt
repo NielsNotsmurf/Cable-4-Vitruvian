@@ -3045,6 +3045,20 @@ class MainViewModel @Inject constructor(
         _generatedWorkout.value = null
     }
 
+    /**
+     * Returns a suggested starting weight for an exercise.
+     * Priority: (1) saved exercise history, (2) baseline propagation, (3) safe default.
+     */
+    suspend fun suggestExerciseWeight(
+        exerciseId: String,
+        cableConfig: com.example.vitruvianredux.domain.model.CableConfiguration,
+        bucket: com.example.vitruvianredux.domain.model.ExerciseBucket?
+    ): Float {
+        val history = getSingleExerciseDefaults(exerciseId, cableConfig.name)
+        if (history != null) return history.weightPerCableKg
+        return baselineRepository.propagateDefault(activeProfileId.value, exerciseId, bucket)
+    }
+
     companion object {
         private const val AUTO_STOP_DURATION_SECONDS = 2.5f  // User observation: ~2.5 seconds (snappier than 5s)
 

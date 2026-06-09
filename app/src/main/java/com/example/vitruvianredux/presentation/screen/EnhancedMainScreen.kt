@@ -94,12 +94,9 @@ fun EnhancedMainScreen(
         currentRoute == NavigationRoutes.Home.route ||
         currentRoute == NavigationRoutes.JustLift.route ||
         currentRoute == NavigationRoutes.SingleExercise.route ||
-        currentRoute == NavigationRoutes.DailyRoutines.route ||
         currentRoute == NavigationRoutes.ActiveWorkout.route ||
-        currentRoute == NavigationRoutes.WeeklyPrograms.route ||
         currentRoute == NavigationRoutes.MuscleGroupTraining.route ||
-        currentRoute == NavigationRoutes.BaselineAssessment.route ||
-        currentRoute.startsWith(NavigationRoutes.ProgramBuilder.route.replace("/{programId}", ""))
+        currentRoute == NavigationRoutes.BaselineAssessment.route
     }
 
     // Determine if we should show the TopBar
@@ -115,8 +112,6 @@ fun EnhancedMainScreen(
         derivedStateOf {
             permissionState.allPermissionsGranted && (
                 currentRoute == NavigationRoutes.Home.route ||
-                currentRoute == NavigationRoutes.DailyRoutines.route ||
-                currentRoute == NavigationRoutes.WeeklyPrograms.route ||
                 currentRoute == NavigationRoutes.Analytics.route ||
                 currentRoute == NavigationRoutes.Settings.route
             )
@@ -598,11 +593,8 @@ private fun getScreenTitle(route: String): String {
         route == NavigationRoutes.Settings.route -> "Settings"
         route == NavigationRoutes.JustLift.route -> "Just Lift"
         route == NavigationRoutes.SingleExercise.route -> "Single Exercise"
-        route == NavigationRoutes.DailyRoutines.route -> "Daily Routines"
-        route == NavigationRoutes.WeeklyPrograms.route -> "Weekly Programs"
         route == NavigationRoutes.ActiveWorkout.route -> "Active Workout"
         route == NavigationRoutes.ConnectionLogs.route -> "Connection Logs"
-        route.startsWith("program_builder") -> "Program Builder"
         else -> "Choose Your Workout"
     }
 }
