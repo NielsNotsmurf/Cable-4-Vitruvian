@@ -3,6 +3,7 @@ package com.example.vitruvianredux.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.vitruvianredux.data.local.dao.SuggestionLogDao
 
 /**
  * Room database for workout history
@@ -41,9 +42,10 @@ import androidx.room.TypeConverters
         ConnectionLogEntity::class,
         com.example.vitruvianredux.data.local.entity.PhaseStatisticsEntity::class,
         com.example.vitruvianredux.data.local.entity.DiagnosticsEntity::class,
-        UserProfileEntity::class
+        UserProfileEntity::class,
+        SuggestionLogEntity::class
     ],
-    version = 27,  // Added user_profiles table and profileId FK to workout_sessions and personal_records
+    version = 28,  // Added suggestion_log table for weight suggestion analytics and adaptive learning
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -55,4 +57,5 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun phaseStatisticsDao(): com.example.vitruvianredux.data.local.dao.PhaseStatisticsDao
     abstract fun diagnosticsDao(): com.example.vitruvianredux.data.local.dao.DiagnosticsDao
     abstract fun userProfileDao(): UserProfileDao
+    abstract fun suggestionLogDao(): SuggestionLogDao
 }

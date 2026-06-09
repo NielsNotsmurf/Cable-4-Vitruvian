@@ -243,7 +243,7 @@ fun MuscleGroupTrainingScreen(
                                                 val bucket = ExerciseBucket.from(
                                                     muscles, entity.movement, muscleGroups
                                                 )
-                                                val suggestedKg = viewModel.suggestExerciseWeight(
+                                                val suggestion = viewModel.suggestExerciseWeight(
                                                     entity.id, cableConfig, bucket
                                                 )
                                                 exerciseToConfig = RoutineExercise(
@@ -252,7 +252,7 @@ fun MuscleGroupTrainingScreen(
                                                     cableConfig = cableConfig,
                                                     orderIndex = 0,
                                                     setReps = listOf(10, 10, 10),
-                                                    weightPerCableKg = suggestedKg,
+                                                    weightPerCableKg = suggestion.weightKg,
                                                     setWeightsPerCableKg = emptyList(),
                                                     progressionKg = 0f,
                                                     setRestSeconds = listOf(90, 90, 90),

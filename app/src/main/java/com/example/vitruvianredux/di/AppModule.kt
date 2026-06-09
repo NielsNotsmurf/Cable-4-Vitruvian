@@ -13,6 +13,7 @@ import com.example.vitruvianredux.data.local.ConnectionLogDao
 import com.example.vitruvianredux.data.local.UserProfileDao
 import com.example.vitruvianredux.data.local.dao.PhaseStatisticsDao
 import com.example.vitruvianredux.data.local.dao.DiagnosticsDao
+import com.example.vitruvianredux.data.local.dao.SuggestionLogDao
 import com.example.vitruvianredux.data.repository.UserProfileRepository
 import com.example.vitruvianredux.data.ble.VitruvianBleManager
 import com.example.vitruvianredux.data.logger.ConnectionLogger
@@ -767,6 +768,29 @@ object AppModule {
     }
 
     /**
+     * Migration from version 27 to 28: Add suggestion_log table for adaptive learning analytics
+     */
+    internal val MIGRATION_27_28 = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS suggestion_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    profileId TEXT NOT NULL,
+                    exerciseId TEXT NOT NULL,
+                    mode TEXT NOT NULL,
+                    suggestedWeightKg REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    source TEXT NOT NULL,
+                    actualWeightKg REAL,
+                    correctionDelta REAL
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_suggestion_log_profileId_exerciseId ON suggestion_log (profileId, exerciseId)")
+        }
+    }
+
+    /**
      * Migration from version 26 to 27: Add user profiles and profileId FK
      * - Creates user_profiles table
      * - Seeds a "default" profile that owns all existing data
@@ -838,7 +862,7 @@ object AppModule {
             WorkoutDatabase::class.java,
             "vitruvian_workout_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
         .build()
     }
 
@@ -930,5 +954,11 @@ object AppModule {
     @Singleton
     fun provideUserProfileRepository(dao: UserProfileDao): UserProfileRepository {
         return UserProfileRepository(dao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSuggestionLogDao(database: WorkoutDatabase): SuggestionLogDao {
+        return database.suggestionLogDao()
     }
 }

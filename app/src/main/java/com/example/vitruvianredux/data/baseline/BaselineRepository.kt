@@ -9,6 +9,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.vitruvianredux.domain.model.ExerciseBucket
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.vitruvianredux.data.baseline.SuggestionSource
+import com.example.vitruvianredux.data.baseline.WeightSuggestion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -167,22 +169,45 @@ class BaselineRepository @Inject constructor(
         profileId: String,
         exerciseId: String,
         bucket: ExerciseBucket?
-    ): Float {
-        if (bucket == ExerciseBucket.CALVES) return AnchorExerciseConfig.CALF_DEFAULT_KG
-        if (bucket == null) return AnchorExerciseConfig.FIXED_SAFE_DEFAULT_KG
+    ): Float = propagateWithConfidence(profileId, exerciseId, bucket).weightKg
+
+    /**
+     * Same as propagateDefault but returns a WeightSuggestion with confidence and source.
+     * Does NOT check actual history — caller must handle ACTUAL_HISTORY tier.
+     */
+    suspend fun propagateWithConfidence(
+        profileId: String,
+        exerciseId: String,
+        bucket: ExerciseBucket?
+    ): WeightSuggestion {
+        if (bucket == ExerciseBucket.CALVES) return WeightSuggestion(
+            weightKg = AnchorExerciseConfig.CALF_DEFAULT_KG,
+            source = SuggestionSource.ANCHOR_CONSERVATIVE
+        )
+        if (bucket == null) return WeightSuggestion(
+            weightKg = AnchorExerciseConfig.FIXED_SAFE_DEFAULT_KG,
+            source = SuggestionSource.SAFE_DEFAULT
+        )
 
         val baseline = getBaseline(profileId)
         val bucketKg = baseline?.bucketValue(bucket)
 
         if (bucketKg != null) {
             val propagated = PropagationTable.estimateDefault(exerciseId, bucket, bucketKg)
-            if (propagated != null) return propagated
-            // Known to bucket but no coefficient entry — use bucket baseline directly
-            return bucketKg
+            if (propagated != null) return WeightSuggestion(
+                weightKg = propagated,
+                source = SuggestionSource.BUCKET_PROPAGATION
+            )
+            return WeightSuggestion(weightKg = bucketKg, source = SuggestionSource.BUCKET_PROPAGATION)
         }
 
-        // No baseline — use anchor conservative default
         val anchor = AnchorExerciseConfig.anchorForBucket(bucket)
-        return anchor?.conservativeDefaultKg ?: AnchorExerciseConfig.FIXED_SAFE_DEFAULT_KG
+        return if (anchor != null) WeightSuggestion(
+            weightKg = anchor.conservativeDefaultKg,
+            source = SuggestionSource.ANCHOR_CONSERVATIVE
+        ) else WeightSuggestion(
+            weightKg = AnchorExerciseConfig.FIXED_SAFE_DEFAULT_KG,
+            source = SuggestionSource.SAFE_DEFAULT
+        )
     }
 }

@@ -26,16 +26,27 @@ object PropagationTable {
         "b5d0f3d1-994b-4589-9d2b-b3f36f1412c7" to 1.00f,  // Bench Press BAR
         "aR4mXWcgsqNaxw4C" to 0.85f,   // Incline Bench Press BENCH+HANDLES
         "99dda2a6-96fa-4d82-970d-58b69425d4db" to 0.85f,  // Incline Bench Press variant
+        "IRJrP1HLEvLeAYwt" to 0.85f,   // Incline Bench Press BAR
+        "8a1690db-cb4f-4e0a-9f66-425e0d5fc3c3" to 0.85f,  // Incline Bench Press BAR variant
         "Hgy56KiC5KIkfnKa" to 0.95f,   // Decline Bench Press BENCH+HANDLES
         "86CrkMrBHgaM0F37" to 0.95f,   // Decline Bench Press BAR
+        "AeiPi6KkNR9qIDh-" to 0.90f,   // Decline Close Grip Bench Press BAR
         "63dc79af-81cd-4180-afea-e07204d2b0fd" to 0.90f,  // Close Grip Bench Press
         "NmuYV1NROjrd0NaU" to 0.95f,   // Neutral Grip Bench Press
         "-5NkaLCrlHvAt0Or" to 0.95f,   // Neutral Grip Bench Press variant
         "NGccEsSujysaQIed" to 0.90f,   // Floor Press HANDLES
+        "9e739d52-b11f-47f7-bd63-1d4d863b4ab1" to 0.90f,  // Floor Press w/ Glute Bridge
+        "547f2b6e-3ff8-485f-8250-2be98d7c308b" to 0.90f,  // Neutral Grip Floor Press w/ Glute Bridge
         "mfBF5EZDbOgIzoqK" to 0.60f,   // SA Bench Press BENCH+HANDLES (per cable)
-        // Chest fly folded from bench press (Option A: no dedicated fly anchor)
-        "0zZA4M7uhQ9zi-qi" to 0.55f,   // Rear Delt Fly (used as generic fly proxy)
-        "w7GvCyjz7FQ_18iw" to 0.55f    // Rear Delt Fly variant
+        "ttHTA71H0f3mB31g" to 0.60f,   // SA Floor Press HANDLES (per cable)
+        // Chest fly cluster: ~55% of bench press weight (pure isolation, narrow ROM)
+        "b3ba4645-6b3f-4058-b1f4-0d8fc3e49dff" to 0.55f,  // Cable Fly HANDLES
+        "nLSiGdO5Pt5xB2Jl" to 0.50f,   // Incline Fly BENCH+HANDLES
+        "022e4412-1a63-4b75-8685-11f8a1136f56" to 0.55f,  // Lying Flys HANDLES
+        "d476fb75-69c2-44c9-8cb5-f477572a20c4" to 0.50f,  // Lying Pec Fly BENCH+HANDLES
+        // Rear delt (misclassified into CHEST by fly movement — low coefficient)
+        "0zZA4M7uhQ9zi-qi" to 0.25f,   // Rear Delt Fly HANDLES
+        "w7GvCyjz7FQ_18iw" to 0.25f    // Rear Delt Fly variant
     )
 
     // ─── BACK (anchor: Bent Over Row HANDLES — 31ea9d9e-669c-4752-9f44-80c3fa864021) ─
@@ -44,13 +55,25 @@ object PropagationTable {
         "cJt26IdtckFcJsq1" to 1.00f,   // Bent Over Row ROPE
         "rC0baJJTFuQdbwng" to 1.00f,   // Bent Over Row SHORT_BAR
         "67195cbd-7e2b-4d96-804b-0182b8bf2bab" to 1.00f,  // Bent Over Row BAR
+        "ku9GWXoCLuBShLm0" to 1.00f,   // Bent Over Crossover Row HANDLES
+        "IIEVWF16VLSOCdA2" to 1.00f,   // Bent Over Crossover Neutral Grip Row
+        "cc7f2c3a-20bd-4a3e-8d5a-393420386c23" to 1.00f,  // Bent Over Row - Reverse Grip
+        "BRd2HV_4zo1M5V1e" to 1.00f,   // Bent Over Row - Reverse Grip variant
+        "aea28a4b-d442-4bba-8c64-1e1780d243dd" to 1.00f,  // Bent Over Row - Reverse Grip variant
+        "U4yuZdXmjYhMHANs" to 1.00f,   // Bent Over Row - Reverse Grip (SC)
+        "useRdaf9DVqyjBD8" to 0.90f,   // Bent Over Row - Wide Grip
+        "2b09f28a-b765-4aab-90ec-8c14318d63eb" to 0.90f,  // Bent Over Row - Wide Grip variant
+        "2YFK0aiPUOIOlThL" to 1.00f,   // Bent Over Row (SC)
+        "dbUz7Op2hhKbax4u" to 0.65f,   // Bent Over Row SA (per cable)
         "lqezCotrgYPfpuDg" to 1.00f,   // Seated Row BENCH+HANDLES
         "tn8HJeXMdU_8IDT_" to 1.00f,   // Seated Row BENCH+SHORT_BAR
         "513b8b5b-5315-4510-87c6-04df95a51053" to 0.65f,  // Upright Row HANDLES
         "7d141cfb-fdde-4320-8553-1e03f6b4e9bd" to 0.65f,  // Upright Row BAR
-        // Rear delt / face pull folded from row (Option A: ×0.30)
+        // Rear delt / face pull folded from row
         "lKxWrGuEzVcxLYqG" to 0.30f,   // Face Pull BENCH+ROPE
         "20b9cd61-8720-4546-a3c0-8926e3b37559" to 0.25f,  // Crossover Rear Delt Fly HANDLES
+        "QPiIhCZA7LwgHjrf" to 0.25f,   // Bent Over Crossover Rear Delt Row
+        "6685fa0b-d06a-44d3-96b1-372c9e08e6f6" to 0.25f,  // Crossover Rear Delt Row SA
         "0zZA4M7uhQ9zi-qi" to 0.25f,   // Rear Delt Fly HANDLES
         "w7GvCyjz7FQ_18iw" to 0.25f,   // Rear Delt Fly HANDLES variant
         "sr674W7IvMJKk_Ft" to 0.25f,   // Rear Delt Fly Chest Supported
@@ -138,8 +161,15 @@ object PropagationTable {
         "Y030qNm3LisddglM" to 1.00f,   // Lateral Raise HANDLES variant
         "qfeYOQWqoOIAw_0H" to 1.00f,   // Lateral Raise HANDLES variant 2
         "8WHxwWifeoVP8vLq" to 1.00f,   // Lateral Raise STRAPS
+        "8976ed4a-43a7-4196-85f3-efdf012f144d" to 1.00f,  // Crossover Lateral Raise HANDLES
+        "Q0lBY7fh2g35aPP0" to 1.00f,   // Crossover Lateral Raise STRAPS
+        "z70P8xJtRTKpAUbr" to 1.00f,   // Crossover Lateral Raise STRAPS variant
         "d38c603f-42a4-4317-8ab9-9a226f41dac7" to 0.90f,  // Front Raise HANDLES
-        "YZ82MoaAeOm4rVTL" to 0.90f    // Front Raise SHORT_BAR
+        "YZ82MoaAeOm4rVTL" to 0.90f,   // Front Raise SHORT_BAR
+        // Rotation exercises: light stabilization load (~30% of lateral raise)
+        "SNST6WaWx0UFbOW7" to 0.30f,   // Lying External Shoulder Rotation BENCH+HANDLES
+        "WHNs4slzrNpbufWN" to 0.30f,   // Lying External Shoulder Rotation BENCH+STRAPS
+        "D1Y2OXKWho0zFgv9" to 0.30f    // Lying External Shoulder Rotation HANDLES
     )
 
     // ─── BICEPS (anchor: Bicep Curl HANDLES — fc5ca114-3cb6-462a-ab54-7ef1233b5fc2) ─
@@ -168,12 +198,18 @@ object PropagationTable {
         "L3m5K_4X7ztA2yXV" to 1.00f,   // Overhead Tricep Extension BAR+BLACK
         "euBpwFXDmK3qak2_" to 0.95f,   // Kneeling Overhead Tricep Extension SHORT_BAR
         "y1ydZQjxjqNn-Fl7" to 0.95f,   // Kneeling Overhead Tricep Extension HANDLES
+        "qzYXOq7xVNS-9gcT" to 1.00f,   // Overhead Tricep Bar Extension SHORT_BAR
+        "GfdnN4MlZrweuEbe" to 0.95f,   // Seated Overhead Tricep Extension BENCH+SHORT_BAR
+        "pWWQdfycIrKmbVTS" to 0.95f,   // Seated Overhead Tricep Extension HANDLES
         "cOaTQ1ljsuUom_cn" to 1.10f,   // Skull Crusher BENCH+ROPE
         "NTtSMyHmJmTE7iQ5" to 1.10f,   // Skull Crusher BENCH+HANDLES
         "vI7FQn2KAPJxBS-n" to 1.05f,   // Skull Crusher SHORT_BAR
         "a1f4e3d7-8ab4-442d-ba06-8dfd9c11e248" to 1.10f,  // Skull Crusher HANDLES
         "d99a9738-3828-42a6-815e-459c1f825ff9" to 1.05f,  // Skull Crusher BENCH+SHORT_BAR
         "6hCTlg47HzDa8KMH" to 1.05f,   // Skull Crusher ROPE
+        "8_lUmqQpm5jQhEvA" to 1.05f,   // Bat Crusher BENCH+ROPE (skull crusher variant)
+        "cc0b27a7-679a-406e-a56e-44778bafaec5" to 0.50f,  // Bent Over Tricep Extension HANDLES (long lever)
+        "5f9e4b5c-4831-4e29-8b75-e0d606f3d97e" to 0.75f,  // Half Kneeling SA Tricep Extension (per cable)
         "IrPf7PCbwEcuJEG5" to 0.35f,   // Tricep Kick Back HANDLES
         "fs5XmqhpN9Mk9mnF" to 0.35f,   // Tricep Kick Back HANDLES variant
         "85c0aa8d-d0e4-4ba0-a802-a557affd1116" to 0.35f   // Tricep Kick Back Supported BENCH+HANDLES

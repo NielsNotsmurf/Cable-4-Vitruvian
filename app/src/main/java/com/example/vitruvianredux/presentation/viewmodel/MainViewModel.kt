@@ -89,7 +89,8 @@ class MainViewModel @Inject constructor(
     val userProfileRepository: com.example.vitruvianredux.data.repository.UserProfileRepository,
     val baselineRepository: com.example.vitruvianredux.data.baseline.BaselineRepository,
     private val workoutGenerator: com.example.vitruvianredux.domain.usecase.WorkoutGeneratorUseCase,
-    val progressionEngine: com.example.vitruvianredux.domain.usecase.ProgressionEngine
+    val progressionEngine: com.example.vitruvianredux.domain.usecase.ProgressionEngine,
+    private val adaptiveLearningRepository: com.example.vitruvianredux.data.baseline.AdaptiveLearningRepository
 ) : AndroidViewModel(application) {
 
     // Use application context directly instead of storing it
@@ -2278,6 +2279,18 @@ class MainViewModel @Inject constructor(
 
         workoutRepository.saveSession(session)
 
+        // Record actual weight for adaptive learning (non-JustLift, cable exercises only)
+        if (!params.isJustLift && params.selectedExerciseId != null && !isBodyweight) {
+            val exerciseId = params.selectedExerciseId
+            viewModelScope.launch {
+                adaptiveLearningRepository.recordObservation(
+                    profileId = effectiveProfileId,
+                    exerciseId = exerciseId,
+                    actualKg = measuredPerCableKg
+                )
+            }
+        }
+
         // Advance participant rotation and exercise turn count after each saved set
         if (participants.size > 1) {
             val newIndex = (_currentParticipantIndex.value + 1) % participants.size
@@ -3046,17 +3059,43 @@ class MainViewModel @Inject constructor(
     }
 
     /**
-     * Returns a suggested starting weight for an exercise.
-     * Priority: (1) saved exercise history, (2) baseline propagation, (3) safe default.
+     * Returns a suggested starting weight for an exercise with confidence and source metadata.
+     * Priority:
+     *   1. Actual exercise history (ACTUAL_HISTORY, confidence 1.0)
+     *   2. Adaptive-corrected propagation (ADAPTIVE_CORRECTED, confidence 0.9)
+     *   3. Bucket propagation from baseline (BUCKET_PROPAGATION, confidence 0.6)
+     *   4. Anchor conservative default (ANCHOR_CONSERVATIVE, confidence 0.4)
+     *   5. Safe default (SAFE_DEFAULT, confidence 0.2)
      */
     suspend fun suggestExerciseWeight(
         exerciseId: String,
         cableConfig: com.example.vitruvianredux.domain.model.CableConfiguration,
         bucket: com.example.vitruvianredux.domain.model.ExerciseBucket?
-    ): Float {
+    ): com.example.vitruvianredux.data.baseline.WeightSuggestion {
         val history = getSingleExerciseDefaults(exerciseId, cableConfig.name)
-        if (history != null) return history.weightPerCableKg
-        return baselineRepository.propagateDefault(activeProfileId.value, exerciseId, bucket)
+        if (history != null) {
+            val suggestion = com.example.vitruvianredux.data.baseline.WeightSuggestion(
+                weightKg = history.weightPerCableKg,
+                source = com.example.vitruvianredux.data.baseline.SuggestionSource.ACTUAL_HISTORY
+            )
+            adaptiveLearningRepository.logSuggestion(
+                profileId = activeProfileId.value,
+                exerciseId = exerciseId,
+                suggestion = suggestion,
+                mode = "unknown"
+            )
+            return suggestion
+        }
+        val profileId = activeProfileId.value
+        val baseline = baselineRepository.propagateWithConfidence(profileId, exerciseId, bucket)
+        val suggestion = adaptiveLearningRepository.applyCorrectionIfAvailable(profileId, exerciseId, baseline)
+        adaptiveLearningRepository.logSuggestion(
+            profileId = profileId,
+            exerciseId = exerciseId,
+            suggestion = suggestion,
+            mode = "unknown"
+        )
+        return suggestion
     }
 
     companion object {
