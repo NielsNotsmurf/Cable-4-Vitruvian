@@ -41,6 +41,23 @@
 # Keep data models used in reflection or serialization
 -keep class com.example.vitruvianredux.domain.model.** { *; }
 
+# Keep all app packages used by Hilt, DataStore, and kotlinx.serialization
+-keep class com.example.vitruvianredux.data.** { *; }
+-keep class com.example.vitruvianredux.util.** { *; }
+
+# Keep kotlinx.serialization
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class com.example.vitruvianredux.**$$serializer { *; }
+-keepclassmembers class com.example.vitruvianredux.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.example.vitruvianredux.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
 # Keep Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory { *; }
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler { *; }

@@ -1,7 +1,9 @@
 package com.example.vitruvianredux
 
 import android.app.Application
+import com.example.vitruvianredux.data.profiles.ProfileManager
 import com.example.vitruvianredux.data.repository.ExerciseRepository
+import com.example.vitruvianredux.data.repository.UserProfileRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,12 @@ class VitruvianApp : Application() {
     @Inject
     lateinit var exerciseRepository: ExerciseRepository
 
+    @Inject
+    lateinit var userProfileRepository: UserProfileRepository
+
+    @Inject
+    lateinit var profileManager: ProfileManager
+
     // Application-level coroutine scope
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -29,19 +37,22 @@ class VitruvianApp : Application() {
 
         Timber.d("Vitruvian Trainer Control app initialized")
 
-        // Import exercises on first launch (if database is empty)
         applicationScope.launch {
             try {
-                Timber.d("Checking if exercise import is needed...")
                 exerciseRepository.importExercises()
-                    .onSuccess {
-                        Timber.d("Exercise library ready")
-                    }
-                    .onFailure { error ->
-                        Timber.e(error, "Failed to import exercises")
-                    }
+                    .onSuccess { Timber.d("Exercise library ready") }
+                    .onFailure { e -> Timber.e(e, "Failed to import exercises") }
             } catch (e: Exception) {
-                Timber.e(e, "Error during exercise import check")
+                Timber.e(e, "Error during exercise import")
+            }
+        }
+
+        applicationScope.launch {
+            try {
+                val seeded = userProfileRepository.seedDefaultProfiles()
+                if (seeded) profileManager.setActiveProfile("niels")
+            } catch (e: Exception) {
+                Timber.e(e, "Error seeding default profiles")
             }
         }
     }
