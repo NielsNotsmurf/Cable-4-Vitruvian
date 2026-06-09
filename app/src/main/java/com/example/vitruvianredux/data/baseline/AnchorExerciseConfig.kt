@@ -35,14 +35,14 @@ object AnchorExerciseConfig {
         ),
         Anchor(
             bucket = ExerciseBucket.BACK,
-            exerciseId = "31ea9d9e-1234-4d96-804b-bentoverrow01",
+            exerciseId = "31ea9d9e-669c-4752-9f44-80c3fa864021",
             exerciseName = "Bent Over Row",
             equipment = "HANDLES",
             conservativeDefaultKg = 15f
         ),
         Anchor(
             bucket = ExerciseBucket.POSTERIOR_CHAIN,
-            exerciseId = "49c4594c-rdl-handles-0001",
+            exerciseId = "49c4594c-f997-4d70-8008-b293e247e2e4",
             exerciseName = "Romanian Deadlift",
             equipment = "HANDLES",
             conservativeDefaultKg = 20f
@@ -56,14 +56,14 @@ object AnchorExerciseConfig {
         ),
         Anchor(
             bucket = ExerciseBucket.HAMSTRINGS_GLUTES,
-            exerciseId = "a255fcc3-bulgsplit-0001",
-            exerciseName = "Bulgarian Split Squat",
-            equipment = "HANDLES+BENCH",
+            exerciseId = "a255fcc3-af4d-44b1-8f88-8de014b39ed3",
+            exerciseName = "Bulgarian Split Squats",
+            equipment = "BENCH+HANDLES",
             conservativeDefaultKg = 12f
         ),
         Anchor(
             bucket = ExerciseBucket.SHOULDERS,
-            exerciseId = "0040d53f-shoulderpress-01",
+            exerciseId = "0040d53f-85c7-4564-b14e-9b38c979b461",
             exerciseName = "Shoulder Press",
             equipment = "HANDLES",
             conservativeDefaultKg = 12f
@@ -84,7 +84,7 @@ object AnchorExerciseConfig {
         ),
         Anchor(
             bucket = ExerciseBucket.TRICEPS,
-            exerciseId = "bf1437e9-overtricep-0001",
+            exerciseId = "bf1437e9-f8ca-4bfe-b766-af5fee1834a5",
             exerciseName = "Overhead Tricep Extension",
             equipment = "HANDLES",
             conservativeDefaultKg = 8f
@@ -106,23 +106,23 @@ object AnchorExerciseConfig {
         // Bench Press → Floor Press
         "ZZ92N8QsBdp6HCh3" to Anchor(
             bucket = ExerciseBucket.CHEST,
-            exerciseId = "floor-press-handles-0001",
+            exerciseId = "NGccEsSujysaQIed",
             exerciseName = "Floor Press",
             equipment = "HANDLES",
             conservativeDefaultKg = 13f
         ),
         // Bulgarian Split Squat → Reverse Lunge
-        "a255fcc3-bulgsplit-0001" to Anchor(
+        "a255fcc3-af4d-44b1-8f88-8de014b39ed3" to Anchor(
             bucket = ExerciseBucket.HAMSTRINGS_GLUTES,
-            exerciseId = "reverse-lunge-handles-001",
+            exerciseId = "iIh4XO5YfBOm1yL-",
             exerciseName = "Reverse Lunge",
             equipment = "HANDLES",
             conservativeDefaultKg = 10f
         ),
-        // Hip Thrust → Glute Bridge
+        // Hip Thrust → Glute Bridge (BELT)
         "T6Vf4-OIurKVfECK" to Anchor(
             bucket = ExerciseBucket.HAMSTRINGS_GLUTES,
-            exerciseId = "glute-bridge-belt-00001",
+            exerciseId = "eh2ElKDA1-0NYgK1",
             exerciseName = "Glute Bridge",
             equipment = "BELT",
             conservativeDefaultKg = 15f

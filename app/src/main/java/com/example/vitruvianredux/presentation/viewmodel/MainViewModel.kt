@@ -2360,6 +2360,24 @@ class MainViewModel @Inject constructor(
             }
         }
 
+        // Phase 2: Progression engine — only for non-Just-Lift, non-Echo, exercise-selected sets
+        params.selectedExerciseId?.let { exerciseId ->
+            if (!params.isJustLift && working > 0 && params.workoutType !is WorkoutType.Echo) {
+                val suggestion = progressionEngine.recordSetResult(
+                    profileId = effectiveProfileId,
+                    exerciseId = exerciseId,
+                    currentWeightKg = params.weightPerCableKg,
+                    targetReps = params.reps,
+                    actualReps = working
+                )
+                if (suggestion != null) {
+                    Timber.d("Progression suggestion for $exerciseId: ${params.weightPerCableKg} → $suggestion kg")
+                    // Store as a suggestion — the UI can surface this as a nudge next session.
+                    // Does not auto-apply; user remains in control.
+                }
+            }
+        }
+
         Timber.d("Saved workout session: $sessionId with ${collectedMetrics.size} metrics")
     }
 
