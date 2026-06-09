@@ -42,6 +42,7 @@ fun SingleExerciseScreen(
     val isAutoConnecting by viewModel.isAutoConnecting.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
     val sessionEccentricLoad by viewModel.sessionEccentricLoad.collectAsState()
+    val userPreferences by viewModel.userPreferences.collectAsState()
 
     var exerciseToConfig by remember { mutableStateOf<RoutineExercise?>(null) }
     var isLoadingDefaults by remember { mutableStateOf(false) }
@@ -167,13 +168,13 @@ fun SingleExerciseScreen(
                                     perSetRestTime = savedDefaults.perSetRestTime
                                 )
                             } else {
-                                // No saved defaults - use system defaults with session eccentric load
+                                val defaultReps = userPreferences.defaultRepCount
                                 RoutineExercise(
                                     id = UUID.randomUUID().toString(),
                                     exercise = exercise,
                                     cableConfig = defaultCableConfig,
                                     orderIndex = 0,
-                                    setReps = listOf(10, 10, 10),
+                                    setReps = listOf(defaultReps, defaultReps, defaultReps),
                                     weightPerCableKg = 20f,
                                     progressionKg = 0f,
                                     setRestSeconds = listOf(60, 60, 60),

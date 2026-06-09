@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.vitruvianredux.data.local.AppPreferencesBackup
+import com.example.vitruvianredux.data.local.ExerciseDefaultsBackup
 import com.example.vitruvianredux.domain.model.CableConfiguration
 import com.example.vitruvianredux.domain.model.EccentricLoad
 import com.example.vitruvianredux.domain.model.EchoLevel
@@ -192,6 +195,7 @@ class PreferencesManager @Inject constructor(
     private val STOP_AT_TOP_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("stop_at_top")
     private val ENABLE_VIDEO_PLAYBACK_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("enable_video_playback")
     private val BEEPS_ENABLED_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("beeps_enabled")
+    private val DEFAULT_REP_COUNT_KEY = intPreferencesKey("default_rep_count")
 
     /**
      * Flow of user preferences
@@ -209,13 +213,15 @@ class PreferencesManager @Inject constructor(
             val stopAtTop = preferences[STOP_AT_TOP_KEY] ?: false
             val enableVideoPlayback = preferences[ENABLE_VIDEO_PLAYBACK_KEY] ?: true
             val beepsEnabled = preferences[BEEPS_ENABLED_KEY] ?: true
+            val defaultRepCount = preferences[DEFAULT_REP_COUNT_KEY] ?: 10
 
             UserPreferences(
                 weightUnit = weightUnit,
                 autoplayEnabled = autoplayEnabled,
                 stopAtTop = stopAtTop,
                 enableVideoPlayback = enableVideoPlayback,
-                beepsEnabled = beepsEnabled
+                beepsEnabled = beepsEnabled,
+                defaultRepCount = defaultRepCount
             )
         }
 
@@ -267,6 +273,93 @@ class PreferencesManager @Inject constructor(
             preferences[BEEPS_ENABLED_KEY] = enabled
         }
         Timber.d("Beeps enabled preference set to: $enabled")
+    }
+
+    /**
+     * Set the default rep count used as the starting point for new exercise configurations.
+     */
+    suspend fun setDefaultRepCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[DEFAULT_REP_COUNT_KEY] = count.coerceIn(1, 30)
+        }
+        Timber.d("Default rep count set to: $count")
+    }
+
+    /**
+     * Get the current default rep count (one-shot read).
+     */
+    suspend fun getDefaultRepCount(): Int {
+        return context.dataStore.data.firstOrNull()?.get(DEFAULT_REP_COUNT_KEY) ?: 10
+    }
+
+    // ========== Backup / Restore helpers ==========
+
+    /**
+     * Export a snapshot of all app-level preferences (non-exercise-specific).
+     */
+    suspend fun exportPreferencesSnapshot(): AppPreferencesBackup {
+        val prefs = context.dataStore.data.firstOrNull()
+        val weightUnit = try {
+            prefs?.get(WEIGHT_UNIT_KEY)?.let { WeightUnit.valueOf(it) } ?: WeightUnit.KG
+        } catch (e: IllegalArgumentException) { WeightUnit.KG }
+        return AppPreferencesBackup(
+            weightUnit = weightUnit.name,
+            autoplayEnabled = prefs?.get(AUTOPLAY_ENABLED_KEY) ?: true,
+            stopAtTop = prefs?.get(STOP_AT_TOP_KEY) ?: false,
+            enableVideoPlayback = prefs?.get(ENABLE_VIDEO_PLAYBACK_KEY) ?: true,
+            beepsEnabled = prefs?.get(BEEPS_ENABLED_KEY) ?: true,
+            defaultRepCount = prefs?.get(DEFAULT_REP_COUNT_KEY) ?: 10
+        )
+    }
+
+    /**
+     * Restore app-level preferences from backup.
+     * Only writes keys that the device has not yet set (skip-if-exists per key).
+     */
+    suspend fun restorePreferencesSnapshot(backup: AppPreferencesBackup) {
+        context.dataStore.edit { prefs ->
+            if (prefs[WEIGHT_UNIT_KEY] == null) prefs[WEIGHT_UNIT_KEY] = backup.weightUnit
+            if (prefs[AUTOPLAY_ENABLED_KEY] == null) prefs[AUTOPLAY_ENABLED_KEY] = backup.autoplayEnabled
+            if (prefs[STOP_AT_TOP_KEY] == null) prefs[STOP_AT_TOP_KEY] = backup.stopAtTop
+            if (prefs[ENABLE_VIDEO_PLAYBACK_KEY] == null) prefs[ENABLE_VIDEO_PLAYBACK_KEY] = backup.enableVideoPlayback
+            if (prefs[BEEPS_ENABLED_KEY] == null) prefs[BEEPS_ENABLED_KEY] = backup.beepsEnabled
+            if (prefs[DEFAULT_REP_COUNT_KEY] == null) prefs[DEFAULT_REP_COUNT_KEY] = backup.defaultRepCount
+        }
+        Timber.d("Preferences snapshot restored")
+    }
+
+    /**
+     * Export all exercise defaults for a profile as raw JSON strings (for backup).
+     */
+    suspend fun exportExerciseDefaults(profileId: String): ExerciseDefaultsBackup {
+        val prefs = context.dataStore.data.firstOrNull()
+        val justLiftJson = prefs?.get(justLiftDefaultsKey(profileId))
+            ?: if (profileId == "default") prefs?.get(JUST_LIFT_DEFAULTS_KEY_LEGACY) else null
+        val singleExerciseJson = prefs?.get(singleExerciseDefaultsMapKey(profileId))
+            ?: if (profileId == "default") prefs?.get(SINGLE_EXERCISE_DEFAULTS_KEY_LEGACY) else null
+        return ExerciseDefaultsBackup(
+            profileId = profileId,
+            justLiftDefaultsJson = justLiftJson,
+            singleExerciseDefaultsMapJson = singleExerciseJson
+        )
+    }
+
+    /**
+     * Restore exercise defaults for a profile from backup.
+     * Only writes if the profile currently has no data for that key (skip-if-exists).
+     */
+    suspend fun restoreExerciseDefaults(backup: ExerciseDefaultsBackup) {
+        context.dataStore.edit { prefs ->
+            val profileKey = justLiftDefaultsKey(backup.profileId)
+            if (prefs[profileKey] == null && backup.justLiftDefaultsJson != null) {
+                prefs[profileKey] = backup.justLiftDefaultsJson
+            }
+            val mapKey = singleExerciseDefaultsMapKey(backup.profileId)
+            if (prefs[mapKey] == null && backup.singleExerciseDefaultsMapJson != null) {
+                prefs[mapKey] = backup.singleExerciseDefaultsMapJson
+            }
+        }
+        Timber.d("Exercise defaults restored for profile=${backup.profileId}")
     }
 
     // ========== Just Lift Defaults ==========

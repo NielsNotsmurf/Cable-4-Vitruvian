@@ -6,7 +6,8 @@ package com.example.vitruvianredux.domain.model
 data class UserPreferences(
     val weightUnit: WeightUnit = WeightUnit.KG,
     val autoplayEnabled: Boolean = true,
-    val stopAtTop: Boolean = false,  // false = stop at bottom (extended), true = stop at top (contracted)
-    val enableVideoPlayback: Boolean = true,  // true = show videos, false = hide videos to avoid slow loading
-    val beepsEnabled: Boolean = true  // true = play audio cues during workouts, false = haptic only
+    val stopAtTop: Boolean = false,
+    val enableVideoPlayback: Boolean = true,
+    val beepsEnabled: Boolean = true,
+    val defaultRepCount: Int = 10
 )

@@ -149,6 +149,8 @@ fun NavGraph(
             val isImporting by viewModel.isImporting.collectAsState()
             val importResult by viewModel.importResult.collectAsState()
             val showImportResultDialog by viewModel.showImportResultDialog.collectAsState()
+            val backupPreview by viewModel.backupPreview.collectAsState()
+            val showImportPreviewDialog by viewModel.showImportPreviewDialog.collectAsState()
             val profiles by viewModel.profiles.collectAsState()
             val activeProfileId by viewModel.activeProfileId.collectAsState()
             val activeProfileName = profiles.find { it.id == activeProfileId }?.name ?: "Default"
@@ -159,11 +161,13 @@ fun NavGraph(
                 stopAtTop = userPreferences.stopAtTop,
                 enableVideoPlayback = userPreferences.enableVideoPlayback,
                 beepsEnabled = userPreferences.beepsEnabled,
+                defaultRepCount = userPreferences.defaultRepCount,
                 onWeightUnitChange = { viewModel.setWeightUnit(it) },
                 onAutoplayChange = { viewModel.setAutoplayEnabled(it) },
                 onStopAtTopChange = { viewModel.setStopAtTop(it) },
                 onEnableVideoPlaybackChange = { viewModel.setEnableVideoPlayback(it) },
                 onBeepsEnabledChange = { viewModel.setBeepsEnabled(it) },
+                onDefaultRepCountChange = { viewModel.setDefaultRepCount(it) },
                 onColorSchemeChange = { viewModel.setColorScheme(it) },
                 onDeleteAllWorkouts = { viewModel.deleteAllWorkouts() },
                 onNavigateToConnectionLogs = { navController.navigate(NavigationRoutes.ConnectionLogs.route) },
@@ -174,9 +178,13 @@ fun NavGraph(
                 isImporting = isImporting,
                 importResult = importResult,
                 showImportResultDialog = showImportResultDialog,
+                backupPreview = backupPreview,
+                showImportPreviewDialog = showImportPreviewDialog,
                 onExportData = { viewModel.exportAllData() },
                 onImportData = { uri -> viewModel.importFromUri(uri) },
                 onDismissImportResult = { viewModel.dismissImportResult() },
+                onConfirmImport = { viewModel.confirmImport() },
+                onCancelImport = { viewModel.cancelImport() },
                 isAutoConnecting = isAutoConnecting,
                 connectionError = connectionError,
                 onClearConnectionError = { viewModel.clearConnectionError() },

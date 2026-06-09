@@ -1,9 +1,5 @@
 package com.example.vitruvianredux.util
 
-/**
- * Feature flags for controlling app behavior.
- * Can be backed by SharedPreferences, Firebase Remote Config, etc.
- */
 object FeatureFlags {
 
     /**

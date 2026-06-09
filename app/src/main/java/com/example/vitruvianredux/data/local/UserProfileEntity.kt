@@ -35,4 +35,7 @@ interface UserProfileDao {
 
     @Query("SELECT COUNT(*) FROM user_profiles")
     suspend fun getCount(): Int
+
+    @Query("SELECT * FROM user_profiles ORDER BY createdAt ASC")
+    suspend fun getAllProfilesSync(): List<UserProfileEntity>
 }

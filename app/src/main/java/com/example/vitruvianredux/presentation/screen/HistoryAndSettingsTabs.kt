@@ -43,6 +43,7 @@ import java.util.*
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.vitruvianredux.util.BackupPreview
 import com.example.vitruvianredux.util.ImportResult
 
 @Composable
@@ -783,11 +784,13 @@ fun SettingsTab(
     stopAtTop: Boolean,
     enableVideoPlayback: Boolean,
     beepsEnabled: Boolean,
+    defaultRepCount: Int = 10,
     onWeightUnitChange: (WeightUnit) -> Unit,
     onAutoplayChange: (Boolean) -> Unit,
     onStopAtTopChange: (Boolean) -> Unit,
     onEnableVideoPlaybackChange: (Boolean) -> Unit,
     onBeepsEnabledChange: (Boolean) -> Unit,
+    onDefaultRepCountChange: (Int) -> Unit = {},
     onColorSchemeChange: (Int) -> Unit,
     onDeleteAllWorkouts: () -> Unit,
     onNavigateToConnectionLogs: () -> Unit = {},
@@ -798,9 +801,13 @@ fun SettingsTab(
     isImporting: Boolean = false,
     importResult: ImportResult? = null,
     showImportResultDialog: Boolean = false,
+    backupPreview: BackupPreview? = null,
+    showImportPreviewDialog: Boolean = false,
     onExportData: () -> Unit = {},
     onImportData: (Uri) -> Unit = {},
     onDismissImportResult: () -> Unit = {},
+    onConfirmImport: () -> Unit = {},
+    onCancelImport: () -> Unit = {},
     isAutoConnecting: Boolean = false,
     connectionError: String? = null,
     onClearConnectionError: () -> Unit = {},
@@ -1146,6 +1153,54 @@ fun SettingsTab(
                         onCheckedChange = onBeepsEnabledChange
                     )
                 }
+
+                Spacer(modifier = Modifier.height(Spacing.medium))
+
+                // Default Rep Count
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Default Reps",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Starting rep count for new exercise configurations",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(
+                            onClick = { if (defaultRepCount > 1) onDefaultRepCountChange(defaultRepCount - 1) },
+                            enabled = defaultRepCount > 1
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Decrease reps")
+                        }
+                        Text(
+                            "$defaultRepCount",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.widthIn(min = 28.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        IconButton(
+                            onClick = { if (defaultRepCount < 30) onDefaultRepCountChange(defaultRepCount + 1) },
+                            enabled = defaultRepCount < 30
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Increase reps")
+                        }
+                    }
+                }
             }
         }
 
@@ -1187,7 +1242,7 @@ fun SettingsTab(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.CloudUpload,
+                        Icons.Default.SaveAlt,
                         contentDescription = "Backup and restore",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
@@ -1203,7 +1258,7 @@ fun SettingsTab(
             }
             Spacer(modifier = Modifier.height(Spacing.small))
             Text(
-                "Export your data to migrate between devices or back up your workout history",
+                "Export all data — workouts, routines, profiles, baselines, preferences — as a single JSON file. Import on any device to continue exactly where you left off.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1637,6 +1692,73 @@ fun SettingsTab(
         )
     }
 
+    // Import Preview Dialog — shown before confirming import
+    if (showImportPreviewDialog && backupPreview != null) {
+        AlertDialog(
+            onDismissRequest = onCancelImport,
+            title = {
+                Text(
+                    "Confirm Import",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Backup from ${backupPreview.appVersion} (${backupPreview.exportedAt.take(10)})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.small))
+                    Text(
+                        "This backup contains:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("• ${backupPreview.sessionCount} workout sessions", style = MaterialTheme.typography.bodyMedium)
+                    Text("• ${backupPreview.routineCount} routines", style = MaterialTheme.typography.bodyMedium)
+                    Text("• ${backupPreview.personalRecordCount} personal records", style = MaterialTheme.typography.bodyMedium)
+                    if (backupPreview.profileCount > 0)
+                        Text("• ${backupPreview.profileCount} profiles", style = MaterialTheme.typography.bodyMedium)
+                    if (backupPreview.hasBaselines)
+                        Text("• Strength baselines", style = MaterialTheme.typography.bodyMedium)
+                    if (backupPreview.hasPreferences)
+                        Text("• App preferences", style = MaterialTheme.typography.bodyMedium)
+                    if (backupPreview.hasExerciseDefaults)
+                        Text("• Exercise defaults", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(Spacing.small))
+                    Text(
+                        "Existing data will not be overwritten. Only missing records will be added.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            shape = RoundedCornerShape(28.dp),
+            confirmButton = {
+                Button(
+                    onClick = onConfirmImport,
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("Import", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onCancelImport,
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // Import Result Dialog
     if (showImportResultDialog && importResult != null) {
         AlertDialog(
@@ -1656,35 +1778,18 @@ fun SettingsTab(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(Spacing.small))
-                    Text(
-                        "Workout Sessions: ${importResult.sessionsImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Workout Metrics: ${importResult.metricsImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Routines: ${importResult.routinesImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Routine Exercises: ${importResult.routineExercisesImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Weekly Programs: ${importResult.programsImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Program Days: ${importResult.programDaysImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Personal Records: ${importResult.personalRecordsImported}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
+                    if (importResult.profilesImported > 0)
+                        Text("Profiles: ${importResult.profilesImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Workout Sessions: ${importResult.sessionsImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Workout Metrics: ${importResult.metricsImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Routines: ${importResult.routinesImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Routine Exercises: ${importResult.routineExercisesImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Weekly Programs: ${importResult.programsImported}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Personal Records: ${importResult.personalRecordsImported}", style = MaterialTheme.typography.bodyMedium)
+                    if (importResult.baselinesRestored > 0)
+                        Text("Baselines: ${importResult.baselinesRestored}", style = MaterialTheme.typography.bodyMedium)
+                    if (importResult.preferencesRestored)
+                        Text("Preferences restored", style = MaterialTheme.typography.bodyMedium)
                     if (importResult.totalSkipped > 0) {
                         Spacer(modifier = Modifier.height(Spacing.small))
                         Text(

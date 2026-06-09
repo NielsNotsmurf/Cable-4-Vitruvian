@@ -128,6 +128,7 @@ data class ProgramDayBackup(
 @Serializable
 data class PersonalRecordBackup(
     val id: Long = 0,
+    val profileId: String = "default",
     val exerciseId: String,
     val weightPerCableKg: Float,
     val reps: Int,
@@ -137,12 +138,59 @@ data class PersonalRecordBackup(
     val volume: Float = 0f
 )
 
+@Serializable
+data class UserProfileBackup(
+    val id: String,
+    val name: String,
+    val colorInt: Int = -10354962,
+    val createdAt: Long
+)
+
+@Serializable
+data class BaselineResultsBackup(
+    val profileId: String,
+    val completedAt: Long = 0L,
+    val chestKg: Float? = null,
+    val backKg: Float? = null,
+    val posteriorChainKg: Float? = null,
+    val quadsKg: Float? = null,
+    val hamstringsGlutesKg: Float? = null,
+    val shoulderPressKg: Float? = null,
+    val lateralRaiseKg: Float? = null,
+    val bicepsKg: Float? = null,
+    val tricepsKg: Float? = null,
+    val isComplete: Boolean = false
+)
+
+@Serializable
+data class AdaptiveCorrectionBackup(
+    val profileId: String,
+    val correctionsJson: String
+)
+
+@Serializable
+data class AppPreferencesBackup(
+    val weightUnit: String = "KG",
+    val autoplayEnabled: Boolean = true,
+    val stopAtTop: Boolean = false,
+    val enableVideoPlayback: Boolean = true,
+    val beepsEnabled: Boolean = true,
+    val defaultRepCount: Int = 10
+)
+
+@Serializable
+data class ExerciseDefaultsBackup(
+    val profileId: String,
+    val justLiftDefaultsJson: String? = null,
+    val singleExerciseDefaultsMapJson: String? = null
+)
+
 /**
  * Root backup data structure containing all exportable data
  */
 @Serializable
 data class BackupData(
-    val version: Int = 1,
+    val version: Int = 2,
     val exportedAt: String,
     val appVersion: String,
     val data: BackupContent
@@ -159,7 +207,12 @@ data class BackupContent(
     val routineExercises: List<RoutineExerciseBackup> = emptyList(),
     val weeklyPrograms: List<WeeklyProgramBackup> = emptyList(),
     val programDays: List<ProgramDayBackup> = emptyList(),
-    val personalRecords: List<PersonalRecordBackup> = emptyList()
+    val personalRecords: List<PersonalRecordBackup> = emptyList(),
+    val profiles: List<UserProfileBackup> = emptyList(),
+    val baselines: List<BaselineResultsBackup> = emptyList(),
+    val adaptiveCorrections: List<AdaptiveCorrectionBackup> = emptyList(),
+    val appPreferences: AppPreferencesBackup? = null,
+    val exerciseDefaults: List<ExerciseDefaultsBackup> = emptyList()
 )
 
 // ============================================================================
@@ -275,6 +328,7 @@ fun ProgramDayEntity.toBackup() = ProgramDayBackup(
  */
 fun PersonalRecordEntity.toBackup() = PersonalRecordBackup(
     id = id,
+    profileId = profileId,
     exerciseId = exerciseId,
     weightPerCableKg = weightPerCableKg,
     reps = reps,
@@ -397,6 +451,7 @@ fun ProgramDayBackup.toEntity() = ProgramDayEntity(
  */
 fun PersonalRecordBackup.toEntity() = PersonalRecordEntity(
     id = id,
+    profileId = profileId,
     exerciseId = exerciseId,
     weightPerCableKg = weightPerCableKg,
     reps = reps,

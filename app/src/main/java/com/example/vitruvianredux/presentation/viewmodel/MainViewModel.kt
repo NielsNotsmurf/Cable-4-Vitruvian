@@ -208,6 +208,12 @@ class MainViewModel @Inject constructor(
     private val _showImportResultDialog = MutableStateFlow(false)
     val showImportResultDialog: StateFlow<Boolean> = _showImportResultDialog.asStateFlow()
 
+    private val _pendingImportJson = MutableStateFlow<String?>(null)
+    private val _backupPreview = MutableStateFlow<com.example.vitruvianredux.util.BackupPreview?>(null)
+    val backupPreview: StateFlow<com.example.vitruvianredux.util.BackupPreview?> = _backupPreview.asStateFlow()
+    private val _showImportPreviewDialog = MutableStateFlow(false)
+    val showImportPreviewDialog: StateFlow<Boolean> = _showImportPreviewDialog.asStateFlow()
+
     // Feature 4: Routine Management
     private val _routines = MutableStateFlow<List<Routine>>(emptyList())
     val routines: StateFlow<List<Routine>> = _routines.asStateFlow()
@@ -2446,56 +2452,62 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun importFromUri(uri: Uri) {
+    fun previewBackup(uri: Uri) {
         viewModelScope.launch {
             _isImporting.value = true
             try {
-                val result = dataBackupManager.importFromUri(uri)
-
-                result.onSuccess { importResult ->
-                    _importResult.value = importResult
-                    _showImportResultDialog.value = true
-
-                    Timber.d("Import successful: ${importResult.sessionsImported} sessions, ${importResult.routinesImported} routines")
-
-                    // Workout history will automatically refresh via Flow collection
+                val jsonString = dataBackupManager.readJsonFromUri(uri)
+                val previewResult = dataBackupManager.previewBackup(uri)
+                previewResult.onSuccess { preview ->
+                    _pendingImportJson.value = jsonString
+                    _backupPreview.value = preview
+                    _showImportPreviewDialog.value = true
                 }.onFailure { e ->
-                    Timber.e(e, "Failed to import data")
-                    _importResult.value = ImportResult(
-                        sessionsImported = 0,
-                        sessionsSkipped = 0,
-                        metricsImported = 0,
-                        routinesImported = 0,
-                        routinesSkipped = 0,
-                        routineExercisesImported = 0,
-                        programsImported = 0,
-                        programsSkipped = 0,
-                        programDaysImported = 0,
-                        personalRecordsImported = 0,
-                        personalRecordsSkipped = 0
-                    )
-                    _showImportResultDialog.value = true
+                    Timber.e(e, "Failed to preview backup")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Failed to import data")
-                _importResult.value = ImportResult(
-                    sessionsImported = 0,
-                    sessionsSkipped = 0,
-                    metricsImported = 0,
-                    routinesImported = 0,
-                    routinesSkipped = 0,
-                    routineExercisesImported = 0,
-                    programsImported = 0,
-                    programsSkipped = 0,
-                    programDaysImported = 0,
-                    personalRecordsImported = 0,
-                    personalRecordsSkipped = 0
-                )
-                _showImportResultDialog.value = true
+                Timber.e(e, "Failed to read backup file")
             } finally {
                 _isImporting.value = false
             }
         }
+    }
+
+    fun confirmImport() {
+        val json = _pendingImportJson.value ?: return
+        _showImportPreviewDialog.value = false
+        viewModelScope.launch {
+            _isImporting.value = true
+            try {
+                val result = dataBackupManager.importFromJson(json)
+                result.onSuccess { importResult ->
+                    _importResult.value = importResult
+                    _showImportResultDialog.value = true
+                    Timber.d("Import done: sessions=${importResult.sessionsImported}, profiles=${importResult.profilesImported}")
+                }.onFailure { e ->
+                    Timber.e(e, "Import failed")
+                    _importResult.value = ImportResult(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                    _showImportResultDialog.value = true
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Import exception")
+                _importResult.value = ImportResult(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                _showImportResultDialog.value = true
+            } finally {
+                _isImporting.value = false
+                _pendingImportJson.value = null
+            }
+        }
+    }
+
+    fun cancelImport() {
+        _showImportPreviewDialog.value = false
+        _pendingImportJson.value = null
+        _backupPreview.value = null
+    }
+
+    fun importFromUri(uri: Uri) {
+        previewBackup(uri)
     }
 
     fun dismissImportResult() {
@@ -2531,6 +2543,12 @@ class MainViewModel @Inject constructor(
     fun setBeepsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setBeepsEnabled(enabled)
+        }
+    }
+
+    fun setDefaultRepCount(count: Int) {
+        viewModelScope.launch {
+            preferencesManager.setDefaultRepCount(count)
         }
     }
 

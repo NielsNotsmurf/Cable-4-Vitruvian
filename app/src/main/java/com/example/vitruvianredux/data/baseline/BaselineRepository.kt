@@ -158,6 +158,26 @@ class BaselineRepository @Inject constructor(
         getBaseline(profileId)?.testedBucketCount?.let { it > 0 } ?: false
 
     /**
+     * Get baselines for a list of profile IDs (for backup export).
+     * Returns only profiles that have any baseline data.
+     */
+    suspend fun getAllBaselines(profileIds: List<String>): List<BaselineResults> {
+        return profileIds.mapNotNull { getBaseline(it) }
+    }
+
+    /**
+     * Restore baseline from backup. Skips if profile already has any baseline data.
+     */
+    suspend fun restoreBaselineIfEmpty(results: BaselineResults) {
+        if (!hasAnyBaseline(results.profileId)) {
+            saveBaseline(results)
+            Timber.d("Baseline restored for profile=${results.profileId}")
+        } else {
+            Timber.d("Baseline already exists for profile=${results.profileId}, skipping restore")
+        }
+    }
+
+    /**
      * Resolve the best available weight for an exercise:
      *   1. PropagationTable estimate from bucket baseline
      *   2. Anchor conservative default

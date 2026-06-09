@@ -142,6 +142,34 @@ class AdaptiveLearningRepository @Inject constructor(
         }
     }
 
+    /**
+     * Export correction data for a profile as a JSON string (for backup).
+     * Returns null if no data exists.
+     */
+    suspend fun exportCorrectionDataAsJson(profileId: String): String? {
+        val map = getCorrectionMap(profileId)
+        return if (map.isEmpty()) null else Json.encodeToString(map)
+    }
+
+    /**
+     * Restore correction data for a profile from a JSON string.
+     * Skips if the profile already has any correction data.
+     */
+    suspend fun importCorrectionDataIfEmpty(profileId: String, json: String) {
+        val existing = getCorrectionMap(profileId)
+        if (existing.isEmpty()) {
+            try {
+                val map: Map<String, CorrectionEntry> = Json.decodeFromString(json)
+                saveCorrectionMap(profileId, map)
+                Timber.d("Adaptive corrections restored for profile=$profileId, ${map.size} entries")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to restore adaptive corrections for profile=$profileId")
+            }
+        } else {
+            Timber.d("Adaptive corrections already exist for profile=$profileId, skipping restore")
+        }
+    }
+
     private fun roundToHalf(value: Float): Float =
         (round(value * 2f) / 2f).coerceAtLeast(1f)
 }
