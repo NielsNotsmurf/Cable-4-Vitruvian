@@ -26,8 +26,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import com.example.vitruvianredux.data.preferences.PreferencesManager
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavController
+import com.example.vitruvianredux.presentation.navigation.ClassicSettingsRoute
 import com.example.vitruvianredux.presentation.screen.ActiveWorkoutScreen
+import com.example.vitruvianredux.presentation.screen.AnalyticsScreen
+import com.example.vitruvianredux.presentation.screen.BaselineAssessmentScreen
+import com.example.vitruvianredux.presentation.screen.ConnectionLogsScreen
+import com.example.vitruvianredux.presentation.screen.HistoryTab
 import com.example.vitruvianredux.presentation.screen.JustLiftScreen
+import com.example.vitruvianredux.presentation.screen.MuscleGroupTrainingScreen
+import com.example.vitruvianredux.presentation.screen.ProfileSelectionScreen
+import com.example.vitruvianredux.presentation.screen.ProtocolTesterScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import com.example.vitruvianredux.ui.theme.ThemeMode
 import com.example.vitruvianredux.ui.theme.VitruvianProjectPhoenixTheme
@@ -39,6 +53,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.ui.CleanApp
+import nl.nielsnotsmurf.cleanui.ui.ClassicScreen
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -91,8 +106,63 @@ fun CleanUiHost(viewModel: MainViewModel) {
             VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
                 JustLiftScreen(navController = nav, viewModel = viewModel, themeMode = ThemeMode.LIGHT)
             }
+        },
+        // Every other classic feature stays reachable inside the Clean layout until its clean version lands.
+        classicContent = { screen, nav ->
+            VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+                ClassicScreenContent(screen, nav, viewModel)
+            }
         }
     )
+}
+
+@Composable
+private fun ClassicScreenContent(screen: ClassicScreen, nav: NavController, viewModel: MainViewModel) {
+    when (screen) {
+        ClassicScreen.HISTORY -> ClassicHistory(viewModel)
+        ClassicScreen.ANALYTICS -> AnalyticsScreen(viewModel = viewModel, themeMode = ThemeMode.LIGHT)
+        ClassicScreen.SETTINGS -> ClassicSettingsRoute(navController = nav, viewModel = viewModel)
+        ClassicScreen.PROFILES -> ProfileSelectionScreen(viewModel = viewModel, onNavigateBack = { nav.popBackStack() })
+        ClassicScreen.MUSCLE_GROUPS -> MuscleGroupTrainingScreen(
+            navController = nav,
+            viewModel = viewModel,
+            exerciseRepository = viewModel.exerciseRepository
+        )
+        ClassicScreen.ASSESSMENT -> BaselineAssessmentScreen(navController = nav, viewModel = viewModel)
+        ClassicScreen.CONNECTION_LOGS -> ConnectionLogsScreen(onNavigateBack = { nav.popBackStack() }, mainViewModel = viewModel)
+        ClassicScreen.PROTOCOL_TESTER -> ProtocolTesterScreen(onNavigateBack = { nav.popBackStack() })
+    }
+}
+
+/** Workout history with the same per-profile filter the classic Analytics screen has. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ClassicHistory(viewModel: MainViewModel) {
+    val history by viewModel.analyticsGroupedHistory.collectAsState()
+    val weightUnit by viewModel.weightUnit.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
+    val selected by viewModel.analyticsProfileId.collectAsState()
+    Column(Modifier.fillMaxSize()) {
+        if (profiles.size > 1) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(selected = selected == null, onClick = { viewModel.setAnalyticsProfile(null) }, label = { Text("Everyone") })
+                profiles.forEach { p ->
+                    FilterChip(selected = selected == p.id, onClick = { viewModel.setAnalyticsProfile(p.id) }, label = { Text(p.name) })
+                }
+            }
+        }
+        HistoryTab(
+            groupedWorkoutHistory = history,
+            weightUnit = weightUnit,
+            formatWeight = viewModel::formatWeight,
+            onDeleteWorkout = { viewModel.deleteWorkout(it) },
+            exerciseRepository = viewModel.exerciseRepository,
+            modifier = Modifier.weight(1f)
+        )
+    }
 }
 
 private fun createBridge(context: Context, viewModel: MainViewModel): CleanUiBridge {

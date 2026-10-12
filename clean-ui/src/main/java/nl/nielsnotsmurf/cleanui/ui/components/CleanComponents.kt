@@ -139,6 +139,24 @@ fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
     }
 }
 
+/** Square-ish shortcut on the Train screen. */
+@Composable
+fun Tile(title: String, subtitle: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier = modifier
+            .heightIn(min = 96.dp)
+            .clip(shape)
+            .border(1.5.dp, CleanColors.Line, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
+    }
+}
+
 @Composable
 fun Stepper(
     label: String,

@@ -846,12 +846,15 @@ fun SettingsTab(
         // Header removed for global scaffold integration
 
     // Clean UI switch (lives in the clean-ui module; this button is its only classic hook)
+    // The Clean layout hosts this screen as its Settings tab, so the button switches both ways.
     val cleanUiScope = rememberCoroutineScope()
+    val cleanUiStore = remember(context) { nl.nielsnotsmurf.cleanui.data.CleanUiStore.get(context) }
+    val cleanUiEnabled by cleanUiStore.isEnabled.collectAsState(initial = false)
     Button(
-        onClick = { cleanUiScope.launch { nl.nielsnotsmurf.cleanui.data.CleanUiStore.get(context).setEnabled(true) } },
+        onClick = { cleanUiScope.launch { cleanUiStore.setEnabled(!cleanUiEnabled) } },
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Switch to the new Clean layout")
+        Text(if (cleanUiEnabled) "Switch to the classic layout" else "Switch to the new Clean layout")
     }
 
     // Donation Card - Material 3 Expressive

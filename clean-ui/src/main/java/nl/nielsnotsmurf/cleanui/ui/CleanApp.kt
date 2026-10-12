@@ -1,14 +1,24 @@
 package nl.nielsnotsmurf.cleanui.ui
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -19,136 +29,208 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.theme.CleanTheme
-import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
-import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 
 /**
- * Route names the host can rely on. [ACTIVE_WORKOUT] and [JUST_LIFT] match the classic
- * routes on purpose, so classic screens hosted here can keep navigating by their own names.
+ * Route names the host can rely on. [TRAIN], [ACTIVE_WORKOUT] and [JUST_LIFT] match the
+ * classic routes on purpose, so classic screens hosted here keep navigating by their own names
+ * (for example muscle-group training pops up to "home" when a set starts).
  */
 object CleanRoutes {
-    const val TODAY = "clean_today"
+    const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
     const val SETUP = "clean_setup"
-    const val SETTINGS = "clean_settings"
     const val ACTIVE_WORKOUT = "active_workout"
     const val JUST_LIFT = "just_lift"
 }
 
 /**
- * Entry point of the Clean UI.
+ * Classic screens the Clean layout shows until their clean versions land. Routes match the
+ * classic graph. [title] is shown above screens that relied on the classic top bar.
+ */
+enum class ClassicScreen(val route: String, val title: String?, val showBack: Boolean = false) {
+    HISTORY("clean_history", "History"),
+    ANALYTICS("analytics", "Analytics"),
+    SETTINGS("settings", "Settings"),
+    PROFILES("profiles", "Profiles", showBack = true),
+    MUSCLE_GROUPS("muscle_group_training", null),
+    ASSESSMENT("baseline_assessment", null),
+    CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
+    PROTOCOL_TESTER("protocol_tester", null)
+}
+
+private data class Tab(val route: String, val label: String, val icon: ImageVector)
+
+private val TABS = listOf(
+    Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
+    Tab(ClassicScreen.HISTORY.route, "History", Icons.Outlined.History),
+    Tab(ClassicScreen.ANALYTICS.route, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
+    Tab(ClassicScreen.SETTINGS.route, "Settings", Icons.Outlined.Settings)
+)
+
+/**
+ * Entry point of the Clean UI: Train, History, Analytics and Settings tabs.
  *
- * Lifting and Just Lift are slots for now: the host passes the existing classic screens
- * until the clean versions land, so the BLE workout flow stays exactly as tested.
+ * Lifting, Just Lift and the screens in [ClassicScreen] are slots: the host passes the
+ * existing classic screens until the clean versions land, so every feature stays reachable.
  */
 @Composable
 fun CleanApp(
     gateway: TrainerGateway,
     activeWorkoutContent: @Composable (NavController) -> Unit,
-    justLiftContent: @Composable (NavController) -> Unit
+    justLiftContent: @Composable (NavController) -> Unit,
+    classicContent: @Composable (ClassicScreen, NavController) -> Unit
 ) {
     val context = LocalContext.current
     val vm: CleanViewModel = viewModel(factory = CleanViewModel.factory(gateway, CleanUiStore.get(context)))
     val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
     val nav = rememberNavController()
+    val backStack by nav.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+
+    fun openTab(route: String) {
+        nav.navigate(route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     CleanTheme {
         Surface(color = CleanColors.Background, modifier = Modifier.fillMaxSize()) {
-            NavHost(
-                navController = nav,
-                startDestination = CleanRoutes.TODAY,
-                modifier = Modifier.safeDrawingPadding()
-            ) {
-                composable(CleanRoutes.TODAY) {
-                    TodayScreen(
-                        state = state,
-                        onToggleLifter = vm::toggleLifter,
-                        onPickExercise = { nav.navigate(CleanRoutes.EXERCISES) },
-                        onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
-                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                        onOpenSettings = { nav.navigate(CleanRoutes.SETTINGS) },
-                        onRowShown = vm::requestEstimates
-                    )
-                }
-                composable(CleanRoutes.EXERCISES) {
-                    ExercisesScreen(
-                        state = state,
-                        onBack = { nav.popBackStack() },
-                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                        onRowShown = vm::requestEstimates
-                    )
-                }
-                composable(CleanRoutes.SETUP) {
-                    val s = setup
-                    if (s == null) {
-                        LaunchedEffect(Unit) { nav.popBackStack() }
-                    } else {
-                        SetSetupScreen(
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                NavHost(
+                    navController = nav,
+                    startDestination = CleanRoutes.TRAIN,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    composable(CleanRoutes.TRAIN) {
+                        TodayScreen(
                             state = state,
-                            setup = s,
-                            loadFor = { id -> vm.loadFor(id, s) },
-                            onUpdate = vm::updateSetup,
-                            onPercent = vm::setPercent,
-                            onNudge = vm::nudgeLoad,
-                            onBack = { nav.popBackStack() },
-                            onStart = {
-                                vm.start {
-                                    nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
-                                        popUpTo(CleanRoutes.TODAY)
-                                    }
-                                }
-                            }
+                            onToggleLifter = vm::toggleLifter,
+                            onPickExercise = { nav.navigate(CleanRoutes.EXERCISES) },
+                            onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
+                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                            onMuscleGroups = { nav.navigate(ClassicScreen.MUSCLE_GROUPS.route) },
+                            onAssessment = { nav.navigate(ClassicScreen.ASSESSMENT.route) },
+                            onManageProfiles = { nav.navigate(ClassicScreen.PROFILES.route) },
+                            onRowShown = vm::requestEstimates
                         )
                     }
+                    composable(CleanRoutes.EXERCISES) {
+                        ExercisesScreen(
+                            state = state,
+                            onBack = { nav.popBackStack() },
+                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                            onRowShown = vm::requestEstimates
+                        )
+                    }
+                    composable(CleanRoutes.SETUP) {
+                        val s = setup
+                        if (s == null) {
+                            LaunchedEffect(Unit) { nav.popBackStack() }
+                        } else {
+                            SetSetupScreen(
+                                state = state,
+                                setup = s,
+                                loadFor = { id -> vm.loadFor(id, s) },
+                                onUpdate = vm::updateSetup,
+                                onPercent = vm::setPercent,
+                                onNudge = vm::nudgeLoad,
+                                onBack = { nav.popBackStack() },
+                                onStart = {
+                                    vm.start {
+                                        nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
+                                            popUpTo(CleanRoutes.TRAIN)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.ACTIVE_WORKOUT) { activeWorkoutContent(nav) }
+                    composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
+                    ClassicScreen.entries.forEach { screen ->
+                        composable(screen.route) {
+                            Column(Modifier.fillMaxSize()) {
+                                screen.title?.let { title ->
+                                    ScreenTitle(title, onBack = if (screen.showBack) ({ nav.popBackStack() }) else null)
+                                }
+                                Box(Modifier.weight(1f)) { classicContent(screen, nav) }
+                            }
+                        }
+                    }
                 }
-                composable(CleanRoutes.SETTINGS) {
-                    CleanSettingsScreen(
-                        onBack = { nav.popBackStack() },
-                        onSwitchToClassic = vm::switchToClassic
-                    )
+                if (TABS.any { it.route == currentRoute }) {
+                    TabBar(currentRoute, onSelect = ::openTab)
                 }
-                composable(CleanRoutes.ACTIVE_WORKOUT) { activeWorkoutContent(nav) }
-                composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
             }
         }
     }
 }
 
 @Composable
-private fun CleanSettingsScreen(onBack: () -> Unit, onSwitchToClassic: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 20.dp, top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+private fun ScreenTitle(text: String, onBack: (() -> Unit)?) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = if (onBack != null) 4.dp else 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (onBack != null) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-            Text("Settings", style = MaterialTheme.typography.headlineLarge)
         }
-        Column(
-            Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SectionLabel("Layout")
-            Text(
-                "History, analytics, profiles and backups are still in the classic layout. " +
-                    "You can switch back here and return from classic Settings.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = CleanColors.Muted
-            )
-            GhostButton("Switch to classic layout", onClick = onSwitchToClassic, modifier = Modifier.fillMaxWidth())
+        Text(text, style = MaterialTheme.typography.headlineLarge)
+    }
+}
+
+@Composable
+private fun TabBar(currentRoute: String?, onSelect: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().background(CleanColors.Background)) {
+        HorizontalDivider(color = CleanColors.Line)
+        Row(Modifier.fillMaxWidth().padding(6.dp)) {
+            TABS.forEach { tab ->
+                val selected = tab.route == currentRoute
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(role = Role.Tab) { if (!selected) onSelect(tab.route) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                ) {
+                    Icon(
+                        tab.icon,
+                        contentDescription = null,
+                        tint = if (selected) CleanColors.Accent else CleanColors.Muted,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        tab.label,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (selected) CleanColors.Ink else CleanColors.Muted
+                    )
+                }
+            }
         }
     }
 }

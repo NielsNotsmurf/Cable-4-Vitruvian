@@ -14,12 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -30,7 +27,7 @@ import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.ConnectionPill
 import nl.nielsnotsmurf.cleanui.ui.components.ExerciseRow
-import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
+import nl.nielsnotsmurf.cleanui.ui.components.Tile
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
@@ -43,7 +40,9 @@ fun TodayScreen(
     onPickExercise: () -> Unit,
     onJustLift: () -> Unit,
     onOpenExercise: (ExerciseCard) -> Unit,
-    onOpenSettings: () -> Unit,
+    onMuscleGroups: () -> Unit,
+    onAssessment: () -> Unit,
+    onManageProfiles: () -> Unit,
     onRowShown: (ExerciseCard) -> Unit
 ) {
     val active = state.activeLifters.map { it.id }.toSet()
@@ -56,11 +55,8 @@ fun TodayScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Today", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+                Text("Train", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
                 ConnectionPill(state.connection)
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Settings")
-                }
             }
         }
 
@@ -73,7 +69,10 @@ fun TodayScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                SectionLabel("Who's training")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Who's training", Modifier.weight(1f))
+                    TextButton(onClick = onManageProfiles) { Text("Manage", color = CleanColors.Ink) }
+                }
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -86,7 +85,7 @@ fun TodayScreen(
                     text = when (state.activeLifters.size) {
                         0 -> "Tap a name to start"
                         1 -> "${state.activeLifters[0].name} is training solo"
-                        else -> "Sets alternate " + state.activeLifters.joinToString(" → ") { it.name }
+                        else -> "Up to 4 people. Sets rotate " + state.activeLifters.joinToString(" → ") { it.name }
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -94,7 +93,13 @@ fun TodayScreen(
         }
 
         item { PrimaryButton("Pick an exercise", onClick = onPickExercise) }
-        item { GhostButton("Just Lift", onClick = onJustLift, modifier = Modifier.fillMaxWidth()) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
+                Tile("Muscle groups", "Browse by area", onMuscleGroups, Modifier.weight(1f))
+                Tile("Assessment", "Find your weights", onAssessment, Modifier.weight(1f))
+            }
+        }
 
         if (state.recentExercises.isNotEmpty()) {
             item { SectionLabel("Recent", Modifier.padding(top = 8.dp)) }

@@ -9,7 +9,10 @@ from the classic Phoenix code while the classic screens are retired one by one.
 - `app/.../cleanui/CleanUiBridge.kt` implements the gateway. It's the only file that knows both sides.
 - Hooks in upstream files are kept as small as possible:
   `settings.gradle.kts`, the `:clean-ui` dependency in `app/build.gradle.kts`,
-  the branch in `MainActivity`, and the "Switch to the new Clean layout" button in classic Settings.
+  the branch in `MainActivity`, the two-way layout switch in classic Settings, and
+  `ClassicSettingsRoute` in `NavGraph.kt` so the Clean Settings tab reuses classic Settings.
+- Classic screens without a clean version yet are hosted through `ClassicScreen` slots, so every
+  feature stays reachable. `FEATURES.md` tracks which ones still need a clean version.
 - Clean UI data (on/off switch, benchmark and manual 1RMs, last % per exercise) is stored in
   its own DataStore (`clean_ui`), not in upstream's Room schema.
 
