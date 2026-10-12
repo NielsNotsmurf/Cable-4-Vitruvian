@@ -2,9 +2,11 @@ package nl.nielsnotsmurf.cleanui.gateway
 
 import kotlinx.coroutines.flow.Flow
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
+import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
 import nl.nielsnotsmurf.cleanui.model.SetPlan
+import nl.nielsnotsmurf.cleanui.model.TestAnchor
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 
@@ -52,6 +54,25 @@ interface TrainerGateway {
      * connected and the first set is armed; the host then shows the lifting screen.
      */
     fun startExercise(plan: SetPlan, onStarted: () -> Unit, onFailed: (String) -> Unit)
+
+    /** Exercises of the 1RM test, in order: the main lift for each muscle group. */
+    val oneRepMaxTestExercises: List<TestAnchor>
+
+    /** How to do [exerciseId]: its description and demo video, or null if unknown. */
+    suspend fun exerciseGuide(exerciseId: String): ExerciseGuide?
+
+    /**
+     * Load [kg] per cable for one rep by [lifterId] alone (a 1RM attempt). Unlike
+     * [startExercise] this saves no per-exercise defaults. It does make [lifterId] the only
+     * one training; the caller puts the previous lifters back with [setActiveLifters].
+     */
+    fun startSingleAttempt(
+        lifterId: String,
+        exercise: ExerciseCard,
+        kg: Float,
+        onStarted: () -> Unit,
+        onFailed: (String) -> Unit
+    )
 
     /** Hand back to the classic UI (for screens the Clean UI doesn't have yet). */
     fun switchToClassicUi()

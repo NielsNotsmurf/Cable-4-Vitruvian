@@ -97,7 +97,7 @@ fun TodayScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
                 Tile("Muscle groups", "Browse by area", onMuscleGroups, Modifier.weight(1f))
-                Tile("Assessment", "Find your weights", onAssessment, Modifier.weight(1f))
+                Tile("1RM test", "Find your max", onAssessment, Modifier.weight(1f))
             }
         }
 

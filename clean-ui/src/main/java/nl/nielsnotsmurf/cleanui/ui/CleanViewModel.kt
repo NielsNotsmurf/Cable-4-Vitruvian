@@ -18,6 +18,11 @@ import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
+import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
+import nl.nielsnotsmurf.cleanui.model.Attempt
+import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
+import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
@@ -68,6 +73,28 @@ data class SetupState(
     val isStarting: Boolean = false,
     val error: String? = null
 )
+
+enum class TestPhase { INTRO, ATTEMPT, RESULT }
+
+/** The 1RM test in progress: one lifter working through [exerciseIds]. */
+data class TestState(
+    val lifterId: String,
+    val exerciseIds: List<String>,
+    val index: Int,
+    val phase: TestPhase,
+    val kg: Float,
+    val startReason: OneRepMaxTest.StartReason,
+    val attempts: List<Attempt> = emptyList(),
+    /** When the rest before the next attempt ends (epoch ms); 0 means no rest running. */
+    val restEndsAt: Long = 0L,
+    val guide: ExerciseGuide? = null,
+    val isStarting: Boolean = false,
+    val error: String? = null
+) {
+    val exerciseId: String get() = exerciseIds[index]
+    val isLast: Boolean get() = index >= exerciseIds.lastIndex
+    val best: Float? get() = OneRepMaxTest.best(attempts)
+}
 
 class CleanViewModel(
     private val gateway: TrainerGateway,
@@ -209,6 +236,117 @@ class CleanViewModel(
             onFailed = { msg -> _setup.update { it?.copy(isStarting = false, error = msg) } }
         )
     }
+
+    // ---- 1RM test ----
+
+    private val _test = MutableStateFlow<TestState?>(null)
+    val test: StateFlow<TestState?> = _test.asStateFlow()
+
+    /** Who was training before the test, restored when it closes (attempts are taken solo). */
+    private var liftersBeforeTest: List<String>? = null
+
+    /**
+     * Opens the test for [lifterId] (default: first active lifter) on [exerciseIds]
+     * (default: the anchor lifts, starting at the first one without a tested 1RM).
+     */
+    fun openTest(lifterId: String? = null, exerciseIds: List<String>? = null) {
+        val s = state.value
+        val lifter = lifterId ?: s.activeLifters.firstOrNull()?.id ?: s.lifters.firstOrNull()?.id ?: return
+        val known = s.exercises.map { it.id }.toSet()
+        val ids = exerciseIds ?: gateway.oneRepMaxTestExercises.map { it.exerciseId }.filter { it in known }
+        if (ids.isEmpty()) return
+        val index = if (exerciseIds == null) {
+            ids.indexOfFirst { s.oneRepMax(lifter, it)?.source != OneRepMaxSource.BENCHMARK }.coerceAtLeast(0)
+        } else 0
+        liftersBeforeTest = s.activeLifters.map { it.id }
+        _test.value = prepared(lifter, ids, index)
+    }
+
+    fun testSelectLifter(lifterId: String) {
+        val t = _test.value ?: return
+        _test.value = prepared(lifterId, t.exerciseIds, t.index)
+    }
+
+    fun testBegin() = updateTest { it.copy(phase = TestPhase.ATTEMPT) }
+
+    fun testNudge(deltaKg: Float) = updateTest {
+        it.copy(kg = LoadCalculator.roundToStep(it.kg + deltaKg).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG))
+    }
+
+    fun testRecord(outcome: AttemptOutcome) = updateTest {
+        val attempts = it.attempts + Attempt(it.kg, outcome)
+        val fromKnown = it.startReason == OneRepMaxTest.StartReason.KNOWN_ONE_REP_MAX
+        if (outcome == AttemptOutcome.MISSED) {
+            // After a miss with nothing made, suggest a lighter retry.
+            val nextKg = if (OneRepMaxTest.best(attempts) == null) OneRepMaxTest.next(it.kg, outcome, fromKnown) else it.kg
+            it.copy(attempts = attempts, kg = nextKg, phase = TestPhase.RESULT, restEndsAt = 0L)
+        } else {
+            it.copy(attempts = attempts, kg = OneRepMaxTest.next(it.kg, outcome, fromKnown), restEndsAt = restEnd())
+        }
+    }
+
+    /** One more attempt, at [kg] (the midpoint) or at the suggested lighter weight. */
+    fun testTryAgain(kg: Float? = null) = updateTest {
+        it.copy(kg = kg ?: it.kg, phase = TestPhase.ATTEMPT, restEndsAt = restEnd())
+    }
+
+    /** Loads the current attempt on the trainer; [onStarted] shows the lifting screen. */
+    fun testLiftOnTrainer(onStarted: () -> Unit) {
+        val t = _test.value ?: return
+        val exercise = state.value.exercises.firstOrNull { it.id == t.exerciseId } ?: return
+        updateTest { it.copy(isStarting = true) }
+        gateway.startSingleAttempt(
+            t.lifterId, exercise, t.kg,
+            onStarted = {
+                updateTest { it.copy(isStarting = false) }
+                onStarted()
+            },
+            onFailed = { msg -> updateTest { it.copy(isStarting = false, error = msg) } }
+        )
+    }
+
+    /** Saves the best made rep as the lifter's 1RM. Returns true when the test is finished. */
+    fun testSave(): Boolean {
+        val t = _test.value ?: return true
+        val best = t.best ?: return testSkip()
+        viewModelScope.launch {
+            store.saveOneRepMax(t.lifterId, t.exerciseId, OneRepMax(best, OneRepMaxSource.BENCHMARK, System.currentTimeMillis()))
+        }
+        return advanceTest()
+    }
+
+    /** Moves on without saving. Returns true when the test is finished. */
+    fun testSkip(): Boolean = advanceTest()
+
+    fun closeTest() {
+        _test.value = null
+        liftersBeforeTest?.let { if (it.isNotEmpty()) gateway.setActiveLifters(it) }
+        liftersBeforeTest = null
+    }
+
+    private fun advanceTest(): Boolean {
+        val t = _test.value ?: return true
+        if (t.isLast) return true
+        _test.value = prepared(t.lifterId, t.exerciseIds, t.index + 1)
+        return false
+    }
+
+    private fun prepared(lifterId: String, ids: List<String>, index: Int): TestState {
+        val exId = ids[index]
+        val default = gateway.oneRepMaxTestExercises.firstOrNull { it.exerciseId == exId }?.defaultStartKg ?: DEFAULT_LOAD_KG
+        val start = OneRepMaxTest.start(state.value.oneRepMax(lifterId, exId), default)
+        viewModelScope.launch {
+            val guide = runCatching { gateway.exerciseGuide(exId) }.getOrNull()
+            _test.update { if (it?.exerciseId == exId) it.copy(guide = guide) else it }
+        }
+        return TestState(lifterId, ids, index, TestPhase.INTRO, start.kg, start.reason)
+    }
+
+    private fun updateTest(transform: (TestState) -> TestState) {
+        _test.update { it?.copy(error = null)?.let(transform) }
+    }
+
+    private fun restEnd() = System.currentTimeMillis() + OneRepMaxTest.REST_SECONDS * 1000L
 
     fun switchToClassic() = gateway.switchToClassicUi()
 

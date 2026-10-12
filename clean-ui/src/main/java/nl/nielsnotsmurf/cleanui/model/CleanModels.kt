@@ -92,3 +92,23 @@ data class SetPlan(
     /** Kilograms added (or removed when negative) per rep. */
     val progressionKg: Float = 0f
 )
+
+/** One exercise of the 1RM test, with a safe first attempt for lifters who have no 1RM yet. */
+data class TestAnchor(
+    val exerciseId: String,
+    val defaultStartKg: Float
+)
+
+/** How to do an exercise, shown before the first attempt. */
+data class ExerciseGuide(
+    val description: String,
+    val videoUrl: String? = null,
+    val thumbnailUrl: String? = null
+)
+
+/** Result of one single-rep attempt in the 1RM test. */
+enum class AttemptOutcome { MADE_EASY, MADE_TOUGH, MISSED }
+
+data class Attempt(val kg: Float, val outcome: AttemptOutcome) {
+    val made: Boolean get() = outcome != AttemptOutcome.MISSED
+}

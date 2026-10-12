@@ -61,6 +61,7 @@ fun SetSetupScreen(
     onPercent: (Int) -> Unit,
     onNudge: (lifterId: String, deltaKg: Float) -> Unit,
     onBack: () -> Unit,
+    onTestOneRepMax: (lifterId: String) -> Unit,
     onStart: () -> Unit
 ) {
     var showMore by rememberSaveable { mutableStateOf(false) }
@@ -157,6 +158,8 @@ fun SetSetupScreen(
                             lifter = l,
                             loadText = LoadCalculator.format(load, unit),
                             note = note,
+                            // Offer the test to lifters without a real 1RM for this exercise.
+                            onTest = if (orm == null || orm.isEstimate) ({ onTestOneRepMax(l.id) }) else null,
                             onMinus = { onNudge(l.id, -LoadCalculator.STEP_KG) },
                             onPlus = { onNudge(l.id, LoadCalculator.STEP_KG) }
                         )
@@ -274,6 +277,7 @@ private fun LifterLoadCard(
     lifter: UiLifter,
     loadText: String,
     note: String,
+    onTest: (() -> Unit)?,
     onMinus: () -> Unit,
     onPlus: () -> Unit
 ) {
@@ -292,6 +296,14 @@ private fun LifterLoadCard(
         }
         Text(loadText, style = MaterialTheme.typography.displayMedium.copy(color = lifter.color))
         Text(note, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        if (onTest != null) {
+            Text(
+                "Test 1RM",
+                style = MaterialTheme.typography.labelLarge,
+                color = CleanColors.AccentInk,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onTest).padding(vertical = 4.dp)
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
             NudgeKey("−", onMinus, Modifier.weight(1f))
             NudgeKey("+", onPlus, Modifier.weight(1f))

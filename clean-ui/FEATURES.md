@@ -49,7 +49,7 @@ Android status:
 | Workout complete summary | Active workout | Done screen | Hosted |
 | Just Lift with auto-start and auto-stop | Just Lift | Train → Just Lift | Hosted |
 | Strength assessment (9 anchors, too easy/right/hard) | Baseline Assessment | Replaced by the 1RM test | Hosted |
-| 1RM test: demo, warm-up, single-rep attempts going up until a miss; starts at 90% of a known 1RM | — (new) | Train → 1RM test, or Test 1RM on a lifter card in Set setup | Not yet |
+| 1RM test: demo, warm-up, single-rep attempts going up until a miss; starts at 90% of a known 1RM | — (new) | Train → 1RM test, or Test 1RM on a lifter card in Set setup | Clean (attempts load on the trainer) |
 | Workout history, per session detail, delete, delete all | History tab | History tab | Hosted (History tab, delete all in Settings) |
 | Analytics: strength score, this week, recent PRs, top exercises | Analytics dashboard | Analytics → Overview | Hosted (Analytics tab) |
 | PR tracker, weight/volume PR, chart or list | Analytics progression | Analytics → Progress | Hosted (Analytics tab) |

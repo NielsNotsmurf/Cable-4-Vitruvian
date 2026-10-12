@@ -5,6 +5,7 @@ import com.example.vitruvianredux.data.local.UserProfileEntity
 import com.example.vitruvianredux.data.preferences.PreferencesManager
 import com.example.vitruvianredux.data.preferences.SingleExerciseDefaults
 import com.example.vitruvianredux.data.preferences.WorkoutModeId
+import com.example.vitruvianredux.data.baseline.AnchorExerciseConfig
 import com.example.vitruvianredux.data.baseline.SuggestionSource
 import com.example.vitruvianredux.domain.model.CableConfiguration
 import com.example.vitruvianredux.domain.model.ConnectionState
@@ -27,9 +28,11 @@ import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
+import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
 import nl.nielsnotsmurf.cleanui.model.SetPlan
+import nl.nielsnotsmurf.cleanui.model.TestAnchor
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
@@ -166,6 +169,67 @@ class CleanUiBridge(
             } catch (e: Exception) {
                 Timber.e(e, "Clean UI failed to start exercise")
                 onFailed("Couldn't start this exercise: ${e.message}")
+            }
+        }
+    }
+
+    override val oneRepMaxTestExercises: List<TestAnchor> =
+        AnchorExerciseConfig.ANCHORS.map { TestAnchor(it.exerciseId, it.conservativeDefaultKg) }
+
+    override suspend fun exerciseGuide(exerciseId: String): ExerciseGuide? {
+        val entity = vm.exerciseRepository.getExerciseById(exerciseId) ?: return null
+        val videos = runCatching { vm.exerciseRepository.getVideos(exerciseId) }.getOrDefault(emptyList())
+        val video = videos.firstOrNull { it.isTutorial } ?: videos.firstOrNull { it.angle == "FRONT" } ?: videos.firstOrNull()
+        return ExerciseGuide(
+            description = entity.description,
+            videoUrl = video?.videoUrl,
+            thumbnailUrl = video?.thumbnailUrl
+        )
+    }
+
+    override fun startSingleAttempt(
+        lifterId: String,
+        exercise: ExerciseCard,
+        kg: Float,
+        onStarted: () -> Unit,
+        onFailed: (String) -> Unit
+    ) {
+        scope.launch {
+            try {
+                // Only this lifter takes the attempt, so the rotation doesn't hand it to someone else.
+                setActiveLifters(listOf(lifterId))
+                val ex = exercise.toExercise()
+                val routineExercise = RoutineExercise(
+                    id = UUID.randomUUID().toString(),
+                    exercise = ex,
+                    cableConfig = ex.resolveDefaultCableConfig(),
+                    orderIndex = 0,
+                    setReps = listOf(1),
+                    weightPerCableKg = kg,
+                    progressionKg = 0f,
+                    setRestSeconds = listOf(0),
+                    workoutType = WorkoutType.Program(ProgramMode.OldSchool),
+                    eccentricLoad = EccentricLoad.LOAD_100,
+                    echoLevel = EchoLevel.HARDER
+                )
+                vm.loadRoutine(
+                    Routine(
+                        id = "${MainViewModel.TEMP_SINGLE_EXERCISE_PREFIX}${UUID.randomUUID()}",
+                        name = "1RM attempt: ${ex.name}",
+                        description = "1RM test from the Clean UI",
+                        exercises = listOf(routineExercise)
+                    )
+                )
+                vm.ensureConnection(
+                    onConnected = {
+                        vm.startWorkout()
+                        onStarted()
+                    },
+                    onFailed = { onFailed("Couldn't reach the trainer. Check it's switched on and nearby.") }
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "Clean UI failed to start a 1RM attempt")
+                onFailed("Couldn't start the attempt: ${e.message}")
             }
         }
     }

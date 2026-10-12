@@ -58,6 +58,7 @@ object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
     const val SETUP = "clean_setup"
+    const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
     const val JUST_LIFT = "just_lift"
 }
@@ -103,6 +104,7 @@ fun CleanApp(
     val vm: CleanViewModel = viewModel(factory = CleanViewModel.factory(gateway, CleanUiStore.get(context)))
     val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
+    val test by vm.test.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -131,7 +133,7 @@ fun CleanApp(
                             onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
                             onMuscleGroups = { nav.navigate(ClassicScreen.MUSCLE_GROUPS.route) },
-                            onAssessment = { nav.navigate(ClassicScreen.ASSESSMENT.route) },
+                            onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
                             onManageProfiles = { nav.navigate(ClassicScreen.PROFILES.route) },
                             onRowShown = vm::requestEstimates
                         )
@@ -157,6 +159,10 @@ fun CleanApp(
                                 onPercent = vm::setPercent,
                                 onNudge = vm::nudgeLoad,
                                 onBack = { nav.popBackStack() },
+                                onTestOneRepMax = { lifterId ->
+                                    vm.openTest(lifterId, listOf(s.exercise.id))
+                                    nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
+                                },
                                 onStart = {
                                     vm.start {
                                         nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
@@ -164,6 +170,28 @@ fun CleanApp(
                                         }
                                     }
                                 }
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.ONE_REP_MAX_TEST) {
+                        val t = test
+                        val close = { vm.closeTest(); nav.popBackStack(); Unit }
+                        if (t == null) {
+                            LaunchedEffect(Unit) { nav.popBackStack() }
+                        } else {
+                            OneRepMaxTestScreen(
+                                state = state,
+                                test = t,
+                                onSelectLifter = vm::testSelectLifter,
+                                onBegin = vm::testBegin,
+                                onNudge = vm::testNudge,
+                                onRecord = vm::testRecord,
+                                onTryAgain = vm::testTryAgain,
+                                // Back from the lifting screen returns here to record the result.
+                                onLiftOnTrainer = { vm.testLiftOnTrainer { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) } },
+                                onSave = { if (vm.testSave()) close() },
+                                onSkip = { if (vm.testSkip()) close() },
+                                onBack = close
                             )
                         }
                     }
