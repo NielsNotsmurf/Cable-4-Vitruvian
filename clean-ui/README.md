@@ -1,7 +1,7 @@
 # Clean UI
 
-The white, multi-lifter layout. It lives in its own Gradle module so that upstream
-Phoenix changes keep merging into `:app` without touching these screens.
+The white, multi-lifter layout. It lives in its own Gradle module so it stays apart
+from the classic Phoenix code while the classic screens are retired one by one.
 
 ## Rules
 
@@ -24,19 +24,11 @@ Phoenix changes keep merging into `:app` without touching these screens.
 When several lifters train, each lifter's load is saved as their per-exercise default before
 the set starts. The existing rotation then loads the right weight for whoever is up next.
 
-## Syncing upstream
+## Upstream
 
-Upstream (`9thLevelSoftware/VitruvianProjectPhoenix`) rewrote its history, so git sees no
-shared commit with this fork. Record the shared point once, then merge normally:
-
-```bash
-git remote add upstream https://github.com/9thLevelSoftware/VitruvianProjectPhoenix.git
-git fetch upstream
-# ff20a27 upstream == b83d0dd here ("use firmware DELOAD_OCCURRED flag", 2026-01-05)
-git merge -s ours --allow-unrelated-histories ff20a27 -m "Record upstream ancestry"
-git checkout -b sync-upstream
-git merge upstream/master
-```
-
-As of October 2026 the next upstream change renames every package and removes the exercise
-catalogue, which conflicts with the multi-user work in 51 files. Merge it on its own branch.
+Upstream syncing is frozen (decided 12 Oct 2026). This fork is now its own app.
+Upstream (`9thLevelSoftware/VitruvianProjectPhoenix`) rewrote its history, and its next change
+renames every package and removes the exercise catalogue, which conflicts with the multi-user
+work in 51 files. If you ever want to port a single upstream fix, cherry-pick it by hand.
+The module split stays: it keeps the classic code and the new screens apart while the classic
+screens are retired one by one.
