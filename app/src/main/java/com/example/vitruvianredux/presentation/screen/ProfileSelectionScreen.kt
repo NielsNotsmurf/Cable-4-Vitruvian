@@ -303,7 +303,7 @@ private fun AddProfileDialog(
  * profile. Optional: the trainer works the same without one.
  */
 @Composable
-private fun HeartRateSensorDialog(
+internal fun HeartRateSensorDialog(
     viewModel: MainViewModel,
     profile: UserProfileEntity,
     otherProfiles: List<UserProfileEntity>,
