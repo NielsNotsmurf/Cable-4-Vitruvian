@@ -165,3 +165,16 @@ data class HistoryEntry(
     /** Sets done back to back in one workout share this (rotations, routines). */
     val groupId: String
 )
+
+/** App settings the Clean Settings tab edits. They are the classic app's own preferences. */
+data class CleanSettings(
+    val unit: WeightUnit = WeightUnit.KG,
+    val defaultReps: Int = 10,
+    val autoplay: Boolean = true,
+    val stopAtTop: Boolean = false,
+    val beeps: Boolean = true,
+    val videos: Boolean = true
+)
+
+/** A trainer LED colour scheme: its name and the colours it cycles through. */
+data class LedScheme(val name: String, val colorsArgb: List<Int>)

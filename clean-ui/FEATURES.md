@@ -31,7 +31,7 @@ Android status:
 | Single / double cable | Exercise config | Set setup → More options → Cables | Clean |
 | Weight change per rep (progression/regression) | Exercise config, Just Lift | More options / Just Lift | Clean (Just Lift hosted) |
 | Warm-up reps | Settings | Settings (shown in More options) | Hosted (Settings) |
-| Stop at top | Settings | Settings (shown in More options) | Hosted (Settings) |
+| Stop at top | Settings | Settings (shown in More options) | Clean |
 | Remember as exercise default | Saved per-profile defaults | Automatic per lifter; Set setup starts from last time | Clean |
 | Trainer scan, pick, connect, disconnect | Device picker, banner | Connection pill on Train, Settings → Trainer | Hosted (classic dialogs) |
 | Bluetooth permissions | Permission screen | Allow Bluetooth sheet | Clean |
@@ -44,7 +44,7 @@ Android status:
 | PR celebration (heaviest, best volume) | PR animation | New PR overlay | Hosted |
 | Set summary: avg, peak, force over time | Set summary card | Rest screen summary card | Hosted |
 | Rest timer, skip, adjust next set, up next, end workout | Rest timer card | Rest screen | Hosted |
-| Autoplay | Settings | Settings → Autoplay | Hosted (Settings) |
+| Autoplay | Settings | Settings → Autoplay | Clean |
 | Workout complete summary | Active workout | Done screen | Hosted |
 | Just Lift with auto-start and auto-stop | Just Lift | Train → Just Lift | Hosted |
 | Strength assessment (9 anchors, too easy/right/hard) | Baseline Assessment | Replaced by the 1RM test | Hosted |
@@ -56,13 +56,13 @@ Android status:
 | Safety events (deload, ROM, spotter) | Safety card | Insights + session detail | Hosted (Analytics tab) |
 | Per-profile filter | Analytics chips | Lifter chips on History and Analytics | Clean on History, hosted on Analytics |
 | Export CSV (workouts, PRs, PR progression) | Analytics | Analytics ⤓, History ⋮, Settings | Hosted (Analytics tab) |
-| Weight unit kg / lb | Settings | Settings → Weight unit | Clean (reads it) |
-| Default reps | Settings | Settings | Hosted (Settings) |
-| Workout beeps, haptics | Settings | Settings | Hosted (Settings) |
-| Show exercise videos | Settings | Settings | Hosted (Settings) |
-| LED colour scheme | Settings | Settings → LED colour | Hosted (Settings) |
+| Weight unit kg / lb | Settings | Settings → Weight unit | Clean |
+| Default reps | Settings | Settings | Clean |
+| Workout beeps, haptics | Settings | Settings | Clean (beeps; the app has no haptics setting) |
+| Show exercise videos | Settings | Settings | Clean |
+| LED colour scheme | Settings | Settings → LED colour | Clean |
 | Theme light / dark / system | Settings | Settings → Theme | Not yet (Clean is light only) |
-| Backup and restore | Settings | Settings → Data | Hosted (Settings) |
+| Backup and restore | Settings | Settings → Data | Hosted (Settings → Backup, restore and delete all) |
 | Connection logs (search, level filter, export) | Connection logs | Settings → Connection logs | Hosted (Settings) |
 | Protocol tester | Developer screen | Settings → About → Protocol tester | Hosted (Settings) |
 | Support link, app info | Settings | Settings → About | Hosted (Settings) |

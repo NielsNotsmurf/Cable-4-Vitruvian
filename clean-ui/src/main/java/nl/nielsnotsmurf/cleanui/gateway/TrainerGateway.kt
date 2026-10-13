@@ -2,7 +2,9 @@ package nl.nielsnotsmurf.cleanui.gateway
 
 import kotlinx.coroutines.flow.Flow
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
+import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.LedScheme
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LastPlan
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
@@ -96,6 +98,16 @@ interface TrainerGateway {
 
     /** Deletes workouts by [HistoryEntry.id]. */
     fun deleteWorkouts(ids: List<String>)
+
+    val settings: Flow<CleanSettings>
+
+    /** Saves the settings that differ from the current ones. */
+    fun updateSettings(transform: (CleanSettings) -> CleanSettings)
+
+    val ledSchemes: List<LedScheme>
+
+    /** Sends an LED colour scheme to the trainer. */
+    fun setLedScheme(index: Int)
 
     fun switchToClassicUi()
 }

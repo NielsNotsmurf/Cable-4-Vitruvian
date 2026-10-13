@@ -22,6 +22,7 @@ import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.model.Attempt
 import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
+import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.SetSpec
@@ -158,6 +159,15 @@ class CleanViewModel(
 
     fun deleteWorkouts(ids: List<String>) = gateway.deleteWorkouts(ids)
 
+    val settings: StateFlow<CleanSettings> =
+        gateway.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CleanSettings())
+
+    fun updateSettings(transform: (CleanSettings) -> CleanSettings) = gateway.updateSettings(transform)
+
+    /** Hides demo videos when "Show exercise videos" is off, as the classic screens do. */
+    private fun ExerciseGuide.respectVideoSetting(): ExerciseGuide =
+        if (settings.value.videos) this else copy(videoUrl = null, thumbnailUrl = null)
+
     private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
 
     private val _setup = MutableStateFlow<SetupState?>(null)
@@ -219,7 +229,7 @@ class CleanViewModel(
             }
         }
         viewModelScope.launch {
-            val guide = runCatching { gateway.exerciseGuide(exercise.id) }.getOrNull() ?: return@launch
+            val guide = runCatching { gateway.exerciseGuide(exercise.id) }.getOrNull()?.respectVideoSetting() ?: return@launch
             _setup.update { if (it?.exercise?.id == exercise.id) it.copy(guide = guide) else it }
         }
         viewModelScope.launch {
@@ -401,7 +411,7 @@ class CleanViewModel(
         val default = gateway.oneRepMaxTestExercises.firstOrNull { it.exerciseId == exId }?.defaultStartKg ?: DEFAULT_LOAD_KG
         val start = OneRepMaxTest.start(state.value.oneRepMax(lifterId, exId), default)
         viewModelScope.launch {
-            val guide = runCatching { gateway.exerciseGuide(exId) }.getOrNull()
+            val guide = runCatching { gateway.exerciseGuide(exId) }.getOrNull()?.respectVideoSetting()
             _test.update { if (it?.exerciseId == exId) it.copy(guide = guide) else it }
         }
         return TestState(lifterId, ids, index, TestPhase.INTRO, start.kg, start.reason)

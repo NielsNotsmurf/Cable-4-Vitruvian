@@ -63,6 +63,7 @@ object CleanRoutes {
     const val MUSCLE_GROUPS = "clean_muscle_groups"
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
+    const val SETTINGS = "clean_settings"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
@@ -75,7 +76,7 @@ object CleanRoutes {
  */
 enum class ClassicScreen(val route: String, val title: String?, val showBack: Boolean = false) {
     ANALYTICS("analytics", "Analytics"),
-    SETTINGS("settings", "Settings"),
+    SETTINGS("settings", "More settings", showBack = true),
     ASSESSMENT("baseline_assessment", null),
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
     PROTOCOL_TESTER("protocol_tester", null)
@@ -87,7 +88,7 @@ private val TABS = listOf(
     Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
     Tab(CleanRoutes.HISTORY, "History", Icons.Outlined.History),
     Tab(ClassicScreen.ANALYTICS.route, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
-    Tab(ClassicScreen.SETTINGS.route, "Settings", Icons.Outlined.Settings)
+    Tab(CleanRoutes.SETTINGS, "Settings", Icons.Outlined.Settings)
 )
 
 /**
@@ -109,6 +110,7 @@ fun CleanApp(
     val setup by vm.setup.collectAsStateWithLifecycle()
     val test by vm.test.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -157,6 +159,20 @@ fun CleanApp(
                     }
                     composable(CleanRoutes.HISTORY) {
                         HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
+                    }
+                    composable(CleanRoutes.SETTINGS) {
+                        SettingsScreen(
+                            state = state,
+                            settings = settings,
+                            ledSchemes = gateway.ledSchemes,
+                            onUpdate = vm::updateSettings,
+                            onLedScheme = gateway::setLedScheme,
+                            onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                            onMoreSettings = { nav.navigate(ClassicScreen.SETTINGS.route) },
+                            onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
+                            onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
+                            onSwitchToClassic = vm::switchToClassic
+                        )
                     }
                     composable(CleanRoutes.PROFILES) {
                         ProfilesScreen(

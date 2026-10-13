@@ -32,7 +32,9 @@ import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.LastPlan
 import nl.nielsnotsmurf.cleanui.model.SetKind
 import nl.nielsnotsmurf.cleanui.model.SetSpec
+import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.LedScheme
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
@@ -44,6 +46,7 @@ import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import timber.log.Timber
 import java.util.UUID
 import com.example.vitruvianredux.domain.model.WeightUnit as AppWeightUnit
+import com.example.vitruvianredux.util.ColorSchemes
 
 /**
  * The single place where the Clean UI meets the app.
@@ -325,6 +328,34 @@ class CleanUiBridge(
     override fun deleteWorkouts(ids: List<String>) {
         ids.forEach { vm.deleteWorkout(it) }
     }
+
+    override val settings: Flow<CleanSettings> = vm.userPreferences.map { it.toCleanSettings() }
+
+    override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
+        val old = vm.userPreferences.value.toCleanSettings()
+        val new = transform(old)
+        if (new.unit != old.unit) vm.setWeightUnit(if (new.unit == WeightUnit.LB) AppWeightUnit.LB else AppWeightUnit.KG)
+        if (new.defaultReps != old.defaultReps) vm.setDefaultRepCount(new.defaultReps.coerceIn(1, 50))
+        if (new.autoplay != old.autoplay) vm.setAutoplayEnabled(new.autoplay)
+        if (new.stopAtTop != old.stopAtTop) vm.setStopAtTop(new.stopAtTop)
+        if (new.beeps != old.beeps) vm.setBeepsEnabled(new.beeps)
+        if (new.videos != old.videos) vm.setEnableVideoPlayback(new.videos)
+    }
+
+    override val ledSchemes: List<LedScheme> = ColorSchemes.ALL.map { scheme ->
+        LedScheme(scheme.name, scheme.colors.map { c -> (0xFF shl 24) or (c.r shl 16) or (c.g shl 8) or c.b })
+    }
+
+    override fun setLedScheme(index: Int) = vm.setColorScheme(index)
+
+    private fun com.example.vitruvianredux.domain.model.UserPreferences.toCleanSettings() = CleanSettings(
+        unit = if (weightUnit == AppWeightUnit.LB) WeightUnit.LB else WeightUnit.KG,
+        defaultReps = defaultRepCount,
+        autoplay = autoplayEnabled,
+        stopAtTop = stopAtTop,
+        beeps = beepsEnabled,
+        videos = enableVideoPlayback
+    )
 
     override fun switchToClassicUi() {
         scope.launch { store.setEnabled(false) }
