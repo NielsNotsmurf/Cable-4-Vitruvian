@@ -3,6 +3,7 @@ package nl.nielsnotsmurf.cleanui.gateway
 import kotlinx.coroutines.flow.Flow
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.LastPlan
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
 import nl.nielsnotsmurf.cleanui.model.SetPlan
@@ -45,6 +46,14 @@ interface TrainerGateway {
      * benchmark of a related exercise. Returns null when there is nothing to scale from.
      */
     suspend fun relatedOneRepMaxKg(lifterId: String, exercise: ExerciseCard): Float?
+
+    /** Reps per set for an exercise the lifter has never configured (the app's Default reps setting). */
+    val defaultReps: Int
+
+    /** Mode, sets and rest this lifter used last time on [exercise], or null if never. */
+    suspend fun lastPlan(lifterId: String, exercise: ExerciseCard): LastPlan?
+
+    suspend fun toggleFavorite(exerciseId: String)
 
     /** The load this lifter used last time on [exercise], or null if they never did it. */
     suspend fun lastUsedLoadKg(lifterId: String, exercise: ExerciseCard): Float?

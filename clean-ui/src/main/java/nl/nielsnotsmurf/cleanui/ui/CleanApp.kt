@@ -42,6 +42,9 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import android.net.Uri
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
@@ -57,6 +60,7 @@ import nl.nielsnotsmurf.cleanui.theme.CleanTheme
 object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
+    const val MUSCLE_GROUPS = "clean_muscle_groups"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
@@ -72,7 +76,6 @@ enum class ClassicScreen(val route: String, val title: String?, val showBack: Bo
     ANALYTICS("analytics", "Analytics"),
     SETTINGS("settings", "Settings"),
     PROFILES("profiles", "Profiles", showBack = true),
-    MUSCLE_GROUPS("muscle_group_training", null),
     ASSESSMENT("baseline_assessment", null),
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
     PROTOCOL_TESTER("protocol_tester", null)
@@ -132,18 +135,31 @@ fun CleanApp(
                             onPickExercise = { nav.navigate(CleanRoutes.EXERCISES) },
                             onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                            onMuscleGroups = { nav.navigate(ClassicScreen.MUSCLE_GROUPS.route) },
+                            onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
                             onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
                             onManageProfiles = { nav.navigate(ClassicScreen.PROFILES.route) },
                             onRowShown = vm::requestEstimates
                         )
                     }
-                    composable(CleanRoutes.EXERCISES) {
+                    composable(
+                        "${CleanRoutes.EXERCISES}?region={region}",
+                        arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
+                    ) { entry ->
                         ExercisesScreen(
                             state = state,
                             onBack = { nav.popBackStack() },
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                            onRowShown = vm::requestEstimates
+                            onRowShown = vm::requestEstimates,
+                            onToggleFavorite = vm::toggleFavorite,
+                            region = entry.arguments?.getString("region")
+                        )
+                    }
+                    composable(CleanRoutes.MUSCLE_GROUPS) {
+                        MuscleGroupsScreen(
+                            state = state,
+                            onBack = { nav.popBackStack() },
+                            onRegion = { nav.navigate("${CleanRoutes.EXERCISES}?region=${Uri.encode(it)}") },
+                            onTestOneRepMax = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) }
                         )
                     }
                     composable(CleanRoutes.SETUP) {

@@ -21,7 +21,9 @@ import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.model.Attempt
 import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
@@ -61,10 +63,13 @@ data class SetupState(
     val exercise: ExerciseCard,
     val mode: TrainingMode = TrainingMode.OLD_SCHOOL,
     val percent: Int = 75,
-    val sets: Int = 3,
-    val reps: Int = 8,
-    val restSeconds: Int = 90,
+    val sets: List<SetSpec> = List(3) { SetSpec() },
+    /** Timed sets: seconds per set, or null for rep-based sets. */
+    val durationSeconds: Int? = null,
+    /** "SINGLE" or "DOUBLE". */
+    val cableConfig: String = if (exercise.cableConfig == "SINGLE") "SINGLE" else "DOUBLE",
     val eccentricLoadPercent: Int = 100,
+    val echoLevel: EchoLevelChoice = EchoLevelChoice.HARDER,
     val progressionKg: Float = 0f,
     /** Loads a lifter set by hand; they win over the %-of-1RM value. */
     val overridesKg: Map<String, Float> = emptyMap(),
@@ -72,7 +77,10 @@ data class SetupState(
     val lastUsedKg: Map<String, Float> = emptyMap(),
     val isStarting: Boolean = false,
     val error: String? = null
-)
+) {
+    /** The % of 1RM a set uses: its own, or the exercise's. */
+    fun percentFor(setIndex: Int): Int = sets.getOrNull(setIndex)?.percent ?: percent
+}
 
 enum class TestPhase { INTRO, ATTEMPT, RESULT }
 
@@ -141,6 +149,8 @@ class CleanViewModel(
         CleanUiState(all, active, exercises, connection, unit, orms)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CleanUiState())
 
+    private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
+
     private val _setup = MutableStateFlow<SetupState?>(null)
     val setup: StateFlow<SetupState?> = _setup.asStateFlow()
 
@@ -170,7 +180,23 @@ class CleanViewModel(
 
     fun openSetup(exercise: ExerciseCard) {
         requestEstimates(exercise)
-        _setup.value = SetupState(exercise = exercise)
+        _setup.value = SetupState(exercise = exercise, sets = List(3) { SetSpec(reps = defaultReps) })
+        viewModelScope.launch {
+            // Start from what the first lifter did last time: mode, sets, reps, rest.
+            val lifter = state.value.activeLifters.firstOrNull()?.id ?: return@launch
+            val last = runCatching { gateway.lastPlan(lifter, exercise) }.getOrNull() ?: return@launch
+            _setup.update {
+                it?.copy(
+                    mode = last.mode,
+                    sets = last.sets.ifEmpty { it.sets },
+                    durationSeconds = last.durationSeconds,
+                    cableConfig = last.cableConfig,
+                    eccentricLoadPercent = last.eccentricLoadPercent,
+                    echoLevel = last.echoLevel,
+                    progressionKg = last.progressionKg
+                )
+            }
+        }
         viewModelScope.launch {
             val pct = store.lastPercent(exercise.id).first()
             if (pct != null) _setup.update { it?.copy(percent = pct) }
@@ -193,12 +219,25 @@ class CleanViewModel(
         it.copy(percent = percent.coerceIn(30, 100), overridesKg = keep)
     }
 
-    /** The load each active lifter would start with. */
-    fun loadFor(lifterId: String, setup: SetupState): Float {
-        setup.overridesKg[lifterId]?.let { return it }
+    /** The load each active lifter would start with (their first set). */
+    fun loadFor(lifterId: String, setup: SetupState): Float = loadFor(lifterId, setup, 0)
+
+    /**
+     * A lifter's load for one set. A set with its own % scales from the lifter's base load,
+     * so hand-set loads and lifters without a 1RM follow the same ratio.
+     */
+    fun loadFor(lifterId: String, setup: SetupState, setIndex: Int): Float {
+        val pct = setup.percentFor(setIndex)
         val orm = state.value.oneRepMax(lifterId, setup.exercise.id)
-        if (orm != null) return LoadCalculator.loadForPercent(orm.kg, setup.percent)
-        return setup.lastUsedKg[lifterId] ?: DEFAULT_LOAD_KG
+        val base = setup.overridesKg[lifterId]
+            ?: if (orm != null) return LoadCalculator.loadForPercent(orm.kg, pct)
+            else setup.lastUsedKg[lifterId] ?: DEFAULT_LOAD_KG
+        if (pct == setup.percent) return base
+        return LoadCalculator.roundToStep(base * pct / setup.percent).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG)
+    }
+
+    fun toggleFavorite(exercise: ExerciseCard) {
+        viewModelScope.launch { runCatching { gateway.toggleFavorite(exercise.id) } }
     }
 
     fun nudgeLoad(lifterId: String, deltaKg: Float) = updateSetup {
@@ -219,10 +258,11 @@ class CleanViewModel(
             mode = s.mode,
             percentOfOneRepMax = s.percent,
             sets = s.sets,
-            reps = s.reps,
-            restSeconds = s.restSeconds,
-            loads = lifters.map { LifterLoad(it.id, loadFor(it.id, s)) },
+            loads = lifters.map { l -> LifterLoad(l.id, s.sets.indices.map { i -> loadFor(l.id, s, i) }) },
+            cableConfig = s.cableConfig,
+            durationSeconds = s.durationSeconds,
             eccentricLoadPercent = s.eccentricLoadPercent,
+            echoLevel = s.echoLevel,
             progressionKg = s.progressionKg
         )
         _setup.update { it?.copy(isStarting = true) }

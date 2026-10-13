@@ -27,7 +27,11 @@ import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
+import nl.nielsnotsmurf.cleanui.model.LastPlan
+import nl.nielsnotsmurf.cleanui.model.SetKind
+import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
@@ -104,6 +108,42 @@ class CleanUiBridge(
         return LoadCalculator.oneRepMaxFromWorkingSet(suggestion.weightKg, BASELINE_REPS, BASELINE_RIR)
     }
 
+    override val defaultReps: Int
+        get() = vm.userPreferences.value.defaultRepCount
+
+    override suspend fun lastPlan(lifterId: String, exercise: ExerciseCard): LastPlan? {
+        val cable = exercise.toExercise().resolveDefaultCableConfig().name
+        val d = preferencesManager.getSingleExerciseDefaults(exercise.id, cable, lifterId) ?: return null
+        val mode = when (d.workoutModeId) {
+            WorkoutModeId.PUMP -> TrainingMode.PUMP
+            WorkoutModeId.TUT -> TrainingMode.TUT
+            WorkoutModeId.TUT_BEAST -> TrainingMode.TUT_BEAST
+            WorkoutModeId.ECCENTRIC_ONLY -> TrainingMode.ECCENTRIC_ONLY
+            WorkoutModeId.ECHO -> TrainingMode.ECHO
+            else -> TrainingMode.OLD_SCHOOL
+        }
+        val sets = d.setReps.mapIndexed { i, reps ->
+            SetSpec(
+                kind = if (reps == null) SetKind.AMRAP else SetKind.REPS,
+                reps = reps ?: defaultReps,
+                restSeconds = d.setRestSeconds.getOrNull(i) ?: 90
+            )
+        }
+        return LastPlan(
+            mode = mode,
+            sets = sets,
+            durationSeconds = d.duration,
+            cableConfig = d.cableConfig.takeIf { it == "SINGLE" || it == "DOUBLE" } ?: cable,
+            eccentricLoadPercent = d.eccentricLoadPercentage,
+            echoLevel = EchoLevelChoice.entries.getOrNull(d.echoLevelValue) ?: EchoLevelChoice.HARDER,
+            progressionKg = d.progressionKg
+        )
+    }
+
+    override suspend fun toggleFavorite(exerciseId: String) {
+        vm.exerciseRepository.toggleFavorite(exerciseId)
+    }
+
     override suspend fun lastUsedLoadKg(lifterId: String, exercise: ExerciseCard): Float? =
         preferencesManager.getSingleExerciseDefaults(exercise.id, exercise.toExercise().resolveDefaultCableConfig().name, lifterId)
             ?.weightPerCableKg
@@ -112,14 +152,18 @@ class CleanUiBridge(
         scope.launch {
             try {
                 val exercise = plan.exercise.toExercise()
-                val cableConfig = exercise.resolveDefaultCableConfig()
+                val cableConfig = runCatching { CableConfiguration.valueOf(plan.cableConfig) }
+                    .getOrDefault(exercise.resolveDefaultCableConfig())
                 val workoutType = plan.toWorkoutType()
-                val setReps: List<Int?> = List(plan.sets) { plan.reps }
-                val rest = List(plan.sets) { plan.restSeconds }
+                // AMRAP sets are null reps, as in the classic exercise config.
+                val setReps: List<Int?> = plan.sets.map { if (it.kind == SetKind.AMRAP) null else it.reps }
+                val rest = plan.sets.map { it.restSeconds }
+                val isAmrap = plan.sets.any { it.kind == SetKind.AMRAP }
+                val perSetRest = rest.distinct().size > 1
 
-                // Each lifter's load goes in as their per-exercise default. The existing
+                // Each lifter's loads go in as their per-exercise defaults. The existing
                 // rotation loads the next performer's defaults after every set, so this is
-                // what makes everyone lift their own % of 1RM.
+                // what makes everyone lift their own % of 1RM, set by set.
                 plan.loads.forEach { load ->
                     preferencesManager.saveSingleExerciseDefaults(
                         SingleExerciseDefaults(
@@ -128,10 +172,14 @@ class CleanUiBridge(
                             workoutModeId = WorkoutModeId.fromWorkoutType(workoutType),
                             setReps = setReps,
                             weightPerCableKg = load.weightPerCableKg,
+                            setWeightsPerCableKg = load.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
                             progressionKg = plan.progressionKg,
                             setRestSeconds = rest,
+                            perSetRestTime = perSetRest,
                             eccentricLoadPercentage = plan.eccentricLoadPercent,
-                            echoLevelValue = EchoLevel.HARDER.levelValue
+                            echoLevelValue = plan.echoLevel.toApp().levelValue,
+                            duration = plan.durationSeconds,
+                            isAMRAP = isAmrap
                         ),
                         profileId = load.lifterId
                     )
@@ -145,11 +193,15 @@ class CleanUiBridge(
                     orderIndex = 0,
                     setReps = setReps,
                     weightPerCableKg = first.weightPerCableKg,
+                    setWeightsPerCableKg = first.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
                     progressionKg = plan.progressionKg,
                     setRestSeconds = rest,
                     workoutType = workoutType,
                     eccentricLoad = eccentricLoad(plan.eccentricLoadPercent),
-                    echoLevel = EchoLevel.HARDER
+                    echoLevel = plan.echoLevel.toApp(),
+                    duration = plan.durationSeconds,
+                    isAMRAP = isAmrap,
+                    perSetRestTime = perSetRest
                 )
                 vm.loadRoutine(
                     Routine(
@@ -240,6 +292,16 @@ class CleanUiBridge(
 
     private fun UserProfileEntity.toLifter() = Lifter(id = id, name = name, colorArgb = colorInt)
 
+    /** Same grouping as the classic muscle-group picker (posterior chain counts as back). */
+    private fun ExerciseBucket.region(): String = when (this) {
+        ExerciseBucket.CHEST -> "Chest"
+        ExerciseBucket.BACK, ExerciseBucket.POSTERIOR_CHAIN -> "Back"
+        ExerciseBucket.SHOULDERS -> "Shoulders"
+        ExerciseBucket.BICEPS, ExerciseBucket.TRICEPS -> "Arms"
+        ExerciseBucket.QUADS, ExerciseBucket.HAMSTRINGS_GLUTES, ExerciseBucket.CALVES -> "Legs"
+        ExerciseBucket.CORE -> "Core"
+    }
+
     private fun ExerciseEntity.toCard() = ExerciseCard(
         id = id,
         name = name,
@@ -248,7 +310,8 @@ class CleanUiBridge(
         cableConfig = defaultCableConfig,
         isFavorite = isFavorite,
         lastPerformedAt = lastPerformed,
-        popularity = popularity
+        popularity = popularity,
+        region = ExerciseBucket.from(muscles.csv(), movement, muscleGroups.csv())?.region() ?: ""
     )
 
     private fun ExerciseCard.toExercise() = Exercise(
@@ -265,7 +328,14 @@ class CleanUiBridge(
         TrainingMode.TUT -> WorkoutType.Program(ProgramMode.TUT)
         TrainingMode.TUT_BEAST -> WorkoutType.Program(ProgramMode.TUTBeast)
         TrainingMode.ECCENTRIC_ONLY -> WorkoutType.Program(ProgramMode.EccentricOnly)
-        TrainingMode.ECHO -> WorkoutType.Echo(EchoLevel.HARDER, eccentricLoad(eccentricLoadPercent))
+        TrainingMode.ECHO -> WorkoutType.Echo(echoLevel.toApp(), eccentricLoad(eccentricLoadPercent))
+    }
+
+    private fun EchoLevelChoice.toApp(): EchoLevel = when (this) {
+        EchoLevelChoice.HARD -> EchoLevel.HARD
+        EchoLevelChoice.HARDER -> EchoLevel.HARDER
+        EchoLevelChoice.HARDEST -> EchoLevel.HARDEST
+        EchoLevelChoice.EPIC -> EchoLevel.EPIC
     }
 
     private fun eccentricLoad(percent: Int): EccentricLoad =

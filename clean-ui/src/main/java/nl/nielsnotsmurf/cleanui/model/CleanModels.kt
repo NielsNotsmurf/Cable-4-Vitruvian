@@ -22,7 +22,9 @@ data class ExerciseCard(
     val cableConfig: String = "DOUBLE",
     val isFavorite: Boolean = false,
     val lastPerformedAt: Long? = null,
-    val popularity: Float = 0f
+    val popularity: Float = 0f,
+    /** Body region for the muscle-group picker ("Chest", "Back", "Shoulders", "Arms", "Legs", "Core"). */
+    val region: String = ""
 )
 
 /** A completed set from history, used to estimate a 1RM. */
@@ -70,11 +72,29 @@ sealed interface TrainerConnection {
     data class Failed(val message: String) : TrainerConnection
 }
 
-/** One lifter's part of a planned exercise. */
+/** Echo difficulty, matching the trainer's four levels. */
+enum class EchoLevelChoice(val label: String) { HARD("Hard"), HARDER("Harder"), HARDEST("Hardest"), EPIC("Epic") }
+
+enum class SetKind { REPS, AMRAP }
+
+/**
+ * One set of a planned exercise. [percent] overrides the exercise's % of 1RM for this set;
+ * null means "same as the rest".
+ */
+data class SetSpec(
+    val kind: SetKind = SetKind.REPS,
+    val reps: Int = 8,
+    val percent: Int? = null,
+    val restSeconds: Int = 90
+)
+
+/** One lifter's part of a planned exercise: their load for each set, in set order. */
 data class LifterLoad(
     val lifterId: String,
-    val weightPerCableKg: Float
-)
+    val setWeightsKg: List<Float>
+) {
+    val weightPerCableKg: Float get() = setWeightsKg.firstOrNull() ?: 0f
+}
 
 /**
  * Everything needed to start an exercise. Lifters rotate set by set in the order of [loads].
@@ -83,12 +103,15 @@ data class SetPlan(
     val exercise: ExerciseCard,
     val mode: TrainingMode,
     val percentOfOneRepMax: Int,
-    val sets: Int,
-    val reps: Int,
-    val restSeconds: Int,
+    val sets: List<SetSpec>,
     val loads: List<LifterLoad>,
+    /** "SINGLE" or "DOUBLE". */
+    val cableConfig: String = "DOUBLE",
+    /** Timed sets: every set lasts this many seconds instead of counting reps. */
+    val durationSeconds: Int? = null,
     /** Echo / eccentric option, 0–150. Only used by Echo. */
     val eccentricLoadPercent: Int = 100,
+    val echoLevel: EchoLevelChoice = EchoLevelChoice.HARDER,
     /** Kilograms added (or removed when negative) per rep. */
     val progressionKg: Float = 0f
 )
@@ -112,3 +135,14 @@ enum class AttemptOutcome { MADE_EASY, MADE_TOUGH, MISSED }
 data class Attempt(val kg: Float, val outcome: AttemptOutcome) {
     val made: Boolean get() = outcome != AttemptOutcome.MISSED
 }
+
+/** How a lifter did an exercise last time, used to prefill set setup. */
+data class LastPlan(
+    val mode: TrainingMode,
+    val sets: List<SetSpec>,
+    val durationSeconds: Int?,
+    val cableConfig: String,
+    val eccentricLoadPercent: Int,
+    val echoLevel: EchoLevelChoice,
+    val progressionKg: Float
+)

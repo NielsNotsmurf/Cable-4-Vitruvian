@@ -41,11 +41,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import kotlin.math.roundToInt
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
+import nl.nielsnotsmurf.cleanui.model.SetKind
+import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.Dot
+import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Stepper
@@ -100,6 +104,14 @@ fun SetSetupScreen(
 
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (isEcho) {
+                    SectionLabel("Echo level")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        EchoLevelChoice.entries.forEach { level ->
+                            PresetBox(level.label, selected = setup.echoLevel == level, Modifier.weight(1f)) {
+                                onUpdate { it.copy(echoLevel = level) }
+                            }
+                        }
+                    }
                     SectionLabel("Eccentric load")
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ECCENTRIC_OPTIONS.forEach { pct ->
@@ -167,20 +179,7 @@ fun SetSetupScreen(
                 }
             }
 
-            Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Stepper(
-                    "Sets", setup.sets.toString(),
-                    onMinus = { onUpdate { it.copy(sets = (it.sets - 1).coerceAtLeast(1)) } },
-                    onPlus = { onUpdate { it.copy(sets = (it.sets + 1).coerceAtMost(10)) } },
-                    modifier = Modifier.weight(1f)
-                )
-                Stepper(
-                    "Reps", setup.reps.toString(),
-                    onMinus = { onUpdate { it.copy(reps = (it.reps - 1).coerceAtLeast(1)) } },
-                    onPlus = { onUpdate { it.copy(reps = (it.reps + 1).coerceAtMost(50)) } },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            SetsSection(setup = setup, isEcho = isEcho, onUpdate = onUpdate)
 
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -194,29 +193,51 @@ fun SetSetupScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Rest ${formatRest(setup.restSeconds)} · Progression " +
-                            if (setup.progressionKg == 0f) "off" else "%+.1f kg/rep".format(setup.progressionKg),
+                        buildString {
+                            append(if (setup.cableConfig == "SINGLE") "One cable" else "Both cables")
+                            setup.durationSeconds?.let { append(" · Timed ${it}s") }
+                            if (!isEcho) {
+                                append(" · Progression ")
+                                append(if (setup.progressionKg == 0f) "off" else "%+.1f kg/rep".format(setup.progressionKg))
+                            }
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
-                    Text(if (showMore) "Done" else "Edit", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
+                    Text(if (showMore) "Done" else "More options", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
                 }
                 if (showMore) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Stepper(
-                            "Rest", formatRest(setup.restSeconds),
-                            onMinus = { onUpdate { it.copy(restSeconds = (it.restSeconds - 15).coerceAtLeast(0)) } },
-                            onPlus = { onUpdate { it.copy(restSeconds = (it.restSeconds + 15).coerceAtMost(600)) } },
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (!isEcho) {
-                            Stepper(
-                                "Kg per rep", "%+.1f".format(setup.progressionKg),
-                                onMinus = { onUpdate { it.copy(progressionKg = (it.progressionKg - 0.5f).coerceAtLeast(-3f)) } },
-                                onPlus = { onUpdate { it.copy(progressionKg = (it.progressionKg + 0.5f).coerceAtMost(3f)) } },
-                                modifier = Modifier.weight(1f)
-                            )
+                    SectionLabel("Cables")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PresetBox("Both cables", selected = setup.cableConfig != "SINGLE", Modifier.weight(1f)) {
+                            onUpdate { it.copy(cableConfig = "DOUBLE") }
                         }
+                        PresetBox("One cable", selected = setup.cableConfig == "SINGLE", Modifier.weight(1f)) {
+                            onUpdate { it.copy(cableConfig = "SINGLE") }
+                        }
+                    }
+                    SectionLabel("Set type")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PresetBox("Count reps", selected = setup.durationSeconds == null, Modifier.weight(1f)) {
+                            onUpdate { it.copy(durationSeconds = null) }
+                        }
+                        PresetBox("Timed", selected = setup.durationSeconds != null, Modifier.weight(1f)) {
+                            onUpdate { it.copy(durationSeconds = it.durationSeconds ?: 30) }
+                        }
+                    }
+                    setup.durationSeconds?.let { secs ->
+                        Stepper(
+                            "Seconds per set", "${secs}s",
+                            onMinus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) - 5).coerceAtLeast(5)) } },
+                            onPlus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) + 5).coerceAtMost(300)) } }
+                        )
+                    }
+                    if (!isEcho) {
+                        Stepper(
+                            "Weight change per rep", "%+.1f kg".format(setup.progressionKg),
+                            onMinus = { onUpdate { it.copy(progressionKg = (it.progressionKg - 0.5f).coerceAtLeast(-3f)) } },
+                            onPlus = { onUpdate { it.copy(progressionKg = (it.progressionKg + 0.5f).coerceAtMost(3f)) } }
+                        )
                     }
                 }
             }
@@ -233,8 +254,8 @@ fun SetSetupScreen(
             val who = state.activeLifters.firstOrNull()?.name
             Text(
                 buildString {
-                    append("${setup.sets} × ${setup.reps}")
-                    if (!isEcho) append(" @ ${setup.percent}%")
+                    append(summary(setup))
+                    if (!isEcho && setup.sets.all { it.percent == null }) append(" @ ${setup.percent}%")
                     if (who != null && state.activeLifters.size > 1) append(" · $who first")
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -327,3 +348,152 @@ private fun NudgeKey(symbol: String, onClick: () -> Unit, modifier: Modifier) {
 
 private fun formatRest(seconds: Int): String =
     if (seconds < 60) "${seconds}s" else "%d:%02d".format(seconds / 60, seconds % 60)
+
+/** "3 × 8", "4 sets · 10/8/6/AMRAP" or "3 × 30s". */
+private fun summary(setup: SetupState): String {
+    val n = setup.sets.size
+    setup.durationSeconds?.let { return "$n × ${it}s" }
+    val reps = setup.sets.map { if (it.kind == SetKind.AMRAP) "AMRAP" else it.reps.toString() }
+    return if (reps.distinct().size == 1) "$n × ${reps.first()}" else "$n sets · ${reps.joinToString("/")}"
+}
+
+@Composable
+private fun SetsSection(setup: SetupState, isEcho: Boolean, onUpdate: ((SetupState) -> SetupState) -> Unit) {
+    var openIndex by rememberSaveable { mutableStateOf(-1) }
+    val timed = setup.durationSeconds != null
+    val firstReps = setup.sets.firstOrNull()?.reps ?: 8
+
+    fun updateSets(transform: (List<SetSpec>) -> List<SetSpec>) =
+        onUpdate { it.copy(sets = transform(it.sets).ifEmpty { listOf(SetSpec()) }) }
+
+    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Stepper(
+                "Sets", setup.sets.size.toString(),
+                onMinus = { updateSets { if (it.size > 1) it.dropLast(1) else it } },
+                onPlus = { updateSets { if (it.size < 10) it + it.last() else it } },
+                modifier = Modifier.weight(1f)
+            )
+            if (!timed) {
+                Stepper(
+                    "Reps · all sets", firstReps.toString(),
+                    onMinus = { updateSets { sets -> sets.map { it.copy(reps = (firstReps - 1).coerceAtLeast(1)) } } },
+                    onPlus = { updateSets { sets -> sets.map { it.copy(reps = (firstReps + 1).coerceAtMost(50)) } } },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CleanColors.Surface)
+        ) {
+            setup.sets.forEachIndexed { i, set ->
+                val open = openIndex == i
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { openIndex = if (open) -1 else i }
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("${i + 1}", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted, modifier = Modifier.width(18.dp))
+                    Text(
+                        when {
+                            timed -> "${setup.durationSeconds}s"
+                            set.kind == SetKind.AMRAP -> "AMRAP"
+                            else -> "${set.reps} reps"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (!isEcho) {
+                        Text(
+                            "${setup.percentFor(i)}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (set.percent != null) CleanColors.Accent else CleanColors.Muted
+                        )
+                    }
+                    Text(if (i == setup.sets.lastIndex) "—" else formatRest(set.restSeconds),
+                        style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
+                }
+                if (open) {
+                    SetEditor(
+                        set = set,
+                        index = i,
+                        isLast = i == setup.sets.lastIndex,
+                        timed = timed,
+                        isEcho = isEcho,
+                        percent = setup.percentFor(i),
+                        canDelete = setup.sets.size > 1,
+                        onChange = { changed -> updateSets { sets -> sets.mapIndexed { j, s -> if (j == i) changed(s) else s } } },
+                        onCopy = { updateSets { sets -> if (sets.size < 10) sets.toMutableList().apply { add(i + 1, sets[i]) } else sets } },
+                        onDelete = { openIndex = -1; updateSets { sets -> sets.filterIndexed { j, _ -> j != i } } }
+                    )
+                }
+                if (i < setup.sets.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(CleanColors.Line))
+            }
+        }
+        Text("Tap a set to change its reps, % or rest.", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun SetEditor(
+    set: SetSpec,
+    index: Int,
+    isLast: Boolean,
+    timed: Boolean,
+    isEcho: Boolean,
+    percent: Int,
+    canDelete: Boolean,
+    onChange: ((SetSpec) -> SetSpec) -> Unit,
+    onCopy: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (!timed) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PresetBox("Reps", selected = set.kind == SetKind.REPS, Modifier.weight(1f)) {
+                    onChange { it.copy(kind = SetKind.REPS) }
+                }
+                PresetBox("AMRAP", selected = set.kind == SetKind.AMRAP, Modifier.weight(1f)) {
+                    onChange { it.copy(kind = SetKind.AMRAP) }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!timed && set.kind == SetKind.REPS) {
+                Stepper(
+                    "Reps", set.reps.toString(),
+                    onMinus = { onChange { it.copy(reps = (it.reps - 1).coerceAtLeast(1)) } },
+                    onPlus = { onChange { it.copy(reps = (it.reps + 1).coerceAtMost(50)) } },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (!isEcho) {
+                Stepper(
+                    "% of 1RM", "$percent%",
+                    onMinus = { onChange { it.copy(percent = (percent - 5).coerceAtLeast(30)) } },
+                    onPlus = { onChange { it.copy(percent = (percent + 5).coerceAtMost(100)) } },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (!isLast) {
+            Stepper(
+                "Rest after set ${index + 1}", formatRest(set.restSeconds),
+                onMinus = { onChange { it.copy(restSeconds = (it.restSeconds - 15).coerceAtLeast(0)) } },
+                onPlus = { onChange { it.copy(restSeconds = (it.restSeconds + 15).coerceAtMost(600)) } }
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GhostButton("Copy set", onClick = onCopy, modifier = Modifier.weight(1f))
+            if (canDelete) GhostButton("Delete set", onClick = onDelete, modifier = Modifier.weight(1f))
+        }
+    }
+}

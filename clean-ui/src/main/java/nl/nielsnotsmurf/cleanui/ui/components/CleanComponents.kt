@@ -269,7 +269,8 @@ fun ExerciseRow(
     lifters: List<UiLifter>,
     oneRepMaxFor: (String) -> OneRepMax?,
     unit: WeightUnit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     Column {
         Row(
@@ -299,6 +300,7 @@ fun ExerciseRow(
             }
             Spacer(Modifier.width(8.dp))
             OneRepMaxColumn(lifters, oneRepMaxFor, unit)
+            trailing?.invoke()
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(CleanColors.Line))
     }
