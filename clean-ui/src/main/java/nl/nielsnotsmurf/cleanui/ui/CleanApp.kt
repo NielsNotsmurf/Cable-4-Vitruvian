@@ -236,7 +236,7 @@ fun CleanApp(
                     composable(CleanRoutes.SETUP) {
                         val s = setup
                         if (s == null) {
-                            LaunchedEffect(Unit) { nav.popBackStack() }
+                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.SETUP, inclusive = true) }
                         } else {
                             SetSetupScreen(
                                 state = state,
@@ -262,9 +262,12 @@ fun CleanApp(
                     }
                     composable(CleanRoutes.ONE_REP_MAX_TEST) {
                         val t = test
+                        // Closing clears the test while this screen is still animating out. The
+                        // pop below must name this route: a bare popBackStack() from that leftover
+                        // frame popped the Train home too and left only the tab bar.
                         val close = { vm.closeTest(); nav.popBackStack(); Unit }
                         if (t == null) {
-                            LaunchedEffect(Unit) { nav.popBackStack() }
+                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.ONE_REP_MAX_TEST, inclusive = true) }
                         } else {
                             OneRepMaxTestScreen(
                                 state = state,
