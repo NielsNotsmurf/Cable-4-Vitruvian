@@ -1,6 +1,7 @@
 package nl.nielsnotsmurf.cleanui.gateway
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
@@ -38,6 +39,12 @@ interface TrainerGateway {
     fun deleteLifter(lifterId: String)
 
     val connection: Flow<TrainerConnection>
+
+    /**
+     * Live heart rate of whoever lifts next (the rotation's performer, else the active profile),
+     * or null when that person has no sensor broadcasting.
+     */
+    val liveHeartRate: Flow<Int?> get() = flowOf(null)
 
     val weightUnit: Flow<WeightUnit>
 
@@ -92,7 +99,6 @@ interface TrainerGateway {
         onFailed: (String) -> Unit
     )
 
-    /** Hand back to the classic UI (for screens the Clean UI doesn't have yet). */
     /** Finished workouts for every profile, newest first. */
     val history: Flow<List<HistoryEntry>>
 
@@ -109,5 +115,6 @@ interface TrainerGateway {
     /** Sends an LED colour scheme to the trainer. */
     fun setLedScheme(index: Int)
 
+    /** Hand back to the classic UI (for screens the Clean UI doesn't have yet). */
     fun switchToClassicUi()
 }

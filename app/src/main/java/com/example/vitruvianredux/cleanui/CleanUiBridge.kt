@@ -108,6 +108,8 @@ class CleanUiBridge(
         }
     }
 
+    override val liveHeartRate: Flow<Int?> = vm.currentHeartRate
+
     override val weightUnit: Flow<WeightUnit> = vm.userPreferences.map {
         if (it.weightUnit == AppWeightUnit.LB) WeightUnit.LB else WeightUnit.KG
     }

@@ -43,7 +43,8 @@ private const val FAVOURITES = "Favourites"
 @Composable
 fun ExercisesScreen(
     state: CleanUiState,
-    onBack: () -> Unit,
+    /** Null when shown as a tab. */
+    onBack: (() -> Unit)?,
     onOpenExercise: (ExerciseCard) -> Unit,
     onRowShown: (ExerciseCard) -> Unit,
     onToggleFavorite: (ExerciseCard) -> Unit,
@@ -90,10 +91,12 @@ fun ExercisesScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 20.dp, top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = if (onBack != null) 4.dp else 20.dp, end = 20.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+            if (onBack != null) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+            }
             Text(region ?: "Exercises", style = MaterialTheme.typography.headlineLarge)
         }
         OutlinedTextField(

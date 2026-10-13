@@ -22,7 +22,8 @@ private val Context.cleanUiDataStore: DataStore<Preferences> by preferencesDataS
  * never clash in a migration.
  *
  * Holds: whether the Clean UI is switched on, each lifter's stored 1RMs
- * (benchmark or manual), and the last % used per exercise.
+ * (benchmark or manual), the last % used per exercise, and the trainer LED colour
+ * last picked (the trainer doesn't report it, and the Clean UI takes its accent from it).
  */
 class CleanUiStore private constructor(private val context: Context) {
 
@@ -75,6 +76,13 @@ class CleanUiStore private constructor(private val context: Context) {
         context.cleanUiDataStore.edit { it[intPreferencesKey("$PCT_PREFIX$exerciseId")] = percent }
     }
 
+    /** Index into the gateway's LED schemes, or null when none was picked yet. */
+    val ledScheme: Flow<Int?> = context.cleanUiDataStore.data.map { it[LED_SCHEME] }
+
+    suspend fun setLedScheme(index: Int) {
+        context.cleanUiDataStore.edit { it[LED_SCHEME] = index }
+    }
+
     private fun splitKey(id: String): Pair<String, String>? {
         val i = id.indexOf(SEP)
         if (i <= 0 || i == id.length - SEP.length) return null
@@ -83,6 +91,7 @@ class CleanUiStore private constructor(private val context: Context) {
 
     companion object {
         private val ENABLED = booleanPreferencesKey("enabled")
+        private val LED_SCHEME = intPreferencesKey("led_scheme")
         private const val ORM_PREFIX = "orm|"
         private const val SRC_PREFIX = "orm_src|"
         private const val AT_PREFIX = "orm_at|"

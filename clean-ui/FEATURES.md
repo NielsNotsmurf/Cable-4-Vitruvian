@@ -15,6 +15,9 @@ Android status:
 |---|---|---|---|
 | Who's training (up to 4, sets rotate) | Home participants picker | Train → Who's training card | Clean |
 | Add profile from training | Profiles screen | Train → + Add | Clean (Manage) |
+| Current training: everything done with less than 5 hours between exercises, with sets, reps, time and heart rate | — (new) | Train → Current training card | Clean |
+| Live heart rate on the home screen | — (new) | Train → ♥ pill, Current training card | Clean |
+| Oldest 1RMs to re-test, with Re-test (1RM test) and Train (set setup) | — (new) | Train → Due for a re-test | Clean |
 | Profiles: add with colour, delete, pick who trains | Profiles screen | Settings → Profiles (also Train → Manage) | Clean |
 | Heart rate sensor per profile (Garmin watch broadcast or strap): pair, unpair, status | Profiles screen | Profiles → ♥ on a lifter | Clean (pairing dialog hosted) |
 | Live heart rate during a set | Active workout | Lifting screen | Hosted |
@@ -22,7 +25,7 @@ Android status:
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
 | Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
 | Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |
-| Exercise search, muscle/equipment filters | Exercise picker | Exercises screen | Clean |
+| Exercise search, muscle/equipment filters | Exercise picker | Exercises tab (also Train → Pick an exercise) | Clean |
 | Favourites + "favourites only" | Exercise picker | ★ on rows, Favourites chip | Clean |
 | Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Clean (▶ in Set setup and the 1RM test) |
 | Modes: Old School, Pump, TUT, TUT Beast, Eccentric Only, Echo | Exercise config | Set setup mode chips + description | Clean |
@@ -63,7 +66,8 @@ Android status:
 | Default reps | Settings | Settings | Clean |
 | Workout beeps, haptics | Settings | Settings | Clean (beeps; the app has no haptics setting) |
 | Show exercise videos | Settings | Settings | Clean |
-| LED colour scheme | Settings | Settings → LED colour | Clean |
+| LED colour scheme | Settings | Settings → LED colour (remembered, and the app takes on the colour) | Clean |
+| App accent, centre Train button and a faint edge glow in the LED colour (orange until one is picked) | — (new) | Everywhere | Clean |
 | Theme light / dark / system | Settings | Settings → Theme | Not yet (Clean is light only) |
 | Backup and restore | Settings | Settings → Data | Hosted (Settings → Backup, restore and delete all) |
 | Connection logs (search, level filter, export) | Connection logs | Settings → Connection logs | Hosted (Settings) |

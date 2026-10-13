@@ -24,10 +24,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +44,8 @@ fun SettingsScreen(
     state: CleanUiState,
     settings: CleanSettings,
     ledSchemes: List<LedScheme>,
+    /** The scheme picked last, or -1. */
+    ledIndex: Int,
     onUpdate: ((CleanSettings) -> CleanSettings) -> Unit,
     onLedScheme: (Int) -> Unit,
     onProfiles: () -> Unit,
@@ -56,9 +54,6 @@ fun SettingsScreen(
     onProtocolTester: () -> Unit,
     onSwitchToClassic: () -> Unit
 ) {
-    // The trainer doesn't report its LED scheme, so this only marks what was sent this session.
-    var ledIndex by rememberSaveable { mutableStateOf(-1) }
-
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -106,12 +101,12 @@ fun SettingsScreen(
                                 .clip(CircleShape)
                                 .background(c)
                                 .then(if (i == ledIndex) Modifier.border(3.dp, CleanColors.Ink, CircleShape) else Modifier)
-                                .clickable(role = Role.RadioButton) { ledIndex = i; onLedScheme(i) }
+                                .clickable(role = Role.RadioButton) { onLedScheme(i) }
                         )
                     }
                 }
                 Text(
-                    if (ledIndex >= 0) "${ledSchemes[ledIndex].name} sent to the trainer." else "Tap a colour to send it to the trainer.",
+                    if (ledIndex >= 0) "${ledSchemes[ledIndex].name} is sent to the trainer and colours the app." else "Tap a colour to send it to the trainer. The app takes on the same colour.",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
