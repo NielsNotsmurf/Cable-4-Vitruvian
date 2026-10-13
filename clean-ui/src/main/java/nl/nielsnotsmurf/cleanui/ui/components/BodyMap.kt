@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -120,6 +121,14 @@ fun BodyMap(
                 layout = measurer.measure(text, style.copy(fontSize = fontSp * (maxWidth / layout.size.width)))
             }
             val center = Offset((spot.x - VIEW_LEFT) * k, (spot.y - VIEW_TOP) * k)
+            // A patch in the region's own colour hides the seam between left and right halves.
+            val pad = 1.5f * k
+            drawRoundRect(
+                fill,
+                topLeft = Offset(center.x - layout.size.width / 2f - pad, center.y - layout.size.height / 2f),
+                size = Size(layout.size.width + 2 * pad, layout.size.height.toFloat()),
+                cornerRadius = CornerRadius(2f * k)
+            )
             translate(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f) {
                 drawText(layout)
             }

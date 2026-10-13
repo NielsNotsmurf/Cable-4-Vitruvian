@@ -199,10 +199,10 @@ fun AnalyticsScreen(
                 val change = if (BodyAnalytics.isAdditive(measure)) {
                     BodyAnalytics.change(current, focusPrevious?.let { BodyAnalytics.value(it, measure) })
                 } else null
-                add(Kpi(formatMeasure(current, measure, unit), measure.label.lowercase(), change))
+                add(Kpi(formatMeasure(current, measure, unit, compact = true), kpiLabel(measure, unit), change))
                 Measure.entries.filter { it != measure && it != Measure.HEAVIEST }.forEach { m ->
                     val v = BodyAnalytics.value(focusWindow, m)
-                    add(Kpi(formatMeasure(v, m, unit), m.label.lowercase(), BodyAnalytics.change(v, focusPrevious?.let { BodyAnalytics.value(it, m) })))
+                    add(Kpi(formatMeasure(v, m, unit, compact = true), kpiLabel(m, unit), BodyAnalytics.change(v, focusPrevious?.let { BodyAnalytics.value(it, m) })))
                 }
                 add(Kpi(records.size.toString(), if (records.size == 1) "new record" else "new records", null))
                 val streak = TrainingStats.weekStreak(mine, now)
@@ -441,6 +441,17 @@ private fun BodyCard(
         } else {
             Text("Tap a region to see only that region below.", style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+/** Label under a compact number: "reps", "kg volume", … */
+private fun kpiLabel(measure: Measure, unit: WeightUnit): String {
+    val u = if (unit == WeightUnit.LB) "lb" else "kg"
+    return when (measure) {
+        Measure.VOLUME -> "$u volume"
+        Measure.HEAVIEST -> "$u heaviest"
+        Measure.TIME -> "training time"
+        else -> measure.label.lowercase()
     }
 }
 
