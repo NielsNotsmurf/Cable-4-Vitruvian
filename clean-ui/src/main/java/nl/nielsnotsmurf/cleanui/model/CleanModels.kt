@@ -168,7 +168,9 @@ data class HistoryEntry(
     val avgHeartRate: Int? = null,
     val maxHeartRate: Int? = null,
     /** Sets done back to back in one workout share this (rotations, routines). */
-    val groupId: String
+    val groupId: String,
+    /** Exercise library id; empty for Just Lift. */
+    val exerciseId: String = ""
 )
 
 /** App settings the Clean Settings tab edits. They are the classic app's own preferences. */
