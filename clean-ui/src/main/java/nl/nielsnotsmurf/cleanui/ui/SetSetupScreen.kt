@@ -105,7 +105,7 @@ fun SetSetupScreen(
             }
 
             if (showVideo && videoUrl != null) {
-                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp))
+                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp), setup.guide?.thumbnailUrl)
             }
 
             if (!bodyweight) LazyRow(

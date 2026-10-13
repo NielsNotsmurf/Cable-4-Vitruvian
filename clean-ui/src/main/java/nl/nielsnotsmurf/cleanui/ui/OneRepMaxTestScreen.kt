@@ -181,7 +181,7 @@ private fun IntroContent(test: TestState, knownKg: Float?) {
     val guide = test.guide
     val videoUrl = guide?.videoUrl
     if (videoUrl != null) {
-        DemoVideo(videoUrl)
+        DemoVideo(videoUrl, thumbnailUrl = guide?.thumbnailUrl)
     } else Box(
         modifier = Modifier
             .fillMaxWidth()
