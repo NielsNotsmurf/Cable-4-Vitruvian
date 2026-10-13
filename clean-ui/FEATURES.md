@@ -14,8 +14,8 @@ Android status:
 | Feature | Classic location | Clean layout | Android |
 |---|---|---|---|
 | Who's training (up to 4, sets rotate) | Home participants picker | Train → Who's training card | Clean |
-| Add profile from training | Profiles screen | Train → + Add | Hosted (Manage) |
-| Profiles: add, edit colour, delete, default | Profiles screen | Settings → Profiles (also Train → Manage) | Hosted |
+| Add profile from training | Profiles screen | Train → + Add | Clean (Manage) |
+| Profiles: add with colour, delete, pick who trains | Profiles screen | Settings → Profiles (also Train → Manage) | Clean |
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
 | Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
 | Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |

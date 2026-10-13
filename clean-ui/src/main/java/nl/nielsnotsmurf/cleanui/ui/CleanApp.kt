@@ -61,6 +61,7 @@ object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
     const val MUSCLE_GROUPS = "clean_muscle_groups"
+    const val PROFILES = "profiles"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
@@ -75,7 +76,6 @@ enum class ClassicScreen(val route: String, val title: String?, val showBack: Bo
     HISTORY("clean_history", "History"),
     ANALYTICS("analytics", "Analytics"),
     SETTINGS("settings", "Settings"),
-    PROFILES("profiles", "Profiles", showBack = true),
     ASSESSMENT("baseline_assessment", null),
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
     PROTOCOL_TESTER("protocol_tester", null)
@@ -137,7 +137,7 @@ fun CleanApp(
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
                             onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
                             onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
-                            onManageProfiles = { nav.navigate(ClassicScreen.PROFILES.route) },
+                            onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
                             onRowShown = vm::requestEstimates
                         )
                     }
@@ -152,6 +152,15 @@ fun CleanApp(
                             onRowShown = vm::requestEstimates,
                             onToggleFavorite = vm::toggleFavorite,
                             region = entry.arguments?.getString("region")
+                        )
+                    }
+                    composable(CleanRoutes.PROFILES) {
+                        ProfilesScreen(
+                            state = state,
+                            onBack = { nav.popBackStack() },
+                            onToggleLifter = vm::toggleLifter,
+                            onAdd = vm::addLifter,
+                            onDelete = vm::deleteLifter
                         )
                     }
                     composable(CleanRoutes.MUSCLE_GROUPS) {

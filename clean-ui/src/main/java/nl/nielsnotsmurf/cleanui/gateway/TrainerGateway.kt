@@ -28,6 +28,12 @@ interface TrainerGateway {
     /** Choose who's training. Sets rotate through [lifterIds] in order. */
     fun setActiveLifters(lifterIds: List<String>)
 
+    /** Creates a profile. */
+    fun addLifter(name: String, colorArgb: Int)
+
+    /** Deletes a profile (never the last one). Their workout history stays. */
+    fun deleteLifter(lifterId: String)
+
     val connection: Flow<TrainerConnection>
 
     val weightUnit: Flow<WeightUnit>

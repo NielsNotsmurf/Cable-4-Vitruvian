@@ -39,7 +39,6 @@ import com.example.vitruvianredux.presentation.screen.BaselineAssessmentScreen
 import com.example.vitruvianredux.presentation.screen.ConnectionLogsScreen
 import com.example.vitruvianredux.presentation.screen.HistoryTab
 import com.example.vitruvianredux.presentation.screen.JustLiftScreen
-import com.example.vitruvianredux.presentation.screen.ProfileSelectionScreen
 import com.example.vitruvianredux.presentation.screen.ProtocolTesterScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import com.example.vitruvianredux.ui.theme.ThemeMode
@@ -121,7 +120,6 @@ private fun ClassicScreenContent(screen: ClassicScreen, nav: NavController, view
         ClassicScreen.HISTORY -> ClassicHistory(viewModel)
         ClassicScreen.ANALYTICS -> AnalyticsScreen(viewModel = viewModel, themeMode = ThemeMode.LIGHT)
         ClassicScreen.SETTINGS -> ClassicSettingsRoute(navController = nav, viewModel = viewModel)
-        ClassicScreen.PROFILES -> ProfileSelectionScreen(viewModel = viewModel, onNavigateBack = { nav.popBackStack() })
         ClassicScreen.ASSESSMENT -> BaselineAssessmentScreen(navController = nav, viewModel = viewModel)
         ClassicScreen.CONNECTION_LOGS -> ConnectionLogsScreen(onNavigateBack = { nav.popBackStack() }, mainViewModel = viewModel)
         ClassicScreen.PROTOCOL_TESTER -> ProtocolTesterScreen(onNavigateBack = { nav.popBackStack() })

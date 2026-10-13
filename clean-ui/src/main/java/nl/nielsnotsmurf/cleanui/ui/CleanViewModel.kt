@@ -156,6 +156,14 @@ class CleanViewModel(
     private val _setup = MutableStateFlow<SetupState?>(null)
     val setup: StateFlow<SetupState?> = _setup.asStateFlow()
 
+    fun addLifter(name: String, colorArgb: Int) {
+        if (name.isNotBlank()) gateway.addLifter(name.trim(), colorArgb)
+    }
+
+    fun deleteLifter(lifterId: String) {
+        if (state.value.lifters.size > 1) gateway.deleteLifter(lifterId)
+    }
+
     fun toggleLifter(lifterId: String) {
         val current = state.value.activeLifters.map { it.id }
         val next = if (lifterId in current) current - lifterId else current + lifterId

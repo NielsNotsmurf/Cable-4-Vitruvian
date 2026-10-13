@@ -66,6 +66,19 @@ class CleanUiBridge(
             if (participants.isNotEmpty()) participants.map { it.id } else listOf(activeId)
         }
 
+    override fun addLifter(name: String, colorArgb: Int) = vm.createProfile(name, colorArgb)
+
+    override fun deleteLifter(lifterId: String) {
+        val profile = vm.profiles.value.firstOrNull { it.id == lifterId } ?: return
+        // Take them out of the rotation first, so nobody trains as a deleted profile.
+        val participants = vm.workoutParticipants.value.map { it.id }
+        if (lifterId in participants) {
+            val rest = participants - lifterId
+            setActiveLifters(rest.ifEmpty { vm.profiles.value.map { it.id }.filter { it != lifterId }.take(1) })
+        }
+        vm.deleteProfile(profile)
+    }
+
     override fun setActiveLifters(lifterIds: List<String>) {
         if (lifterIds.isEmpty()) return
         val byId = vm.profiles.value.associateBy { it.id }
