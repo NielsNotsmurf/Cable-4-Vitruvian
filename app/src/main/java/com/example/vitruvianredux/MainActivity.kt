@@ -24,7 +24,7 @@ import com.example.vitruvianredux.presentation.screen.EnhancedMainScreen
 import com.example.vitruvianredux.presentation.screen.LargeSplashScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import com.example.vitruvianredux.presentation.viewmodel.ThemeViewModel
-import com.example.vitruvianredux.ui.theme.VitruvianProjectPhoenixTheme
+import com.example.vitruvianredux.ui.theme.VitruvianTheme
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
                 showLargeSplash = false
             }
 
-            VitruvianProjectPhoenixTheme(themeMode = themeMode) {
+            VitruvianTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

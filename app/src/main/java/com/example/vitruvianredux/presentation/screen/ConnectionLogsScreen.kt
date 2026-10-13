@@ -236,11 +236,9 @@ fun ConnectionLogsScreen(
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_EMAIL, arrayOf("VitruvianRedux@gmail.com"))
-                                putExtra(Intent.EXTRA_SUBJECT, "VitruvianRedux Connection Logs - Issue Report")
+                                putExtra(Intent.EXTRA_SUBJECT, "vitruvian- connection logs")
                                 putExtra(Intent.EXTRA_TEXT,
-                                    "Attached are my VitruvianRedux connection logs.\n\n" +
-                                    "GitHub Issue #: (fill in if applicable)\n" +
+                                    "Attached are my vitruvian- connection logs.\n\n" +
                                     "Device Model: ${android.os.Build.MODEL}\n" +
                                     "Android Version: ${android.os.Build.VERSION.RELEASE}\n\n" +
                                     "Description of issue:\n" +

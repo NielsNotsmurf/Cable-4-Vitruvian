@@ -10,7 +10,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryPurpleDark,               // Desaturated purple reduces eye strain
-    onPrimary = TextPrimary,                   // White text on purple
+    onPrimary = BackgroundBlack,               // Black text on white primary
     primaryContainer = PurpleAccentDark,       // Desaturated purple container
     onPrimaryContainer = TextPrimary,
 
@@ -81,7 +81,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun VitruvianProjectPhoenixTheme(
+fun VitruvianTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {

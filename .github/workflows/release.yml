@@ -79,12 +79,12 @@ jobs:
         run: |
           ./gradlew --no-daemon :app:assembleProductionRelease
           mkdir -p dist
-          cp app/build/outputs/apk/production/release/*.apk "dist/phoenix-${APP_VERSION_NAME}.apk"
+          cp app/build/outputs/apk/production/release/*.apk "dist/vitruvian-${APP_VERSION_NAME}.apk"
           ls -l dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: phoenix-release-apk
+          name: vitruvian-release-apk
           path: dist/*.apk
 
       - name: Publish GitHub release
@@ -94,5 +94,5 @@ jobs:
         run: |
           gh release create "v${APP_VERSION_NAME}" dist/*.apk \
             --target "$GITHUB_SHA" \
-            --title "Phoenix ${APP_VERSION_NAME}" \
+            --title "vitruvian- ${APP_VERSION_NAME}" \
             --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"
