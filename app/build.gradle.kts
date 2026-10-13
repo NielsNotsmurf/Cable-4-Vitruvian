@@ -15,8 +15,9 @@ android {
         applicationId = "com.example.vitruvianredux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.1.0"
+        // CI release builds pass these so every published APK upgrades the last one
+        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 11
+        versionName = System.getenv("APP_VERSION_NAME") ?: "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -26,11 +27,18 @@ android {
 
     signingConfigs {
         create("release") {
-            // Using debug keystore for signing release builds
-            // This allows the app to be installed without "invalid package" errors
-            // For open-source projects, this enables community builds without keystore management
+            // CI release builds sign with the private key from the repo's GitHub secrets,
+            // so every published APK has the same signature and installs over the last one.
+            val ciKeystore = System.getenv("SIGNING_KEYSTORE_PATH")?.let { file(it) }
+            // Local builds fall back to the debug keystore, which allows the app to be
+            // installed without "invalid package" errors.
             val keystorePath = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            if (keystorePath.exists()) {
+            if (ciKeystore != null && ciKeystore.exists()) {
+                storeFile = ciKeystore
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            } else if (keystorePath.exists()) {
                 storeFile = keystorePath
                 storePassword = "android"
                 keyAlias = "androiddebugkey"
