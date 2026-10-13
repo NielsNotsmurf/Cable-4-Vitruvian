@@ -26,6 +26,17 @@ class TrainingStatsTest {
     }
 
     @Test
+    fun exerciseAveragesCoverOneLifterAndExerciseInTheRange() {
+        val e = listOf(entry("Bench", 1, 40f), entry("Bench", 10, 30f, reps = 30), entry("Bench", 60, 20f), entry("Row", 1, 50f))
+        val month = TrainingStats.exerciseAverages(e, "bench", "a", since = now - 30 * day)!!
+        assertEquals(2, month.workouts)
+        assertEquals(35f, month.avgKg!!, 0.01f)
+        assertEquals(9f, month.avgRepsPerSet, 0.01f)
+        assertEquals(30f, TrainingStats.exerciseAverages(e, "Bench", "a")!!.avgKg!!, 0.01f)
+        assertEquals(null, TrainingStats.exerciseAverages(e, "Bench", "b"))
+    }
+
+    @Test
     fun streakCountsWeeksInARowAndForgivesAnEmptyCurrentWeek() {
         assertEquals(3, TrainingStats.weekStreak(listOf(entry("B", 1, 1f), entry("B", 8, 1f), entry("B", 15, 1f), entry("B", 40, 1f)), now))
         assertEquals(2, TrainingStats.weekStreak(listOf(entry("B", 8, 1f), entry("B", 15, 1f)), now))

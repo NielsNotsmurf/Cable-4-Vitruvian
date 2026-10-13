@@ -183,3 +183,35 @@ data class CleanSettings(
 
 /** A trainer LED colour scheme: its name and the colours it cycles through. */
 data class LedScheme(val name: String, val colorsArgb: List<Int>)
+
+/** Where the set on the trainer is, as the Clean lifting screen shows it. */
+enum class LivePhase { STARTING, COUNTDOWN, LIFTING, SET_DONE, RESTING, FINISHED, OTHER }
+
+/** Live state of the set on the trainer. Loads are per cable in kg. */
+data class LiveWorkout(
+    val phase: LivePhase,
+    val exerciseName: String = "",
+    val countdown: Int = 0,
+    val reps: Int = 0,
+    val targetReps: Int? = null,
+    val warmupReps: Int = 0,
+    val warmupTarget: Int = 0,
+    val warmupDone: Boolean = true,
+    val loadKg: Float = 0f,
+    val liveLoadKg: Float = 0f,
+    /** Handle height in the learned rep range, 0 (bottom) to 1 (top); null until learned. */
+    val position: Float? = null,
+    val setNumber: Int = 0,
+    val totalSets: Int = 0,
+    val restSeconds: Int = 0,
+    val nextName: String = "",
+    val isLastExercise: Boolean = false,
+    val lifterId: String? = null,
+    val lifterName: String? = null,
+    val lifterColorArgb: Int? = null,
+    val doneReps: Int = 0,
+    val peakPower: Float = 0f,
+    val avgPower: Float = 0f,
+    /** True for a bodyweight exercise, which only the classic screen times. */
+    val bodyweight: Boolean = false
+)

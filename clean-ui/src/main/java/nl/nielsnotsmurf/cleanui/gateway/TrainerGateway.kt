@@ -1,7 +1,9 @@
 package nl.nielsnotsmurf.cleanui.gateway
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
@@ -79,6 +81,19 @@ interface TrainerGateway {
      * connected and the first set is armed; the host then shows the lifting screen.
      */
     fun startExercise(plan: SetPlan, onStarted: () -> Unit, onFailed: (String) -> Unit)
+
+    /** Live state of the set on the trainer, or null when the host has none to share. */
+    val liveWorkout: Flow<LiveWorkout?> get() = flowOf(null)
+
+    /** A short line per personal record set during the workout, e.g. "Bench press · 40 kg × 8". */
+    val personalRecords: Flow<String> get() = emptyFlow()
+
+    /** Controls for the set on the trainer, used by the Clean lifting screen. */
+    fun skipRest() {}
+    fun proceedFromSummary() {}
+    fun stopWorkout() {}
+    fun advanceToNextExercise() {}
+    fun resetForNewWorkout() {}
 
     /** Exercises of the 1RM test, in order: the main lift for each muscle group. */
     val oneRepMaxTestExercises: List<TestAnchor>

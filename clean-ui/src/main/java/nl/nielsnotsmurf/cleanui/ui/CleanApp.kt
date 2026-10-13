@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -282,7 +285,35 @@ fun CleanApp(
                             )
                         }
                     }
-                    composable(CleanRoutes.ACTIVE_WORKOUT) { activeWorkoutContent(nav) }
+                    composable(CleanRoutes.ACTIVE_WORKOUT) {
+                        val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
+                        var classicView by rememberSaveable { mutableStateOf(false) }
+                        var record by remember { mutableStateOf<String?>(null) }
+                        LaunchedEffect(Unit) {
+                            gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
+                        }
+                        val l = live
+                        // A 1RM attempt is running while the test is open underneath.
+                        val attemptMode = test != null
+                        if (l == null || classicView || !l.isCleanReady()) {
+                            activeWorkoutContent(nav)
+                        } else {
+                            LiveWorkoutScreen(
+                                live = l,
+                                unit = state.unit,
+                                heartRate = heartRate,
+                                history = history,
+                                personalRecord = record,
+                                attemptMode = attemptMode,
+                                onSkipRest = gateway::skipRest,
+                                onContinue = gateway::proceedFromSummary,
+                                onNextExercise = gateway::advanceToNextExercise,
+                                onStop = { gateway.stopWorkout(); nav.popBackStack() },
+                                onDone = { nav.popBackStack(); gateway.resetForNewWorkout() },
+                                onClassicView = { classicView = true }
+                            )
+                        }
+                    }
                     composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
                     ClassicScreen.entries.forEach { screen ->
                         composable(screen.route) {
