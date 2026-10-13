@@ -236,7 +236,6 @@ private fun CurrentTraining(
     val minutes = ((now - start) / MINUTE_MS).coerceAtLeast(0)
     val heartRates = session.mapNotNull { it.avgHeartRate }
     val avgHeartRate = if (heartRates.isEmpty()) null else heartRates.average().toInt()
-    val maxHeartRate = session.mapNotNull { it.maxHeartRate }.maxOrNull()
     val shape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
@@ -269,7 +268,7 @@ private fun CurrentTraining(
                 (liveHeartRate ?: avgHeartRate)?.toString() ?: "–",
                 when {
                     liveHeartRate != null -> "bpm now"
-                    maxHeartRate != null -> "avg bpm · max $maxHeartRate"
+                    avgHeartRate != null -> "avg bpm"
                     else -> "bpm"
                 },
                 Modifier.weight(1f)
