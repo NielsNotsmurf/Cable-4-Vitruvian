@@ -907,22 +907,22 @@ fun SettingsTab(
                         .shadow(8.dp, RoundedCornerShape(20.dp))
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500))
+                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)
                             ),
                             RoundedCornerShape(20.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = "Support the developer",
+                        Icons.Default.Info,
+                        contentDescription = "Credits",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(Spacing.medium))
                 Text(
-                    "Like My Work?",
+                    "Credits",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -930,18 +930,18 @@ fun SettingsTab(
             }
             Spacer(modifier = Modifier.height(Spacing.small))
             Text(
-                "This app is 100% free with no ads, but I graciously accept donations if you are so inclined!",
+                "vitruvian- is a personal build based on the open-source, MIT-licensed Vitruvian Project Phoenix Android app by 9th Level Software.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(Spacing.small))
             Text(
-                "buymeacoffee.com/VitruvianRedux",
+                "Original project on GitHub",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/VitruvianRedux"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/9thLevelSoftware/VitruvianProjectPhoenix"))
                     context.startActivity(intent)
                 }
             )
@@ -1657,7 +1657,7 @@ fun SettingsTab(
                 Text("Build: ${com.example.vitruvianredux.BuildConfig.BUILD_TYPE_LABEL}", color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(Spacing.small))
                 Text(
-                    "Open source community project to control Vitruvian Trainer machines locally.",
+                    "vitruvian-: a minimal, personal app for training on a Vitruvian Trainer, fully offline.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -79,7 +79,7 @@ object DeviceInfo {
      */
     fun getFormattedInfo(): String {
         return buildString {
-            appendLine("App: VitruvianRedux v$appVersionName (build $appVersionCode)")
+            appendLine("App: vitruvian- v$appVersionName (build $appVersionCode)")
             appendLine("Build Type: $buildType")
             appendLine()
             appendLine("Device: $manufacturer $model")
