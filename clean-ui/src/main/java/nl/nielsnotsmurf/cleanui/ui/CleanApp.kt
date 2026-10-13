@@ -67,6 +67,7 @@ object CleanRoutes {
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
     const val SETTINGS = "clean_settings"
+    const val ANALYTICS = "clean_analytics"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
@@ -78,7 +79,7 @@ object CleanRoutes {
  * classic graph. [title] is shown above screens that relied on the classic top bar.
  */
 enum class ClassicScreen(val route: String, val title: String?, val showBack: Boolean = false) {
-    ANALYTICS("analytics", "Analytics"),
+    ANALYTICS("analytics", "Charts and insights", showBack = true),
     SETTINGS("settings", "More settings", showBack = true),
     ASSESSMENT("baseline_assessment", null),
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
@@ -90,7 +91,7 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 private val TABS = listOf(
     Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
     Tab(CleanRoutes.HISTORY, "History", Icons.Outlined.History),
-    Tab(ClassicScreen.ANALYTICS.route, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
+    Tab(CleanRoutes.ANALYTICS, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
     Tab(CleanRoutes.SETTINGS, "Settings", Icons.Outlined.Settings)
 )
 
@@ -164,6 +165,13 @@ fun CleanApp(
                     }
                     composable(CleanRoutes.HISTORY) {
                         HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
+                    }
+                    composable(CleanRoutes.ANALYTICS) {
+                        AnalyticsScreen(
+                            state = state,
+                            history = history,
+                            onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) }
+                        )
                     }
                     composable(CleanRoutes.SETTINGS) {
                         SettingsScreen(

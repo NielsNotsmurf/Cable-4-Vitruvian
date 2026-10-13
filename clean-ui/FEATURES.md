@@ -53,12 +53,12 @@ Android status:
 | Strength assessment (9 anchors, too easy/right/hard) | Baseline Assessment | Replaced by the 1RM test | Hosted |
 | 1RM test: demo, warm-up, single-rep attempts going up until a miss; starts at 90% of a known 1RM | — (new) | Train → 1RM test, or Test 1RM on a lifter card in Set setup | Clean (attempts load on the trainer) |
 | Workout history, per session detail, delete, delete all | History tab | History tab | Clean (delete all in Settings, hosted) |
-| Analytics: strength score, this week, recent PRs, top exercises | Analytics dashboard | Analytics → Overview | Hosted (Analytics tab) |
-| PR tracker, weight/volume PR, chart or list | Analytics progression | Analytics → Progress | Hosted (Analytics tab) |
-| Muscle balance, consistency, volume vs intensity, modes | Insights | Analytics → Insights | Hosted (Analytics tab) |
-| Safety events (deload, ROM, spotter) | Safety card | Insights + session detail | Hosted (Analytics tab) |
-| Per-profile filter | Analytics chips | Lifter chips on History and Analytics | Clean on History, hosted on Analytics |
-| Export CSV (workouts, PRs, PR progression) | Analytics | Analytics ⤓, History ⋮, Settings | Hosted (Analytics tab) |
+| Analytics: strength score, this week, recent PRs, top exercises | Analytics dashboard | Analytics → Overview | Clean (this week, week streak, 1RMs, recent records, progress per exercise) |
+| PR tracker, weight/volume PR, chart or list | Analytics progression | Analytics → Progress | Clean (progress lines); full PR charts hosted under Charts and insights |
+| Muscle balance, consistency, volume vs intensity, modes | Insights | Analytics → Insights | Hosted (Analytics → Charts and insights) |
+| Safety events (deload, ROM, spotter) | Safety card | Insights + session detail | Hosted (Analytics → Charts and insights) |
+| Per-profile filter | Analytics chips | Lifter chips on History and Analytics | Clean |
+| Export CSV (workouts, PRs, PR progression) | Analytics | Analytics ⤓, History ⋮, Settings | Hosted (Analytics → Charts and insights) |
 | Weight unit kg / lb | Settings | Settings → Weight unit | Clean |
 | Default reps | Settings | Settings | Clean |
 | Workout beeps, haptics | Settings | Settings | Clean (beeps; the app has no haptics setting) |
