@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,7 +59,9 @@ fun ProfilesScreen(
     onBack: () -> Unit,
     onToggleLifter: (String) -> Unit,
     onAdd: (name: String, colorArgb: Int) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    /** Opens pairing for a heart rate sensor (Garmin watch or strap); null hides it. */
+    onHeartRate: ((String) -> Unit)? = null
 ) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -102,6 +106,21 @@ fun ProfilesScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (training) l.color else CleanColors.Muted
                             )
+                            l.lifter.heartRateSensor?.let { sensor ->
+                                Text(
+                                    "♥ $sensor · " + if (l.lifter.heartRateConnected) "connected" else "not broadcasting",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                        if (onHeartRate != null) {
+                            IconButton(onClick = { onHeartRate(l.id) }) {
+                                Icon(
+                                    if (l.lifter.heartRateSensor != null) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = "Heart rate sensor for ${l.name}",
+                                    tint = if (l.lifter.heartRateConnected) CleanColors.Danger else CleanColors.Muted
+                                )
+                            }
                         }
                         if (state.lifters.size > 1) {
                             IconButton(onClick = { deleteId = l.id }) {

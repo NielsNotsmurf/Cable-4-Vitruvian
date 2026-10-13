@@ -27,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,7 +105,9 @@ fun CleanApp(
     gateway: TrainerGateway,
     activeWorkoutContent: @Composable (NavController) -> Unit,
     justLiftContent: @Composable (NavController) -> Unit,
-    classicContent: @Composable (ClassicScreen, NavController) -> Unit
+    classicContent: @Composable (ClassicScreen, NavController) -> Unit,
+    /** The app's heart rate sensor pairing for one lifter (Garmin watch or strap). */
+    heartRateContent: (@Composable (lifterId: String, onDismiss: () -> Unit) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val vm: CleanViewModel = viewModel(factory = CleanViewModel.factory(gateway, CleanUiStore.get(context)))
@@ -175,13 +180,16 @@ fun CleanApp(
                         )
                     }
                     composable(CleanRoutes.PROFILES) {
+                        var heartRateFor by rememberSaveable { mutableStateOf<String?>(null) }
                         ProfilesScreen(
                             state = state,
                             onBack = { nav.popBackStack() },
                             onToggleLifter = vm::toggleLifter,
                             onAdd = vm::addLifter,
-                            onDelete = vm::deleteLifter
+                            onDelete = vm::deleteLifter,
+                            onHeartRate = if (heartRateContent != null) ({ heartRateFor = it }) else null
                         )
+                        heartRateFor?.let { id -> heartRateContent?.invoke(id) { heartRateFor = null } }
                     }
                     composable(CleanRoutes.MUSCLE_GROUPS) {
                         MuscleGroupsScreen(

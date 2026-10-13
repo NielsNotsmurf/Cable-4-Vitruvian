@@ -10,7 +10,10 @@ data class Lifter(
     val id: String,
     val name: String,
     /** ARGB colour chosen for the profile; used for chips, bands and 1RM text. */
-    val colorArgb: Int
+    val colorArgb: Int,
+    /** Name of the paired heart rate sensor (Garmin watch or strap), if any. */
+    val heartRateSensor: String? = null,
+    val heartRateConnected: Boolean = false
 )
 
 data class ExerciseCard(
@@ -162,6 +165,8 @@ data class HistoryEntry(
     /** Heaviest load per cable; null for Echo, which adapts the load. */
     val topKgPerCable: Float?,
     val durationMs: Long,
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null,
     /** Sets done back to back in one workout share this (rotations, routines). */
     val groupId: String
 )

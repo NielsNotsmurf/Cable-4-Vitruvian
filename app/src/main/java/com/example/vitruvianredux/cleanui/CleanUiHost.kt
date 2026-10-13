@@ -34,6 +34,7 @@ import com.example.vitruvianredux.presentation.screen.ActiveWorkoutScreen
 import com.example.vitruvianredux.presentation.screen.AnalyticsScreen
 import com.example.vitruvianredux.presentation.screen.BaselineAssessmentScreen
 import com.example.vitruvianredux.presentation.screen.ConnectionLogsScreen
+import com.example.vitruvianredux.presentation.screen.HeartRateSensorDialog
 import com.example.vitruvianredux.presentation.screen.JustLiftScreen
 import com.example.vitruvianredux.presentation.screen.ProtocolTesterScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
@@ -105,6 +106,22 @@ fun CleanUiHost(viewModel: MainViewModel) {
         classicContent = { screen, nav ->
             VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
                 ClassicScreenContent(screen, nav, viewModel)
+            }
+        },
+        heartRateContent = { lifterId, onDismiss ->
+            val profiles by viewModel.profiles.collectAsState()
+            profiles.firstOrNull { it.id == lifterId }?.let { profile ->
+                VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+                    HeartRateSensorDialog(
+                        viewModel = viewModel,
+                        profile = profile,
+                        otherProfiles = profiles.filter { it.id != lifterId },
+                        onDismiss = {
+                            viewModel.stopHeartRateScan()
+                            onDismiss()
+                        }
+                    )
+                }
             }
         }
     )

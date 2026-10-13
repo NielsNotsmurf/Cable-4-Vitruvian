@@ -147,6 +147,7 @@ fun HistoryScreen(
                     w.entries.groupBy { it.lifterId }.forEach { (lifterId, list) ->
                         val l = byId[lifterId]
                         val top = list.mapNotNull { it.topKgPerCable }.maxOrNull()
+                        val maxHr = list.mapNotNull { it.maxHeartRate }.maxOrNull()
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             l?.let { Dot(it.color) }
                             Text(
@@ -154,6 +155,7 @@ fun HistoryScreen(
                                     append(l?.name ?: "Removed profile")
                                     append(" · ${list.sumOf { it.sets }} sets · ${list.sumOf { it.reps }} reps")
                                     append(if (top != null) " · top ${LoadCalculator.format(top, state.unit)}" else " · adaptive load")
+                                    if (maxHr != null) append(" · ♥ max $maxHr")
                                 },
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -161,6 +163,14 @@ fun HistoryScreen(
                     }
                     if (open) {
                         val secs = w.entries.sumOf { it.durationMs } / 1000
+                        w.entries.filter { it.maxHeartRate != null }.groupBy { it.lifterId }.forEach { (id, list) ->
+                            val avg = list.mapNotNull { it.avgHeartRate }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+                            Text(
+                                "${byId[id]?.name ?: "Removed profile"}: heart rate " +
+                                    (if (avg != null) "avg $avg · " else "") + "max ${list.mapNotNull { it.maxHeartRate }.max()} bpm",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         if (secs > 0) {
                             Text("Duration: ${secs / 60} min ${secs % 60} s", style = MaterialTheme.typography.bodySmall)
                         }

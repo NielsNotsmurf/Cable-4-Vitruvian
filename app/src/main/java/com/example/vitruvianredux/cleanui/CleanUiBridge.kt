@@ -63,7 +63,14 @@ class CleanUiBridge(
 ) : TrainerGateway {
 
     override val lifters: Flow<List<Lifter>> =
-        vm.profiles.map { profiles -> profiles.map { it.toLifter() } }
+        combine(vm.profiles, vm.connectedHeartRateSensors) { profiles, connected ->
+            profiles.map { p ->
+                p.toLifter().copy(
+                    heartRateSensor = p.hrSensorName,
+                    heartRateConnected = p.hrSensorAddress != null && p.hrSensorAddress in connected
+                )
+            }
+        }
 
     override val activeLifterIds: Flow<List<String>> =
         combine(vm.workoutParticipants, vm.activeProfileId) { participants, activeId ->
@@ -320,6 +327,8 @@ class CleanUiBridge(
                 reps = s.workingReps.takeIf { it > 0 } ?: s.totalReps,
                 topKgPerCable = s.weightPerCableKg.takeUnless { s.mode.contains("Echo", ignoreCase = true) },
                 durationMs = s.duration,
+                avgHeartRate = s.avgHeartRate,
+                maxHeartRate = s.maxHeartRate,
                 groupId = s.routineSessionId ?: s.id
             )
         }

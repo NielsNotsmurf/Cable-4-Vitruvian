@@ -16,6 +16,9 @@ Android status:
 | Who's training (up to 4, sets rotate) | Home participants picker | Train → Who's training card | Clean |
 | Add profile from training | Profiles screen | Train → + Add | Clean (Manage) |
 | Profiles: add with colour, delete, pick who trains | Profiles screen | Settings → Profiles (also Train → Manage) | Clean |
+| Heart rate sensor per profile (Garmin watch broadcast or strap): pair, unpair, status | Profiles screen | Profiles → ♥ on a lifter | Clean (pairing dialog hosted) |
+| Live heart rate during a set | Active workout | Lifting screen | Hosted |
+| Heart rate in history (avg / max per set) | History cards | History rows and workout detail | Clean |
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
 | Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
 | Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |
