@@ -1,6 +1,8 @@
 package nl.nielsnotsmurf.cleanui.logic
 
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
+import nl.nielsnotsmurf.cleanui.model.OneRepMax
+import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -42,5 +44,40 @@ class TrainingStatsTest {
     fun recordsAreLoadsThatBeatEverythingBefore() {
         val r = TrainingStats.records(listOf(entry("Bench", 30, 40f), entry("Bench", 20, 45f), entry("Bench", 10, 44f), entry("Bench", 5, 47.5f)))
         assertEquals(listOf(47.5f, 45f), r.map { it.kg })
+    }
+
+    private val hour = 60 * 60 * 1000L
+
+    private fun at(name: String, hoursAgo: Double) = entry(name, 0, 40f).copy(
+        id = "$name-$hoursAgo", timestamp = now - (hoursAgo * hour).toLong()
+    )
+
+    @Test
+    fun currentSessionChainsSetsLessThanFiveHoursApart() {
+        val e = listOf(at("Bench", 0.5), at("Row", 4.0), at("Squat", 8.5), at("Curl", 14.0))
+        // 0.5h -> 4h -> 8.5h are each under 5h apart; 14h is 5.5h after Squat.
+        assertEquals(listOf("Squat", "Row", "Bench"), TrainingStats.currentSession(e, now).map { it.exerciseName })
+    }
+
+    @Test
+    fun currentSessionIsEmptyWhenTheLastSetIsFiveHoursOld() {
+        assertEquals(emptyList<HistoryEntry>(), TrainingStats.currentSession(listOf(at("Bench", 5.0), at("Row", 6.0)), now))
+        assertEquals(emptyList<HistoryEntry>(), TrainingStats.currentSession(emptyList(), now))
+    }
+
+    @Test
+    fun longestStandingListsTheOldestDatedOneRepMaxesOfTheGivenLifters() {
+        val orms = mapOf(
+            "a" to mapOf(
+                "bench" to OneRepMax(60f, OneRepMaxSource.BENCHMARK, 300L),
+                "row" to OneRepMax(50f, OneRepMaxSource.HISTORY, 100L),
+                "curl" to OneRepMax(20f, OneRepMaxSource.RELATED),
+                "squat" to OneRepMax(80f, OneRepMaxSource.MANUAL, 0L)
+            ),
+            "b" to mapOf("bench" to OneRepMax(40f, OneRepMaxSource.BENCHMARK, 200L)),
+            "c" to mapOf("bench" to OneRepMax(40f, OneRepMaxSource.BENCHMARK, 1L))
+        )
+        val r = TrainingStats.longestStanding(orms, listOf("a", "b"), limit = 2)
+        assertEquals(listOf("a" to "row", "b" to "bench"), r.map { it.lifterId to it.exerciseId })
     }
 }

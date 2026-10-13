@@ -7,16 +7,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,10 +37,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,10 +99,12 @@ enum class ClassicScreen(val route: String, val title: String?, val showBack: Bo
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
+/** Train sits in the middle as a round button. */
 private val TABS = listOf(
-    Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
     Tab(CleanRoutes.HISTORY, "History", Icons.Outlined.History),
     Tab(CleanRoutes.ANALYTICS, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
+    Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
+    Tab(CleanRoutes.EXERCISES, "Exercises", Icons.Outlined.Search),
     Tab(CleanRoutes.SETTINGS, "Settings", Icons.Outlined.Settings)
 )
 
@@ -117,9 +130,14 @@ fun CleanApp(
     val test by vm.test.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val heartRate by vm.heartRate.collectAsStateWithLifecycle()
+    val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
+    // Exercises takes an optional region; without one it is the Exercises tab.
+    val currentRoute = backStack?.destination?.route?.substringBefore('?')
+    val isTab = TABS.any { it.route == currentRoute } &&
+        !(currentRoute == CleanRoutes.EXERCISES && backStack?.arguments?.getString("region") != null)
 
     fun openTab(route: String) {
         nav.navigate(route) {
@@ -131,7 +149,7 @@ fun CleanApp(
 
     CleanTheme {
         Surface(color = CleanColors.Background, modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Column(Modifier.fillMaxSize().edgeGlow(CleanColors.Glow).safeDrawingPadding()) {
                 NavHost(
                     navController = nav,
                     startDestination = CleanRoutes.TRAIN,
@@ -140,13 +158,19 @@ fun CleanApp(
                     composable(CleanRoutes.TRAIN) {
                         TodayScreen(
                             state = state,
+                            history = history,
+                            heartRate = heartRate,
                             onToggleLifter = vm::toggleLifter,
-                            onPickExercise = { nav.navigate(CleanRoutes.EXERCISES) },
+                            onPickExercise = { openTab(CleanRoutes.EXERCISES) },
                             onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
                             onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
                             onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
                             onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                            onRetest = { lifterId, exerciseId ->
+                                vm.openTest(lifterId, listOf(exerciseId))
+                                nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
+                            },
                             onRowShown = vm::requestEstimates
                         )
                     }
@@ -154,13 +178,14 @@ fun CleanApp(
                         "${CleanRoutes.EXERCISES}?region={region}",
                         arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
                     ) { entry ->
+                        val region = entry.arguments?.getString("region")
                         ExercisesScreen(
                             state = state,
-                            onBack = { nav.popBackStack() },
+                            onBack = if (region != null) ({ nav.popBackStack(); Unit }) else null,
                             onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
                             onRowShown = vm::requestEstimates,
                             onToggleFavorite = vm::toggleFavorite,
-                            region = entry.arguments?.getString("region")
+                            region = region
                         )
                     }
                     composable(CleanRoutes.HISTORY) {
@@ -178,8 +203,9 @@ fun CleanApp(
                             state = state,
                             settings = settings,
                             ledSchemes = gateway.ledSchemes,
+                            ledIndex = ledScheme,
                             onUpdate = vm::updateSettings,
-                            onLedScheme = gateway::setLedScheme,
+                            onLedScheme = vm::setLedScheme,
                             onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
                             onMoreSettings = { nav.navigate(ClassicScreen.SETTINGS.route) },
                             onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
@@ -269,7 +295,7 @@ fun CleanApp(
                         }
                     }
                 }
-                if (TABS.any { it.route == currentRoute }) {
+                if (isTab) {
                     TabBar(currentRoute, onSelect = ::openTab)
                 }
             }
@@ -294,9 +320,13 @@ private fun ScreenTitle(text: String, onBack: (() -> Unit)?) {
 private fun TabBar(currentRoute: String?, onSelect: (String) -> Unit) {
     Column(Modifier.fillMaxWidth().background(CleanColors.Background)) {
         HorizontalDivider(color = CleanColors.Line)
-        Row(Modifier.fillMaxWidth().padding(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
             TABS.forEach { tab ->
                 val selected = tab.route == currentRoute
+                if (tab.route == CleanRoutes.TRAIN) {
+                    TrainButton(tab, selected, Modifier.weight(1f)) { if (!selected) onSelect(tab.route) }
+                    return@forEach
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -322,4 +352,54 @@ private fun TabBar(currentRoute: String?, onSelect: (String) -> Unit) {
             }
         }
     }
+}
+
+/** The round Train button in the middle of the tab bar, raised a little above it. */
+@Composable
+private fun TrainButton(tab: Tab, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Box(modifier.heightIn(min = 52.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .offset(y = (-12).dp)
+                .size(58.dp)
+                .shadow(
+                    if (selected) 10.dp else 4.dp,
+                    CircleShape,
+                    ambientColor = CleanColors.Glow,
+                    spotColor = CleanColors.Glow
+                )
+                .clip(CircleShape)
+                .background(if (selected) CleanColors.Accent else CleanColors.AccentSoft)
+                .border(4.dp, CleanColors.Background, CircleShape)
+                .clickable(role = Role.Tab, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                tab.icon,
+                contentDescription = tab.label,
+                tint = if (selected) Color.White else CleanColors.AccentInk,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+    }
+}
+
+/** A faint glow in the accent colour around the edge of the screen. */
+private fun Modifier.edgeGlow(color: Color, width: Dp = 14.dp, alpha: Float = 0.18f) = drawWithContent {
+    drawContent()
+    val w = width.toPx()
+    val c = color.copy(alpha = alpha)
+    val clear = color.copy(alpha = 0f)
+    drawRect(Brush.verticalGradient(listOf(c, clear), startY = 0f, endY = w), size = Size(size.width, w))
+    drawRect(
+        Brush.verticalGradient(listOf(clear, c), startY = size.height - w, endY = size.height),
+        topLeft = Offset(0f, size.height - w),
+        size = Size(size.width, w)
+    )
+    drawRect(Brush.horizontalGradient(listOf(c, clear), startX = 0f, endX = w), size = Size(w, size.height))
+    drawRect(
+        Brush.horizontalGradient(listOf(clear, c), startX = size.width - w, endX = size.width),
+        topLeft = Offset(size.width - w, 0f),
+        size = Size(w, size.height)
+    )
 }

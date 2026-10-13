@@ -6,7 +6,13 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -14,8 +20,11 @@ import androidx.compose.ui.unit.sp
 
 /**
  * "Gym white": a bright, high-contrast palette meant to be read from a distance
- * under gym lighting. Black is the primary action colour, one warm accent marks
- * load and the main Start action, and each lifter brings their own colour.
+ * under gym lighting. Black is the primary action colour, one accent marks load and
+ * the main Start action, and each lifter brings their own colour.
+ *
+ * The accent follows the trainer LED colour picked in Settings (orange until one is picked).
+ * Reads are snapshot state, so screens recolour as soon as it changes.
  */
 object CleanColors {
     val Background = Color(0xFFFFFFFF)
@@ -23,14 +32,39 @@ object CleanColors {
     val Ink = Color(0xFF0F1217)
     val Muted = Color(0xFF6B7280)
     val Line = Color(0xFFE7E9ED)
-    val Accent = Color(0xFFFF5A1F)
-    val AccentSoft = Color(0xFFFFE9E0)
-    val AccentInk = Color(0xFFC2410C)
     val Success = Color(0xFF12805C)
     val Danger = Color(0xFFDC2626)
+
+    val DefaultAccent = Color(0xFFFF5A1F)
+
+    private var led by mutableStateOf(DefaultAccent)
+
+    /** The LED colour as it is, for glows. */
+    val Glow: Color get() = led
+
+    /** The LED colour, darkened where needed so white text and icons stay readable on it. */
+    val Accent: Color get() = darkenTo(led, maxLuminance = 0.32f)
+    val AccentSoft: Color get() = lerp(led, Color.White, 0.86f)
+
+    /** Accent for text on white. */
+    val AccentInk: Color get() = darkenTo(led, maxLuminance = 0.15f)
+
+    fun setAccent(color: Color) {
+        led = color
+    }
+
+    private fun darkenTo(color: Color, maxLuminance: Float): Color {
+        var t = 0f
+        var c = color
+        while (c.luminance() > maxLuminance && t < 0.8f) {
+            t += 0.05f
+            c = lerp(color, Color.Black, t)
+        }
+        return c
+    }
 }
 
-private val CleanColorScheme = lightColorScheme(
+private fun cleanColorScheme() = lightColorScheme(
     primary = CleanColors.Ink,
     onPrimary = Color.White,
     primaryContainer = CleanColors.Surface,
@@ -82,8 +116,10 @@ private val CleanShapes = Shapes(
 
 @Composable
 fun CleanTheme(content: @Composable () -> Unit) {
+    val accent = CleanColors.Accent
+    val colorScheme = remember(accent) { cleanColorScheme() }
     MaterialTheme(
-        colorScheme = CleanColorScheme,
+        colorScheme = colorScheme,
         typography = CleanTypography,
         shapes = CleanShapes,
         content = content

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ import nl.nielsnotsmurf.cleanui.model.SetPlan
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
+import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.theme.LifterColors
 
 /** A lifter plus the colour the Clean UI draws them in. */
@@ -163,6 +165,30 @@ class CleanViewModel(
         gateway.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CleanSettings())
 
     fun updateSettings(transform: (CleanSettings) -> CleanSettings) = gateway.updateSettings(transform)
+
+    /** Live heart rate of whoever lifts next, or null without a broadcasting sensor. */
+    val heartRate: StateFlow<Int?> =
+        gateway.liveHeartRate.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The LED scheme picked last, or -1 when none was picked yet. */
+    val ledScheme: StateFlow<Int> = store.ledScheme
+        .map { i -> i?.takeIf { it in gateway.ledSchemes.indices } ?: -1 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, -1)
+
+    init {
+        // The app's accent follows the LED colour.
+        viewModelScope.launch {
+            ledScheme.collect { i ->
+                val argb = gateway.ledSchemes.getOrNull(i)?.colorsArgb?.firstOrNull()
+                CleanColors.setAccent(argb?.let { Color(it) } ?: CleanColors.DefaultAccent)
+            }
+        }
+    }
+
+    fun setLedScheme(index: Int) {
+        gateway.setLedScheme(index)
+        viewModelScope.launch { store.setLedScheme(index) }
+    }
 
     /** Hides demo videos when "Show exercise videos" is off, as the classic screens do. */
     private fun ExerciseGuide.respectVideoSetting(): ExerciseGuide =

@@ -1,11 +1,52 @@
 package nl.nielsnotsmurf.cleanui.logic
 
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
+import nl.nielsnotsmurf.cleanui.model.OneRepMax
+import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 
-/** Numbers for the Analytics tab, worked out from one lifter's history. */
+/** Numbers for the Train and Analytics tabs, worked out from history. */
 object TrainingStats {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
     private const val WEEK_MS = 7 * DAY_MS
+
+    /** Sets less than this apart belong to the same training. */
+    const val SESSION_GAP_MS = 5 * 60 * 60 * 1000L
+
+    /** A lifter's 1RM on one exercise, with when it was set. */
+    data class StandingRecord(val lifterId: String, val exerciseId: String, val oneRepMax: OneRepMax)
+
+    /**
+     * The training going on now, oldest first: the latest exercise if it ended less than
+     * [gapMs] before [now], plus every exercise before it with no gap of [gapMs] or more.
+     * Empty when nothing was done in the last [gapMs].
+     */
+    fun currentSession(entries: List<HistoryEntry>, now: Long, gapMs: Long = SESSION_GAP_MS): List<HistoryEntry> {
+        val newestFirst = entries.sortedByDescending { it.timestamp }
+        val latest = newestFirst.firstOrNull() ?: return emptyList()
+        if (now - latest.timestamp >= gapMs) return emptyList()
+        val session = mutableListOf(latest)
+        for (e in newestFirst.drop(1)) {
+            if (session.last().timestamp - e.timestamp >= gapMs) break
+            session += e
+        }
+        return session.reversed()
+    }
+
+    /**
+     * The [limit] 1RMs of [lifterIds] that were set longest ago, oldest first: the ones most worth
+     * re-testing. Related-exercise estimates and 1RMs without a date are left out.
+     */
+    fun longestStanding(
+        oneRepMaxes: Map<String, Map<String, OneRepMax>>,
+        lifterIds: List<String>,
+        limit: Int = 3
+    ): List<StandingRecord> =
+        lifterIds.flatMap { id ->
+            oneRepMaxes[id].orEmpty().map { (exId, orm) -> StandingRecord(id, exId, orm) }
+        }
+            .filter { it.oneRepMax.source != OneRepMaxSource.RELATED && it.oneRepMax.updatedAt > 0L }
+            .sortedBy { it.oneRepMax.updatedAt }
+            .take(limit)
 
     data class Totals(val workouts: Int, val sets: Int, val reps: Int)
 
