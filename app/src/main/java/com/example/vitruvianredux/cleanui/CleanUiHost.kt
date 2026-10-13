@@ -39,7 +39,7 @@ import com.example.vitruvianredux.presentation.screen.JustLiftScreen
 import com.example.vitruvianredux.presentation.screen.ProtocolTesterScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import com.example.vitruvianredux.ui.theme.ThemeMode
-import com.example.vitruvianredux.ui.theme.VitruvianProjectPhoenixTheme
+import com.example.vitruvianredux.ui.theme.VitruvianTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dagger.hilt.EntryPoint
@@ -89,7 +89,7 @@ fun CleanUiHost(viewModel: MainViewModel) {
         gateway = bridge,
         // Lifting and Just Lift reuse the classic, hardware-tested screens for now.
         activeWorkoutContent = { nav ->
-            VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+            VitruvianTheme(themeMode = ThemeMode.LIGHT) {
                 ActiveWorkoutScreen(
                     navController = nav,
                     viewModel = viewModel,
@@ -98,20 +98,20 @@ fun CleanUiHost(viewModel: MainViewModel) {
             }
         },
         justLiftContent = { nav ->
-            VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+            VitruvianTheme(themeMode = ThemeMode.LIGHT) {
                 JustLiftScreen(navController = nav, viewModel = viewModel, themeMode = ThemeMode.LIGHT)
             }
         },
         // Every other classic feature stays reachable inside the Clean layout until its clean version lands.
         classicContent = { screen, nav ->
-            VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+            VitruvianTheme(themeMode = ThemeMode.LIGHT) {
                 ClassicScreenContent(screen, nav, viewModel)
             }
         },
         heartRateContent = { lifterId, onDismiss ->
             val profiles by viewModel.profiles.collectAsState()
             profiles.firstOrNull { it.id == lifterId }?.let { profile ->
-                VitruvianProjectPhoenixTheme(themeMode = ThemeMode.LIGHT) {
+                VitruvianTheme(themeMode = ThemeMode.LIGHT) {
                     HeartRateSensorDialog(
                         viewModel = viewModel,
                         profile = profile,
@@ -156,7 +156,7 @@ private fun BluetoothPermissionPrompt(onAllow: () -> Unit) {
     ) {
         Text("Connect your trainer", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F1217))
         Text(
-            "Phoenix needs Bluetooth access to find and control your trainer. Nothing leaves your phone.",
+            "vitruvian- needs Bluetooth access to find and control your trainer. Nothing leaves your phone.",
             fontSize = 16.sp,
             color = Color(0xFF6B7280)
         )

@@ -942,7 +942,7 @@ fun SettingsTab(
             }
             Spacer(modifier = Modifier.height(Spacing.small))
             Text(
-                "vitruvian- is a personal build based on the open-source, MIT-licensed Vitruvian Project Phoenix Android app by 9th Level Software.",
+                "vitruvian- is a personal build based on the open-source, MIT-licensed Vitruvian Project Phoenix Android app.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
