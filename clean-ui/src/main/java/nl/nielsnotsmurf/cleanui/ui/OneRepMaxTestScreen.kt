@@ -16,13 +16,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +51,7 @@ import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
+import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
@@ -180,20 +178,16 @@ fun OneRepMaxTestScreen(
 
 @Composable
 private fun IntroContent(test: TestState, knownKg: Float?) {
-    val uriHandler = LocalUriHandler.current
     val guide = test.guide
     val videoUrl = guide?.videoUrl
-    val shape = RoundedCornerShape(16.dp)
-    Box(
+    if (videoUrl != null) {
+        DemoVideo(videoUrl)
+    } else Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
-            .clip(shape)
-            .background(Color(0xFF1F2937))
-            .then(
-                if (videoUrl != null) Modifier.clickable(role = Role.Button) { runCatching { uriHandler.openUri(videoUrl) } }
-                else Modifier
-            ),
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1F2937)),
         contentAlignment = Alignment.Center
     ) {
         if (guide?.thumbnailUrl != null) {
@@ -203,13 +197,7 @@ private fun IntroContent(test: TestState, knownKg: Float?) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-        }
-        if (videoUrl != null) {
-            Box(
-                Modifier.size(56.dp).clip(RoundedCornerShape(28.dp)).background(Color.Black.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.Filled.PlayArrow, contentDescription = "Play demo", tint = Color.White, modifier = Modifier.size(32.dp)) }
-        } else if (guide?.thumbnailUrl == null) {
+        } else {
             Text("No demo video for this exercise", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
         }
     }
