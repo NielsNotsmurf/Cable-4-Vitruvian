@@ -4,6 +4,7 @@ import com.example.vitruvianredux.data.local.PRType
 import com.example.vitruvianredux.data.local.WorkoutDao
 import com.example.vitruvianredux.data.local.PersonalRecordDao
 import com.example.vitruvianredux.data.local.WorkoutSessionEntity
+import com.example.vitruvianredux.data.local.HeartRateSampleEntity
 import com.example.vitruvianredux.data.local.RoutineEntity
 import com.example.vitruvianredux.data.local.RoutineExerciseEntity
 import com.example.vitruvianredux.data.local.WeeklyProgramWithDays
@@ -54,7 +55,9 @@ class WorkoutRepository @Inject constructor(
                 exerciseName = session.exerciseName,
                 routineSessionId = session.routineSessionId,
                 routineName = session.routineName,
-                profileId = session.profileId
+                profileId = session.profileId,
+                avgHeartRate = session.avgHeartRate,
+                maxHeartRate = session.maxHeartRate
             )
             workoutDao.insertSession(entity)
             Timber.d("Saved workout session: ${session.id}")
@@ -65,6 +68,19 @@ class WorkoutRepository @Inject constructor(
         }
     }
     
+    suspend fun saveHeartRateSamples(sessionId: String, samples: List<HeartRateSample>): Result<Unit> {
+        if (samples.isEmpty()) return Result.success(Unit)
+        return try {
+            workoutDao.insertHeartRateSamples(samples.map {
+                HeartRateSampleEntity(sessionId = sessionId, timestamp = it.timestamp, bpm = it.bpm)
+            })
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to save heart rate samples")
+            Result.failure(e)
+        }
+    }
+
     suspend fun saveMetrics(sessionId: String, metrics: List<WorkoutMetric>): Result<Unit> {
         return try {
             workoutDao.insertMetrics(metrics.mapIndexed { index, metric -> metric.toEntity(sessionId, index) })
@@ -166,6 +182,7 @@ class WorkoutRepository @Inject constructor(
     suspend fun deleteWorkout(sessionId: String): Result<Unit> {
         return try {
             workoutDao.deleteWorkout(sessionId)
+            workoutDao.deleteHeartRateSamples(sessionId)
             Timber.d("Deleted workout: $sessionId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -180,6 +197,7 @@ class WorkoutRepository @Inject constructor(
     suspend fun deleteAllWorkouts(): Result<Unit> {
         return try {
             workoutDao.deleteAllWorkouts()
+            workoutDao.deleteAllHeartRateSamples()
             Timber.d("Deleted all workouts")
             Result.success(Unit)
         } catch (e: Exception) {

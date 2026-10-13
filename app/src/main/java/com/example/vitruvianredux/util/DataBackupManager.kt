@@ -90,6 +90,7 @@ class DataBackupManager @Inject constructor(
     suspend fun exportAllData(): BackupData = withContext(Dispatchers.IO) {
         val sessions = workoutDao.getAllSessionsSync()
         val metrics = workoutDao.getAllMetricsSync()
+        val heartRateSamples = workoutDao.getAllHeartRateSamplesSync()
         val routines = workoutDao.getAllRoutinesSync()
         val routineExercises = workoutDao.getAllRoutineExercisesSync()
         val programs = workoutDao.getAllProgramsSync()
@@ -134,7 +135,8 @@ class DataBackupManager @Inject constructor(
                 baselines = baselines,
                 adaptiveCorrections = adaptiveCorrections,
                 appPreferences = appPreferences,
-                exerciseDefaults = exerciseDefaults
+                exerciseDefaults = exerciseDefaults,
+                heartRateSamples = heartRateSamples.map { it.toBackup() }
             )
         )
     }
@@ -278,6 +280,11 @@ class DataBackupManager @Inject constructor(
             if (m.sessionId in importedSessionIds) { workoutDao.insertMetricIgnore(m.toEntity()); metricsImported++ }
         }
 
+        // Heart rate samples — only for imported sessions
+        backup.data.heartRateSamples.forEach { hr ->
+            if (hr.sessionId in importedSessionIds) workoutDao.insertHeartRateSampleIgnore(hr.toEntity())
+        }
+
         // Routines
         var routinesImported = 0; var routinesSkipped = 0
         backup.data.routines.forEach { r ->
@@ -370,11 +377,13 @@ class DataBackupManager @Inject constructor(
 // ====== Additional extension functions for new backup types ======
 
 fun UserProfileEntity.toBackup() = UserProfileBackup(
-    id = id, name = name, colorInt = colorInt, createdAt = createdAt
+    id = id, name = name, colorInt = colorInt, createdAt = createdAt,
+    hrSensorAddress = hrSensorAddress, hrSensorName = hrSensorName
 )
 
 fun UserProfileBackup.toEntity() = UserProfileEntity(
-    id = id, name = name, colorInt = colorInt, createdAt = createdAt
+    id = id, name = name, colorInt = colorInt, createdAt = createdAt,
+    hrSensorAddress = hrSensorAddress, hrSensorName = hrSensorName
 )
 
 fun BaselineResults.toBackup() = BaselineResultsBackup(

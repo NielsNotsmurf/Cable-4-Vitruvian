@@ -38,7 +38,20 @@ data class WorkoutSessionBackup(
     val safetyFlags: Int = 0,
     val deloadWarningCount: Int = 0,
     val romViolationCount: Int = 0,
-    val spotterActivations: Int = 0
+    val spotterActivations: Int = 0,
+    val profileId: String = "default",
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null
+)
+
+/**
+ * Backup representation of HeartRateSampleEntity
+ */
+@Serializable
+data class HeartRateSampleBackup(
+    val sessionId: String,
+    val timestamp: Long,
+    val bpm: Int
 )
 
 /**
@@ -143,7 +156,9 @@ data class UserProfileBackup(
     val id: String,
     val name: String,
     val colorInt: Int = -10354962,
-    val createdAt: Long
+    val createdAt: Long,
+    val hrSensorAddress: String? = null,
+    val hrSensorName: String? = null
 )
 
 @Serializable
@@ -212,7 +227,8 @@ data class BackupContent(
     val baselines: List<BaselineResultsBackup> = emptyList(),
     val adaptiveCorrections: List<AdaptiveCorrectionBackup> = emptyList(),
     val appPreferences: AppPreferencesBackup? = null,
-    val exerciseDefaults: List<ExerciseDefaultsBackup> = emptyList()
+    val exerciseDefaults: List<ExerciseDefaultsBackup> = emptyList(),
+    val heartRateSamples: List<HeartRateSampleBackup> = emptyList()
 )
 
 // ============================================================================
@@ -244,7 +260,10 @@ fun WorkoutSessionEntity.toBackup() = WorkoutSessionBackup(
     safetyFlags = safetyFlags,
     deloadWarningCount = deloadWarningCount,
     romViolationCount = romViolationCount,
-    spotterActivations = spotterActivations
+    spotterActivations = spotterActivations,
+    profileId = profileId,
+    avgHeartRate = avgHeartRate,
+    maxHeartRate = maxHeartRate
 )
 
 /**
@@ -367,7 +386,10 @@ fun WorkoutSessionBackup.toEntity() = WorkoutSessionEntity(
     safetyFlags = safetyFlags,
     deloadWarningCount = deloadWarningCount,
     romViolationCount = romViolationCount,
-    spotterActivations = spotterActivations
+    spotterActivations = spotterActivations,
+    profileId = profileId,
+    avgHeartRate = avgHeartRate,
+    maxHeartRate = maxHeartRate
 )
 
 /**
@@ -459,4 +481,16 @@ fun PersonalRecordBackup.toEntity() = PersonalRecordEntity(
     workoutMode = workoutMode,
     prType = prType,
     volume = volume
+)
+
+fun HeartRateSampleEntity.toBackup() = HeartRateSampleBackup(
+    sessionId = sessionId,
+    timestamp = timestamp,
+    bpm = bpm
+)
+
+fun HeartRateSampleBackup.toEntity() = HeartRateSampleEntity(
+    sessionId = sessionId,
+    timestamp = timestamp,
+    bpm = bpm
 )

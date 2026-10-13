@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vitruvianredux.data.heartrate.HeartRateMonitor
 import com.example.vitruvianredux.data.preferences.PreferencesManager
 import com.example.vitruvianredux.data.repository.BleRepository
 import com.example.vitruvianredux.data.repository.ExerciseRepository
@@ -90,7 +91,8 @@ class MainViewModel @Inject constructor(
     val baselineRepository: com.example.vitruvianredux.data.baseline.BaselineRepository,
     private val workoutGenerator: com.example.vitruvianredux.domain.usecase.WorkoutGeneratorUseCase,
     val progressionEngine: com.example.vitruvianredux.domain.usecase.ProgressionEngine,
-    private val adaptiveLearningRepository: com.example.vitruvianredux.data.baseline.AdaptiveLearningRepository
+    private val adaptiveLearningRepository: com.example.vitruvianredux.data.baseline.AdaptiveLearningRepository,
+    private val heartRateMonitor: HeartRateMonitor
 ) : AndroidViewModel(application) {
 
     // Use application context directly instead of storing it
@@ -310,6 +312,81 @@ class MainViewModel @Inject constructor(
                 Pair(setNumber, totalSets)
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    // ========== Heart rate (Garmin watch or any Bluetooth HR sensor) ==========
+    // Optional: with no sensor paired nothing connects and workouts run exactly as before.
+    // A sensor belongs to one profile, so heart rate only counts for that profile's sets.
+
+    /** Profile id -> paired sensor address, for profiles that have one. */
+    private val heartRateSensorByProfile: StateFlow<Map<String, String>> =
+        userProfileRepository.getAllProfiles()
+            .map { list -> list.mapNotNull { p -> p.hrSensorAddress?.let { p.id to it } }.toMap() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Who the current set belongs to: the rotation's performer, else the active profile. */
+    private val currentSetProfileId: StateFlow<String> =
+        combine(currentPerformer, activeProfileId) { performer, active -> performer?.id ?: active }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, "default")
+
+    // Re-evaluates staleness when a watch stops broadcasting and no new readings arrive
+    private val heartRateTicker = kotlinx.coroutines.flow.flow {
+        while (true) {
+            emit(Unit)
+            delay(1_000)
+        }
+    }
+
+    /** Live heart rate of whoever lifts now, or null when that person has no sensor connected. */
+    val currentHeartRate: StateFlow<Int?> =
+        combine(
+            heartRateMonitor.readings,
+            heartRateSensorByProfile,
+            currentSetProfileId,
+            heartRateTicker
+        ) { readings, sensors, profileId, _ ->
+            sensors[profileId]?.let { readings[it] }
+                ?.takeIf { System.currentTimeMillis() - it.timestampMs < HeartRateMonitor.STALE_AFTER_MS }
+                ?.bpm
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val heartRateScanResults: StateFlow<List<HeartRateMonitor.FoundSensor>> = heartRateMonitor.scanResults
+    val isScanningHeartRate: StateFlow<Boolean> = heartRateMonitor.isScanning
+    val connectedHeartRateSensors: StateFlow<Set<String>> = heartRateMonitor.connectedAddresses
+
+    // Samples for the set in progress, reset in startWorkout()
+    private val heartRateSamples = mutableListOf<HeartRateSample>()
+
+    init {
+        viewModelScope.launch {
+            heartRateSensorByProfile.collect { heartRateMonitor.setTargets(it.values.toSet()) }
+        }
+        // Record every new reading from the current lifter's own sensor while a set is running
+        viewModelScope.launch {
+            heartRateMonitor.readings.collect { readings ->
+                if (_workoutState.value !is WorkoutState.Active) return@collect
+                val address = heartRateSensorByProfile.value[currentSetProfileId.value] ?: return@collect
+                val reading = readings[address] ?: return@collect
+                synchronized(heartRateSamples) {
+                    if (heartRateSamples.lastOrNull()?.timestamp != reading.timestampMs) {
+                        heartRateSamples.add(HeartRateSample(reading.timestampMs, reading.bpm))
+                    }
+                }
+            }
+        }
+    }
+
+    fun startHeartRateScan() = heartRateMonitor.startScan()
+
+    fun stopHeartRateScan() = heartRateMonitor.stopScan()
+
+    fun pairHeartRateSensor(profileId: String, address: String, name: String) {
+        heartRateMonitor.stopScan()
+        viewModelScope.launch { userProfileRepository.pairHeartRateSensor(profileId, address, name) }
+    }
+
+    fun unpairHeartRateSensor(profileId: String) {
+        viewModelScope.launch { userProfileRepository.unpairHeartRateSensor(profileId) }
+    }
 
     // ========== Stats for HomeScreen ==========
 
@@ -1372,6 +1449,7 @@ class MainViewModel @Inject constructor(
             currentSessionId = java.util.UUID.randomUUID().toString()
             workoutStartTime = System.currentTimeMillis()
             collectedMetrics.clear()
+            synchronized(heartRateSamples) { heartRateSamples.clear() }
             maxHeuristicKgMax = 0f // Reset Echo mode force tracking (for history)
             _currentHeuristicKgMax.value = 0f // Reset Echo mode live display
 
@@ -2239,6 +2317,8 @@ class MainViewModel @Inject constructor(
             activeProfileId.value
         }
 
+        val setHeartRate = synchronized(heartRateSamples) { heartRateSamples.toList() }
+
         val session = WorkoutSession(
             id = sessionId,
             timestamp = workoutStartTime,
@@ -2258,7 +2338,9 @@ class MainViewModel @Inject constructor(
             exerciseName = exerciseName,
             routineSessionId = savedRoutineSessionId,
             routineName = savedRoutineName,
-            profileId = effectiveProfileId
+            profileId = effectiveProfileId,
+            avgHeartRate = setHeartRate.takeIf { it.isNotEmpty() }?.let { s -> s.sumOf { it.bpm } / s.size },
+            maxHeartRate = setHeartRate.maxOfOrNull { it.bpm }
         )
 
         // Check if this is a bodyweight exercise (for logging purposes)
@@ -2307,6 +2389,7 @@ class MainViewModel @Inject constructor(
         if (collectedMetrics.isNotEmpty()) {
             workoutRepository.saveMetrics(sessionId, collectedMetrics)
         }
+        workoutRepository.saveHeartRateSamples(sessionId, setHeartRate)
 
         // Save exercise defaults for next time (only for Just Lift and Single Exercise modes)
         // Routines have their own saved configuration and should not interfere with these defaults
@@ -2987,6 +3070,7 @@ class MainViewModel @Inject constructor(
         repEventsCollectionJob?.cancel()
         autoStartJob?.cancel()
         restTimerJob?.cancel()
+        heartRateMonitor.stopScan()
     }
 
     // ========== Profile Management ==========

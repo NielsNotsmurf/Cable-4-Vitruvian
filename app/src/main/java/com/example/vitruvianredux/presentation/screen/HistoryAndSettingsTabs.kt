@@ -294,6 +294,25 @@ fun WorkoutHistoryCard(
                 )
             }
 
+            if (session.maxHeartRate != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Heart Rate",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "avg ${session.avgHeartRate ?: session.maxHeartRate} • max ${session.maxHeartRate} bpm",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(Spacing.small))
 
             // Divider
@@ -404,7 +423,8 @@ private data class ExerciseGroup(
     val totalReps: Int,
     val totalSets: Int,
     val weightPerCableKg: Float,
-    val mode: String
+    val mode: String,
+    val maxHeartRate: Int? = null
 )
 
 /**
@@ -447,7 +467,8 @@ fun GroupedRoutineCard(
                     totalReps = totalReps,
                     totalSets = totalSets,
                     weightPerCableKg = weightPerCableKg,
-                    mode = mode
+                    mode = mode,
+                    maxHeartRate = sessions.mapNotNull { it.maxHeartRate }.maxOrNull()
                 )
             }
     }
@@ -591,6 +612,25 @@ fun GroupedRoutineCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+
+                exerciseGroup.maxHeartRate?.let { maxHr ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Max Heart Rate",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "$maxHr bpm",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
                 // Add spacing between exercises (except for the last one)
