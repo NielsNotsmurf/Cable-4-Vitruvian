@@ -41,7 +41,25 @@ data class WorkoutSessionEntity(
     val romViolationCount: Int = 0,
     val spotterActivations: Int = 0,
     // Profile ownership (added in v27)
-    val profileId: String = "default"
+    val profileId: String = "default",
+    // Heart rate from the lifter's paired sensor, null when none was connected (added in v29)
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null
+)
+
+/**
+ * Heart rate samples recorded during a set (added in v29).
+ * Only written for the profile that owns the connected heart rate sensor.
+ */
+@Entity(
+    tableName = "heart_rate_samples",
+    indices = [Index(value = ["sessionId"])]
+)
+data class HeartRateSampleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: String,
+    val timestamp: Long,
+    val bpm: Int
 )
 
 /**

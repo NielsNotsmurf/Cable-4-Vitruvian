@@ -39,6 +39,26 @@ interface WorkoutDao {
     @Query("DELETE FROM workout_metrics WHERE sessionId = :sessionId")
     suspend fun deleteMetrics(sessionId: String)
 
+    // --- Heart rate ---
+
+    @Insert
+    suspend fun insertHeartRateSamples(samples: List<HeartRateSampleEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertHeartRateSampleIgnore(sample: HeartRateSampleEntity): Long
+
+    @Query("SELECT * FROM heart_rate_samples WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    suspend fun getHeartRateSamplesSync(sessionId: String): List<HeartRateSampleEntity>
+
+    @Query("SELECT * FROM heart_rate_samples")
+    suspend fun getAllHeartRateSamplesSync(): List<HeartRateSampleEntity>
+
+    @Query("DELETE FROM heart_rate_samples WHERE sessionId = :sessionId")
+    suspend fun deleteHeartRateSamples(sessionId: String)
+
+    @Query("DELETE FROM heart_rate_samples")
+    suspend fun deleteAllHeartRateSamples()
+
     // --- Routines ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRoutine(routine: RoutineEntity)

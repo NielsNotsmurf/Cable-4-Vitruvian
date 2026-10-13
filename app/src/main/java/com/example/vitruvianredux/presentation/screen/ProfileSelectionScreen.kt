@@ -3,6 +3,8 @@ package com.example.vitruvianredux.presentation.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,9 +45,11 @@ fun ProfileSelectionScreen(
 ) {
     val profiles by viewModel.profiles.collectAsState()
     val activeProfileId by viewModel.activeProfileId.collectAsState()
+    val connectedHeartRateSensors by viewModel.connectedHeartRateSensors.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<UserProfileEntity?>(null) }
+    var heartRateDialogFor by remember { mutableStateOf<UserProfileEntity?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.updateTopBarTitle("Profiles")
@@ -75,7 +79,10 @@ fun ProfileSelectionScreen(
                     isActive = profile.id == activeProfileId,
                     canDelete = profiles.size > 1,
                     onSelect = { viewModel.setActiveProfile(profile.id) },
-                    onDelete = { showDeleteConfirm = profile }
+                    onDelete = { showDeleteConfirm = profile },
+                    heartRateConnected = profile.hrSensorAddress != null &&
+                        profile.hrSensorAddress in connectedHeartRateSensors,
+                    onHeartRate = { heartRateDialogFor = profile }
                 )
             }
 
@@ -89,6 +96,20 @@ fun ProfileSelectionScreen(
             onConfirm = { name, colorInt ->
                 viewModel.createProfile(name, colorInt)
                 showAddDialog = false
+            }
+        )
+    }
+
+    heartRateDialogFor?.let { dialogProfile ->
+        // Re-read so the dialog reflects a pairing made while it is open
+        val profile = profiles.firstOrNull { it.id == dialogProfile.id } ?: dialogProfile
+        HeartRateSensorDialog(
+            viewModel = viewModel,
+            profile = profile,
+            otherProfiles = profiles.filter { it.id != profile.id },
+            onDismiss = {
+                viewModel.stopHeartRateScan()
+                heartRateDialogFor = null
             }
         )
     }
@@ -121,6 +142,8 @@ private fun ProfileCard(
     canDelete: Boolean,
     onSelect: () -> Unit,
     onDelete: () -> Unit,
+    heartRateConnected: Boolean,
+    onHeartRate: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val borderColor = if (isActive) MaterialTheme.colorScheme.primary else Color.Transparent
@@ -175,6 +198,21 @@ private fun ProfileCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+                profile.hrSensorName?.let { sensorName ->
+                    Text(
+                        text = if (heartRateConnected) "♥ $sensorName • connected" else "♥ $sensorName • not broadcasting",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            IconButton(onClick = onHeartRate) {
+                Icon(
+                    if (profile.hrSensorAddress != null) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Heart rate sensor",
+                    tint = if (heartRateConnected) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (isActive) {
@@ -256,6 +294,97 @@ private fun AddProfileDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+/**
+ * Pair a Bluetooth heart rate sensor (a Garmin watch broadcasting HR, or a chest strap) to one
+ * profile. Optional: the trainer works the same without one.
+ */
+@Composable
+private fun HeartRateSensorDialog(
+    viewModel: MainViewModel,
+    profile: UserProfileEntity,
+    otherProfiles: List<UserProfileEntity>,
+    onDismiss: () -> Unit
+) {
+    val scanResults by viewModel.heartRateScanResults.collectAsState()
+    val isScanning by viewModel.isScanningHeartRate.collectAsState()
+
+    LaunchedEffect(Unit) { viewModel.startHeartRateScan() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Heart rate for ${profile.name}") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.small)
+            ) {
+                Text(
+                    "Heart rate is only saved for ${profile.name}'s sets. " +
+                        "On a Garmin watch, turn on Broadcast Heart Rate: hold the top button and pick it " +
+                        "from the controls, or go to Settings > Health & Wellness > Wrist Heart Rate.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                profile.hrSensorName?.let {
+                    Text("Paired: $it", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (isScanning) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text("Searching…", style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        TextButton(onClick = { viewModel.startHeartRateScan() }) { Text("Search again") }
+                    }
+                }
+                scanResults.forEach { sensor ->
+                    val owner = otherProfiles.firstOrNull { it.hrSensorAddress == sensor.address }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.pairHeartRateSensor(profile.id, sensor.address, sensor.name)
+                                onDismiss()
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(sensor.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                when {
+                                    sensor.address == profile.hrSensorAddress -> "Paired to ${profile.name}"
+                                    owner != null -> "Paired to ${owner.name}, tap to move to ${profile.name}"
+                                    else -> sensor.address
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+        dismissButton = {
+            if (profile.hrSensorAddress != null) {
+                TextButton(
+                    onClick = {
+                        viewModel.unpairHeartRateSensor(profile.id)
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Unpair") }
+            }
         }
     )
 }

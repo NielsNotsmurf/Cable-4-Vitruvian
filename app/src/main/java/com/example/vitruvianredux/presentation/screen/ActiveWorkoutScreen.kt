@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ fun ActiveWorkoutScreen(
     val workoutParticipants by viewModel.workoutParticipants.collectAsState()
     val currentPerformer by viewModel.currentPerformer.collectAsState()
     val currentPerformerSetDisplay by viewModel.currentPerformerSetDisplay.collectAsState()
+    val currentHeartRate by viewModel.currentHeartRate.collectAsState()
 
     // State for confirmation dialog
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -159,6 +161,8 @@ fun ActiveWorkoutScreen(
                 totalSets = currentPerformerSetDisplay?.second
             )
         }
+        // Only shown when the person lifting now has a heart rate sensor (e.g. their Garmin) connected
+        currentHeartRate?.let { bpm -> HeartRateBar(bpm = bpm) }
         WorkoutTab(
         connectionState = connectionState,
         workoutState = workoutState,
@@ -264,6 +268,30 @@ fun ActiveWorkoutScreen(
             prType = prDisplayType,
             volume = volumeFormatted,
             onDismiss = { prCelebrationEvent = null }
+        )
+    }
+}
+
+@Composable
+private fun HeartRateBar(bpm: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.medium, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            Icons.Filled.Favorite,
+            contentDescription = "Heart rate",
+            tint = Color(0xFFE53935),
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = "$bpm bpm",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

@@ -25,6 +25,16 @@ class UserProfileRepository @Inject constructor(
 
     suspend fun getCount(): Int = dao.getCount()
 
+    /** Pair a heart rate sensor to [profileId], taking it away from any other profile. */
+    suspend fun pairHeartRateSensor(profileId: String, address: String, name: String) {
+        dao.clearHeartRateSensorFromOthers(address, profileId)
+        dao.setHeartRateSensor(profileId, address, name)
+    }
+
+    suspend fun unpairHeartRateSensor(profileId: String) {
+        dao.setHeartRateSensor(profileId, null, null)
+    }
+
     suspend fun seedDefaultProfiles(): Boolean {
         if (dao.getCount() > 0) return false
         Timber.d("No profiles found — seeding defaults: Niels, Anna")

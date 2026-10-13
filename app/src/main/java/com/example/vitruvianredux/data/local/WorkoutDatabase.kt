@@ -9,6 +9,7 @@ import com.example.vitruvianredux.data.local.dao.SuggestionLogDao
  * Room database for workout history
  *
  * Version history:
+ * - v29: heart_rate_samples table, avg/max heart rate on workout_sessions, paired HR sensor on user_profiles
  * - v22: Added aliases and defaultCableConfig to exercises, isTutorial to exercise_videos
  * - v21: Added exerciseName to WorkoutSessionEntity
  * - v20: Added isAMRAP to routine_exercises for AMRAP workout mode
@@ -43,9 +44,10 @@ import com.example.vitruvianredux.data.local.dao.SuggestionLogDao
         com.example.vitruvianredux.data.local.entity.PhaseStatisticsEntity::class,
         com.example.vitruvianredux.data.local.entity.DiagnosticsEntity::class,
         UserProfileEntity::class,
-        SuggestionLogEntity::class
+        SuggestionLogEntity::class,
+        HeartRateSampleEntity::class
     ],
-    version = 28,  // Added suggestion_log table for weight suggestion analytics and adaptive learning
+    version = 29,  // Added heart_rate_samples, session avg/max heart rate, profile heart rate sensor
     exportSchema = false
 )
 @TypeConverters(Converters::class)

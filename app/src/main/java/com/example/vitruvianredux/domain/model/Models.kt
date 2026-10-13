@@ -278,7 +278,18 @@ data class WorkoutSession(
     val routineSessionId: String? = null,  // Unique ID for this routine session
     val routineName: String? = null,  // Name of the routine being performed
     // Profile ownership (added in v27)
-    val profileId: String = "default"
+    val profileId: String = "default",
+    // Heart rate from the lifter's paired sensor, null when none was connected
+    val avgHeartRate: Int? = null,
+    val maxHeartRate: Int? = null
+)
+
+/**
+ * One heart rate reading taken during a set.
+ */
+data class HeartRateSample(
+    val timestamp: Long,
+    val bpm: Int
 )
 
 /**
