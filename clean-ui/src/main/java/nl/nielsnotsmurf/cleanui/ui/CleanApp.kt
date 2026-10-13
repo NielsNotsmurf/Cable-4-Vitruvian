@@ -62,6 +62,7 @@ object CleanRoutes {
     const val EXERCISES = "clean_exercises"
     const val MUSCLE_GROUPS = "clean_muscle_groups"
     const val PROFILES = "profiles"
+    const val HISTORY = "clean_history"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
     const val ACTIVE_WORKOUT = "active_workout"
@@ -73,7 +74,6 @@ object CleanRoutes {
  * classic graph. [title] is shown above screens that relied on the classic top bar.
  */
 enum class ClassicScreen(val route: String, val title: String?, val showBack: Boolean = false) {
-    HISTORY("clean_history", "History"),
     ANALYTICS("analytics", "Analytics"),
     SETTINGS("settings", "Settings"),
     ASSESSMENT("baseline_assessment", null),
@@ -85,7 +85,7 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val TABS = listOf(
     Tab(CleanRoutes.TRAIN, "Train", Icons.Outlined.FitnessCenter),
-    Tab(ClassicScreen.HISTORY.route, "History", Icons.Outlined.History),
+    Tab(CleanRoutes.HISTORY, "History", Icons.Outlined.History),
     Tab(ClassicScreen.ANALYTICS.route, "Analytics", Icons.AutoMirrored.Outlined.ShowChart),
     Tab(ClassicScreen.SETTINGS.route, "Settings", Icons.Outlined.Settings)
 )
@@ -108,6 +108,7 @@ fun CleanApp(
     val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
     val test by vm.test.collectAsStateWithLifecycle()
+    val history by vm.history.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -153,6 +154,9 @@ fun CleanApp(
                             onToggleFavorite = vm::toggleFavorite,
                             region = entry.arguments?.getString("region")
                         )
+                    }
+                    composable(CleanRoutes.HISTORY) {
+                        HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
                     }
                     composable(CleanRoutes.PROFILES) {
                         ProfilesScreen(

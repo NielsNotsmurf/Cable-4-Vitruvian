@@ -149,3 +149,19 @@ data class LastPlan(
     val echoLevel: EchoLevelChoice,
     val progressionKg: Float
 )
+
+/** One finished exercise for one lifter, as the History tab lists it. */
+data class HistoryEntry(
+    val id: String,
+    val lifterId: String,
+    val exerciseName: String,
+    val timestamp: Long,
+    val mode: String,
+    val sets: Int,
+    val reps: Int,
+    /** Heaviest load per cable; null for Echo, which adapts the load. */
+    val topKgPerCable: Float?,
+    val durationMs: Long,
+    /** Sets done back to back in one workout share this (rotations, routines). */
+    val groupId: String
+)

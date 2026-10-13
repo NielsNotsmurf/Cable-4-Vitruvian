@@ -26,9 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import com.example.vitruvianredux.data.preferences.PreferencesManager
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
@@ -37,7 +34,6 @@ import com.example.vitruvianredux.presentation.screen.ActiveWorkoutScreen
 import com.example.vitruvianredux.presentation.screen.AnalyticsScreen
 import com.example.vitruvianredux.presentation.screen.BaselineAssessmentScreen
 import com.example.vitruvianredux.presentation.screen.ConnectionLogsScreen
-import com.example.vitruvianredux.presentation.screen.HistoryTab
 import com.example.vitruvianredux.presentation.screen.JustLiftScreen
 import com.example.vitruvianredux.presentation.screen.ProtocolTesterScreen
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
@@ -117,43 +113,11 @@ fun CleanUiHost(viewModel: MainViewModel) {
 @Composable
 private fun ClassicScreenContent(screen: ClassicScreen, nav: NavController, viewModel: MainViewModel) {
     when (screen) {
-        ClassicScreen.HISTORY -> ClassicHistory(viewModel)
         ClassicScreen.ANALYTICS -> AnalyticsScreen(viewModel = viewModel, themeMode = ThemeMode.LIGHT)
         ClassicScreen.SETTINGS -> ClassicSettingsRoute(navController = nav, viewModel = viewModel)
         ClassicScreen.ASSESSMENT -> BaselineAssessmentScreen(navController = nav, viewModel = viewModel)
         ClassicScreen.CONNECTION_LOGS -> ConnectionLogsScreen(onNavigateBack = { nav.popBackStack() }, mainViewModel = viewModel)
         ClassicScreen.PROTOCOL_TESTER -> ProtocolTesterScreen(onNavigateBack = { nav.popBackStack() })
-    }
-}
-
-/** Workout history with the same per-profile filter the classic Analytics screen has. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ClassicHistory(viewModel: MainViewModel) {
-    val history by viewModel.analyticsGroupedHistory.collectAsState()
-    val weightUnit by viewModel.weightUnit.collectAsState()
-    val profiles by viewModel.profiles.collectAsState()
-    val selected by viewModel.analyticsProfileId.collectAsState()
-    Column(Modifier.fillMaxSize()) {
-        if (profiles.size > 1) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(selected = selected == null, onClick = { viewModel.setAnalyticsProfile(null) }, label = { Text("Everyone") })
-                profiles.forEach { p ->
-                    FilterChip(selected = selected == p.id, onClick = { viewModel.setAnalyticsProfile(p.id) }, label = { Text(p.name) })
-                }
-            }
-        }
-        HistoryTab(
-            groupedWorkoutHistory = history,
-            weightUnit = weightUnit,
-            formatWeight = viewModel::formatWeight,
-            onDeleteWorkout = { viewModel.deleteWorkout(it) },
-            exerciseRepository = viewModel.exerciseRepository,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 

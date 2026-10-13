@@ -23,6 +23,7 @@ import nl.nielsnotsmurf.cleanui.model.Attempt
 import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
@@ -150,6 +151,12 @@ class CleanViewModel(
     ) { (all, active), exercises, connection, unit, orms ->
         CleanUiState(all, active, exercises, connection, unit, orms)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CleanUiState())
+
+    /** Finished workouts for the History tab, newest first. */
+    val history: StateFlow<List<HistoryEntry>> =
+        gateway.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun deleteWorkouts(ids: List<String>) = gateway.deleteWorkouts(ids)
 
     private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
 

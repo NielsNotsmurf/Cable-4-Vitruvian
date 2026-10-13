@@ -33,6 +33,7 @@ import nl.nielsnotsmurf.cleanui.model.LastPlan
 import nl.nielsnotsmurf.cleanui.model.SetKind
 import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
 import nl.nielsnotsmurf.cleanui.model.SetPlan
@@ -297,6 +298,32 @@ class CleanUiBridge(
                 onFailed("Couldn't start the attempt: ${e.message}")
             }
         }
+    }
+
+    override val history: Flow<List<HistoryEntry>> = vm.allWorkoutSessions.map { sessions ->
+        sessions.sortedByDescending { it.timestamp }.map { s ->
+            HistoryEntry(
+                id = s.id,
+                lifterId = s.profileId,
+                exerciseName = s.exerciseName ?: if (s.isJustLift) "Just Lift" else "Workout",
+                timestamp = s.timestamp,
+                mode = s.mode,
+                // Same set count the classic history card shows.
+                sets = when {
+                    s.reps == 0 -> 1
+                    s.workingReps > 0 -> (s.workingReps / s.reps.coerceAtLeast(1)).coerceAtLeast(1)
+                    else -> 0
+                },
+                reps = s.workingReps.takeIf { it > 0 } ?: s.totalReps,
+                topKgPerCable = s.weightPerCableKg.takeUnless { s.mode.contains("Echo", ignoreCase = true) },
+                durationMs = s.duration,
+                groupId = s.routineSessionId ?: s.id
+            )
+        }
+    }
+
+    override fun deleteWorkouts(ids: List<String>) {
+        ids.forEach { vm.deleteWorkout(it) }
     }
 
     override fun switchToClassicUi() {

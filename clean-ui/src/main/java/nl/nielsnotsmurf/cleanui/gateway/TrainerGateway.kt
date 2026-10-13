@@ -3,6 +3,7 @@ package nl.nielsnotsmurf.cleanui.gateway
 import kotlinx.coroutines.flow.Flow
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LastPlan
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
@@ -90,5 +91,11 @@ interface TrainerGateway {
     )
 
     /** Hand back to the classic UI (for screens the Clean UI doesn't have yet). */
+    /** Finished workouts for every profile, newest first. */
+    val history: Flow<List<HistoryEntry>>
+
+    /** Deletes workouts by [HistoryEntry.id]. */
+    fun deleteWorkouts(ids: List<String>)
+
     fun switchToClassicUi()
 }
