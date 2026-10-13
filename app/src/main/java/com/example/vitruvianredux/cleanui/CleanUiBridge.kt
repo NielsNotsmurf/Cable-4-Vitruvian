@@ -255,7 +255,9 @@ class CleanUiBridge(
     override suspend fun exerciseGuide(exerciseId: String): ExerciseGuide? {
         val entity = vm.exerciseRepository.getExerciseById(exerciseId) ?: return null
         val videos = runCatching { vm.exerciseRepository.getVideos(exerciseId) }.getOrDefault(emptyList())
-        val video = videos.firstOrNull { it.isTutorial } ?: videos.firstOrNull { it.angle == "FRONT" } ?: videos.firstOrNull()
+        // The short angle clips loop like a GIF (as on the classic screens); the long tutorial is a fallback.
+        val clips = videos.filterNot { it.isTutorial }
+        val video = clips.firstOrNull { it.angle == "FRONT" } ?: clips.firstOrNull() ?: videos.firstOrNull()
         return ExerciseGuide(
             description = entity.description,
             videoUrl = video?.videoUrl,

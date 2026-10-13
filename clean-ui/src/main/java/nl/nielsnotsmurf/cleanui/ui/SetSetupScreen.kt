@@ -75,7 +75,7 @@ fun SetSetupScreen(
     val isEcho = setup.mode == TrainingMode.ECHO && !bodyweight
     val unit = state.unit
     val videoUrl = setup.guide?.videoUrl
-    var showVideo by rememberSaveable { mutableStateOf(false) }
+    var showVideo by rememberSaveable { mutableStateOf(true) }
 
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -99,7 +99,7 @@ fun SetSetupScreen(
                 }
                 if (videoUrl != null) {
                     IconButton(onClick = { showVideo = !showVideo }) {
-                        Icon(Icons.Filled.PlayCircle, contentDescription = "Watch how it's done", tint = CleanColors.Accent)
+                        Icon(Icons.Filled.PlayCircle, contentDescription = if (showVideo) "Hide demo video" else "Show demo video", tint = CleanColors.Accent)
                     }
                 }
             }
