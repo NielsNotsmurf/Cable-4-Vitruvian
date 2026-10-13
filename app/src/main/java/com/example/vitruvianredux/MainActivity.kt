@@ -17,6 +17,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.vitruvianredux.cleanui.CleanUiHost
+import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import com.example.vitruvianredux.domain.model.WorkoutState
 import com.example.vitruvianredux.presentation.screen.EnhancedMainScreen
 import com.example.vitruvianredux.presentation.screen.LargeSplashScreen
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
             val themeMode = themeViewModel.themeMode.collectAsState().value
             val workoutState by mainViewModel.workoutState.collectAsState()
             var showLargeSplash by remember { mutableStateOf(true) }
+            val cleanUiEnabled by CleanUiStore.get(this).isEnabled.collectAsState(initial = false)
 
             // Keep screen on during active workouts (Issue #42)
             // This prevents screen lock from disconnecting BLE (Issue #43)
@@ -85,6 +88,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     if (showLargeSplash) {
                         LargeSplashScreen(visible = true)
+                    } else if (cleanUiEnabled) {
+                        CleanUiHost(mainViewModel)
                     } else {
                         EnhancedMainScreen()
                     }

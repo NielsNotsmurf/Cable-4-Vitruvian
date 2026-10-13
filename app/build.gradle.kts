@@ -109,6 +109,9 @@ android {
 }
 
 dependencies {
+    // Clean UI layer (separate module, see clean-ui/build.gradle.kts)
+    implementation(project(":clean-ui"))
+
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

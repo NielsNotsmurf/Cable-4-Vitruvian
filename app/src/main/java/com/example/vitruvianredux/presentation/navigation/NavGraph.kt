@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -141,56 +142,7 @@ fun NavGraph(
             enterTransition = { fadeIn(animationSpec = tween(200)) },
             exitTransition = { fadeOut(animationSpec = tween(200)) }
         ) {
-            val weightUnit by viewModel.weightUnit.collectAsState()
-            val userPreferences by viewModel.userPreferences.collectAsState()
-            val isAutoConnecting by viewModel.isAutoConnecting.collectAsState()
-            val connectionError by viewModel.connectionError.collectAsState()
-            val isExporting by viewModel.isExporting.collectAsState()
-            val isImporting by viewModel.isImporting.collectAsState()
-            val importResult by viewModel.importResult.collectAsState()
-            val showImportResultDialog by viewModel.showImportResultDialog.collectAsState()
-            val backupPreview by viewModel.backupPreview.collectAsState()
-            val showImportPreviewDialog by viewModel.showImportPreviewDialog.collectAsState()
-            val profiles by viewModel.profiles.collectAsState()
-            val activeProfileId by viewModel.activeProfileId.collectAsState()
-            val activeProfileName = profiles.find { it.id == activeProfileId }?.name ?: "Default"
-
-            SettingsTab(
-                weightUnit = weightUnit,
-                autoplayEnabled = userPreferences.autoplayEnabled,
-                stopAtTop = userPreferences.stopAtTop,
-                enableVideoPlayback = userPreferences.enableVideoPlayback,
-                beepsEnabled = userPreferences.beepsEnabled,
-                defaultRepCount = userPreferences.defaultRepCount,
-                onWeightUnitChange = { viewModel.setWeightUnit(it) },
-                onAutoplayChange = { viewModel.setAutoplayEnabled(it) },
-                onStopAtTopChange = { viewModel.setStopAtTop(it) },
-                onEnableVideoPlaybackChange = { viewModel.setEnableVideoPlayback(it) },
-                onBeepsEnabledChange = { viewModel.setBeepsEnabled(it) },
-                onDefaultRepCountChange = { viewModel.setDefaultRepCount(it) },
-                onColorSchemeChange = { viewModel.setColorScheme(it) },
-                onDeleteAllWorkouts = { viewModel.deleteAllWorkouts() },
-                onNavigateToConnectionLogs = { navController.navigate(NavigationRoutes.ConnectionLogs.route) },
-                onNavigateToProtocolTester = { navController.navigate(NavigationRoutes.ProtocolTester.route) },
-                onNavigateToProfiles = { navController.navigate(NavigationRoutes.Profiles.route) },
-                activeProfileName = activeProfileName,
-                isExporting = isExporting,
-                isImporting = isImporting,
-                importResult = importResult,
-                showImportResultDialog = showImportResultDialog,
-                backupPreview = backupPreview,
-                showImportPreviewDialog = showImportPreviewDialog,
-                onExportData = { viewModel.exportAllData() },
-                onImportData = { uri -> viewModel.importFromUri(uri) },
-                onDismissImportResult = { viewModel.dismissImportResult() },
-                onConfirmImport = { viewModel.confirmImport() },
-                onCancelImport = { viewModel.cancelImport() },
-                isAutoConnecting = isAutoConnecting,
-                connectionError = connectionError,
-                onClearConnectionError = { viewModel.clearConnectionError() },
-                onCancelAutoConnecting = { viewModel.cancelAutoConnecting() },
-                onSetTitle = { viewModel.updateTopBarTitle(it) }
-            )
+            ClassicSettingsRoute(navController = navController, viewModel = viewModel)
         }
 
         // Connection Logs screen - debug BLE connections
@@ -337,4 +289,62 @@ fun NavGraph(
             )
         }
     }
+}
+
+/**
+ * Classic Settings with all of its wiring. Shared by the classic graph and the Clean layout,
+ * which hosts it as its Settings tab.
+ */
+@Composable
+fun ClassicSettingsRoute(navController: NavController, viewModel: MainViewModel) {
+    val weightUnit by viewModel.weightUnit.collectAsState()
+    val userPreferences by viewModel.userPreferences.collectAsState()
+    val isAutoConnecting by viewModel.isAutoConnecting.collectAsState()
+    val connectionError by viewModel.connectionError.collectAsState()
+    val isExporting by viewModel.isExporting.collectAsState()
+    val isImporting by viewModel.isImporting.collectAsState()
+    val importResult by viewModel.importResult.collectAsState()
+    val showImportResultDialog by viewModel.showImportResultDialog.collectAsState()
+    val backupPreview by viewModel.backupPreview.collectAsState()
+    val showImportPreviewDialog by viewModel.showImportPreviewDialog.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
+    val activeProfileId by viewModel.activeProfileId.collectAsState()
+    val activeProfileName = profiles.find { it.id == activeProfileId }?.name ?: "Default"
+
+    SettingsTab(
+        weightUnit = weightUnit,
+        autoplayEnabled = userPreferences.autoplayEnabled,
+        stopAtTop = userPreferences.stopAtTop,
+        enableVideoPlayback = userPreferences.enableVideoPlayback,
+        beepsEnabled = userPreferences.beepsEnabled,
+        defaultRepCount = userPreferences.defaultRepCount,
+        onWeightUnitChange = { viewModel.setWeightUnit(it) },
+        onAutoplayChange = { viewModel.setAutoplayEnabled(it) },
+        onStopAtTopChange = { viewModel.setStopAtTop(it) },
+        onEnableVideoPlaybackChange = { viewModel.setEnableVideoPlayback(it) },
+        onBeepsEnabledChange = { viewModel.setBeepsEnabled(it) },
+        onDefaultRepCountChange = { viewModel.setDefaultRepCount(it) },
+        onColorSchemeChange = { viewModel.setColorScheme(it) },
+        onDeleteAllWorkouts = { viewModel.deleteAllWorkouts() },
+        onNavigateToConnectionLogs = { navController.navigate(NavigationRoutes.ConnectionLogs.route) },
+        onNavigateToProtocolTester = { navController.navigate(NavigationRoutes.ProtocolTester.route) },
+        onNavigateToProfiles = { navController.navigate(NavigationRoutes.Profiles.route) },
+        activeProfileName = activeProfileName,
+        isExporting = isExporting,
+        isImporting = isImporting,
+        importResult = importResult,
+        showImportResultDialog = showImportResultDialog,
+        backupPreview = backupPreview,
+        showImportPreviewDialog = showImportPreviewDialog,
+        onExportData = { viewModel.exportAllData() },
+        onImportData = { uri -> viewModel.importFromUri(uri) },
+        onDismissImportResult = { viewModel.dismissImportResult() },
+        onConfirmImport = { viewModel.confirmImport() },
+        onCancelImport = { viewModel.cancelImport() },
+        isAutoConnecting = isAutoConnecting,
+        connectionError = connectionError,
+        onClearConnectionError = { viewModel.clearConnectionError() },
+        onCancelAutoConnecting = { viewModel.cancelAutoConnecting() },
+        onSetTitle = { viewModel.updateTopBarTitle(it) }
+    )
 }
