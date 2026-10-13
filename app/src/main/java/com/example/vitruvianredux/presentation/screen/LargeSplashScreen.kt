@@ -38,8 +38,8 @@ fun LargeSplashScreen(visible: Boolean) {
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.vitphoe_logo_foreground),
-                contentDescription = "Vitruvian Phoenix Logo",
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                contentDescription = "vitruvian- logo",
                 modifier = Modifier.size(logoSize)
             )
         }

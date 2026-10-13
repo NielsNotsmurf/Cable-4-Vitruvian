@@ -145,14 +145,14 @@ fun EnhancedMainScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            // Subtitle - always show "Vitruvian Project Phoenix"
+                            // Subtitle - always show "vitruvian-"
                             Text(
-                                text = "Vitruvian Project Phoenix",
+                                text = "vitruvian-",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     brush = Brush.linearGradient(
                                         colors = listOf(
-                                            Color(0xFFF97316), // Orange
-                                            Color(0xFFEF4444)  // Red
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                            MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     ),
                                     fontWeight = FontWeight.Medium

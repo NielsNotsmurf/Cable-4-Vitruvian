@@ -525,7 +525,7 @@ private fun AssessmentCompleteDialog(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Phoenix will now suggest weights for all exercises based on your results.",
+                    text = "vitruvian- will now suggest weights for all exercises based on your results.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
