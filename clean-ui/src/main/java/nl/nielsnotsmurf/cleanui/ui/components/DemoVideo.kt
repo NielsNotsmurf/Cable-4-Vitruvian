@@ -2,10 +2,8 @@ package nl.nielsnotsmurf.cleanui.ui.components
 
 import android.content.Context
 import android.graphics.Matrix
-import android.graphics.SurfaceTexture
-import android.media.MediaPlayer
-import android.view.Surface
 import android.view.TextureView
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -25,17 +23,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import coil.compose.AsyncImage
+import java.io.File
 
 /**
  * Plays an exercise demo inside the app, looping like the classic screens do.
  *
- * The demo links are Mux streams: most are .mp4, but tutorials are HLS (.m3u8), which a phone
- * browser won't play when handed the link. MediaPlayer plays both.
+ * Loads fast because clips are cached on disk after the first view, every clip plays through
+ * Mux's adaptive stream capped at preview size (instead of the full-size high.mp4), and playback
+ * starts after a short buffer. The thumbnail shows while the first frames load.
  */
 @Composable
-fun DemoVideo(url: String, modifier: Modifier = Modifier) {
+fun DemoVideo(url: String, modifier: Modifier = Modifier, thumbnailUrl: String? = null) {
     var loading by remember(url) { mutableStateOf(true) }
     var failed by remember(url) { mutableStateOf(false) }
     Box(
@@ -58,7 +73,18 @@ fun DemoVideo(url: String, modifier: Modifier = Modifier) {
             onRelease = { it.release() },
             modifier = Modifier.fillMaxSize()
         )
-        if (loading && !failed) CircularProgressIndicator(Modifier.size(32.dp), color = Color.White)
+        if (loading && !failed) {
+            val poster = thumbnailUrl ?: muxThumbnail(url)
+            if (poster != null) {
+                AsyncImage(
+                    model = poster,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            CircularProgressIndicator(Modifier.size(32.dp), color = Color.White)
+        }
         if (failed) {
             Text(
                 "Couldn't load this video. Check your internet connection.",
@@ -69,70 +95,99 @@ fun DemoVideo(url: String, modifier: Modifier = Modifier) {
     }
 }
 
+private val muxId = Regex("""^https://stream\.mux\.com/([A-Za-z0-9]+)(?:\.m3u8|/[a-z]+\.mp4)""")
+
+/** Mux links are either ID.m3u8 or ID/high.mp4; the HLS stream lets the player pick a small rendition. */
+internal fun previewStreamUrl(url: String): String =
+    muxId.find(url)?.let { "https://stream.mux.com/${it.groupValues[1]}.m3u8" } ?: url
+
+private fun muxThumbnail(url: String): String? =
+    muxId.find(url)?.let { "https://image.mux.com/${it.groupValues[1]}/thumbnail.jpg?width=640" }
+
+/** One disk cache for every demo clip, so a clip seen before plays straight from storage. */
+@OptIn(UnstableApi::class)
+private object DemoVideoCache {
+    @Volatile private var cache: SimpleCache? = null
+
+    fun get(context: Context): SimpleCache = cache ?: synchronized(this) {
+        cache ?: SimpleCache(
+            File(context.cacheDir, "demo-videos"),
+            LeastRecentlyUsedCacheEvictor(200L * 1024 * 1024),
+            StandaloneDatabaseProvider(context.applicationContext)
+        ).also { cache = it }
+    }
+}
+
 /**
- * Draws through a TextureView rather than VideoView's SurfaceView. A SurfaceView is a separate
- * window layer, and when navigation removed the screen mid-transition it stayed behind and hid
- * the screen underneath, leaving only the bottom bar visible.
+ * Draws through a TextureView rather than a SurfaceView. A SurfaceView is a separate window
+ * layer, and when navigation removed the screen mid-transition it stayed behind and hid the
+ * screen underneath, leaving only the bottom bar visible.
  */
+@OptIn(UnstableApi::class)
 private class DemoVideoView(
     context: Context,
-    private val url: String,
+    url: String,
     private val onReady: () -> Unit,
     private val onError: () -> Unit
-) : TextureView(context), TextureView.SurfaceTextureListener {
+) : TextureView(context), Player.Listener {
 
-    private var player: MediaPlayer? = null
-    private var surface: Surface? = null
+    private var videoW = 0
+    private var videoH = 0
+    private var reported = false
 
-    init {
-        surfaceTextureListener = this
-    }
-
-    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
-        val s = Surface(texture).also { surface = it }
-        player = MediaPlayer().apply {
-            setSurface(s)
-            isLooping = true
-            setVolume(0f, 0f)
-            setOnPreparedListener { mp ->
-                fitVideo(mp.videoWidth, mp.videoHeight)
-                mp.start()
-                onReady()
+    private val player: ExoPlayer = run {
+        val dataSource = CacheDataSource.Factory()
+            .setCache(DemoVideoCache.get(context))
+            .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true))
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        // Start after a short buffer instead of the default 2.5 s; demos are short loops.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(2_000, 15_000, 500, 1_000)
+            .build()
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
+            .setLoadControl(loadControl)
+            .build()
+            .apply {
+                // A preview is a small card: SD is plenty and downloads several times faster.
+                trackSelectionParameters = trackSelectionParameters.buildUpon().setMaxVideoSizeSd().build()
+                volume = 0f
+                repeatMode = Player.REPEAT_MODE_ONE
+                setVideoTextureView(this@DemoVideoView)
+                addListener(this@DemoVideoView)
+                setMediaItem(MediaItem.fromUri(previewStreamUrl(url)))
+                playWhenReady = true
+                prepare()
             }
-            setOnVideoSizeChangedListener { _, w, h -> fitVideo(w, h) }
-            setOnErrorListener { _, _, _ ->
-                onError()
-                true
-            }
-            try {
-                setDataSource(url)
-                prepareAsync()
-            } catch (e: Exception) {
-                onError()
-            }
-        }
     }
 
-    override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
-        player?.let { fitVideo(it.videoWidth, it.videoHeight) }
+    override fun onRenderedFirstFrame() {
+        if (!reported) { reported = true; onReady() }
     }
 
-    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
-        release()
-        return true
+    override fun onPlayerError(error: PlaybackException) {
+        onError()
     }
 
-    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+    override fun onVideoSizeChanged(videoSize: VideoSize) {
+        videoW = videoSize.width
+        videoH = videoSize.height
+        fitVideo()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        fitVideo()
+    }
 
     fun release() {
-        player?.release()
-        player = null
-        surface?.release()
-        surface = null
+        player.removeListener(this)
+        player.clearVideoTextureView(this)
+        player.release()
     }
 
     /** Letterboxes the video inside the view instead of stretching it. */
-    private fun fitVideo(videoW: Int, videoH: Int) {
+    private fun fitVideo() {
         if (videoW <= 0 || videoH <= 0 || width <= 0 || height <= 0) return
         val scale = minOf(width.toFloat() / videoW, height.toFloat() / videoH)
         val sx = videoW * scale / width
