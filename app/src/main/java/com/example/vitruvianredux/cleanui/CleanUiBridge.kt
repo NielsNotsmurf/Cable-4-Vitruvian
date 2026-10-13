@@ -17,6 +17,11 @@ import com.example.vitruvianredux.domain.model.ProgramMode
 import com.example.vitruvianredux.domain.model.Routine
 import com.example.vitruvianredux.domain.model.RoutineExercise
 import com.example.vitruvianredux.domain.model.WorkoutType
+import com.example.vitruvianredux.domain.model.RepCount
+import com.example.vitruvianredux.domain.model.WorkoutMetric
+import com.example.vitruvianredux.domain.model.WorkoutParameters
+import com.example.vitruvianredux.domain.model.WorkoutState
+import com.example.vitruvianredux.domain.usecase.RepRanges
 import com.example.vitruvianredux.domain.model.resolveDefaultCableConfig
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +43,8 @@ import nl.nielsnotsmurf.cleanui.model.LedScheme
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.Lifter
+import nl.nielsnotsmurf.cleanui.model.LivePhase
+import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.model.SetPlan
 import nl.nielsnotsmurf.cleanui.model.TestAnchor
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
@@ -107,6 +114,68 @@ class CleanUiBridge(
             ConnectionState.Disconnected -> TrainerConnection.Disconnected
         }
     }
+
+    override val liveWorkout: Flow<LiveWorkout?> = combine(
+        combine(vm.workoutState, vm.repCount, vm.workoutParameters, vm.currentMetric, vm.repRanges) { st, reps, params, metric, ranges ->
+            LiveInputs(st, reps, params, metric, ranges)
+        },
+        combine(vm.loadedRoutine, vm.currentExerciseIndex, vm.isCurrentExerciseBodyweight, vm.currentPerformer, vm.currentPerformerSetDisplay) {
+            routine, index, bodyweight, performer, setDisplay ->
+            RoutineInputs(routine, index, bodyweight, performer, setDisplay)
+        }
+    ) { a, b ->
+        val st = a.state
+        val phase = when (st) {
+            WorkoutState.Initializing -> LivePhase.STARTING
+            is WorkoutState.Countdown -> LivePhase.COUNTDOWN
+            WorkoutState.Active -> LivePhase.LIFTING
+            is WorkoutState.SetSummary -> LivePhase.SET_DONE
+            is WorkoutState.Resting -> LivePhase.RESTING
+            WorkoutState.Completed -> LivePhase.FINISHED
+            else -> LivePhase.OTHER
+        }
+        val exercises = b.routine?.exercises.orEmpty()
+        val position = a.metric?.let { m ->
+            val lo = a.ranges?.minPosA
+            val hi = a.ranges?.maxPosA
+            if (lo != null && hi != null && hi - lo > 1f) ((m.positionA - lo) / (hi - lo)).coerceIn(0f, 1f) else null
+        }
+        LiveWorkout(
+            phase = phase,
+            exerciseName = exercises.getOrNull(b.index)?.exercise?.name.orEmpty(),
+            countdown = (st as? WorkoutState.Countdown)?.secondsRemaining ?: 0,
+            reps = a.reps.workingReps,
+            targetReps = a.params.reps.takeIf { it > 0 && !a.params.isJustLift },
+            warmupReps = a.reps.warmupReps,
+            warmupTarget = a.params.warmupReps,
+            warmupDone = a.reps.isWarmupComplete || a.params.warmupReps == 0,
+            loadKg = a.params.weightPerCableKg,
+            liveLoadKg = a.metric?.let { maxOf(it.loadA, it.loadB) } ?: 0f,
+            position = position,
+            setNumber = (st as? WorkoutState.Resting)?.currentSet ?: b.setDisplay?.first ?: 0,
+            totalSets = (st as? WorkoutState.Resting)?.totalSets ?: b.setDisplay?.second ?: 0,
+            restSeconds = (st as? WorkoutState.Resting)?.restSecondsRemaining ?: 0,
+            nextName = (st as? WorkoutState.Resting)?.nextExerciseName.orEmpty(),
+            isLastExercise = (st as? WorkoutState.Resting)?.isLastExercise ?: (b.index >= exercises.size - 1),
+            lifterId = b.performer?.id,
+            lifterName = b.performer?.name,
+            lifterColorArgb = b.performer?.colorInt,
+            doneReps = (st as? WorkoutState.SetSummary)?.repCount ?: a.reps.workingReps,
+            peakPower = (st as? WorkoutState.SetSummary)?.peakPower ?: 0f,
+            avgPower = (st as? WorkoutState.SetSummary)?.averagePower ?: 0f,
+            bodyweight = b.bodyweight
+        )
+    }
+
+    override val personalRecords: Flow<String> = vm.prCelebrationEvent.map { e ->
+        "${e.exerciseName} · ${vm.formatWeight(e.weightPerCableKg, vm.weightUnit.value)} × ${e.reps}"
+    }
+
+    override fun skipRest() = vm.skipRest()
+    override fun proceedFromSummary() = vm.proceedFromSummary()
+    override fun stopWorkout() = vm.stopWorkout()
+    override fun advanceToNextExercise() = vm.advanceToNextExercise()
+    override fun resetForNewWorkout() = vm.resetForNewWorkout()
 
     override val liveHeartRate: Flow<Int?> = vm.currentHeartRate
 
@@ -432,3 +501,19 @@ class CleanUiBridge(
         const val BASELINE_RIR = 2.5f
     }
 }
+
+private data class LiveInputs(
+    val state: WorkoutState,
+    val reps: RepCount,
+    val params: WorkoutParameters,
+    val metric: WorkoutMetric?,
+    val ranges: RepRanges?
+)
+
+private data class RoutineInputs(
+    val routine: Routine?,
+    val index: Int,
+    val bodyweight: Boolean,
+    val performer: UserProfileEntity?,
+    val setDisplay: Pair<Int, Int>?
+)

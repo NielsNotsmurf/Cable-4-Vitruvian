@@ -20,7 +20,7 @@ Android status:
 | Oldest 1RMs to re-test, with Re-test (1RM test) and Train (set setup) | — (new) | Train → Due for a re-test | Clean |
 | Profiles: add with colour, delete, pick who trains | Profiles screen | Settings → Profiles (also Train → Manage) | Clean |
 | Heart rate sensor per profile (Garmin watch broadcast or strap): pair, unpair, status | Profiles screen | Profiles → ♥ on a lifter | Clean (pairing dialog hosted) |
-| Live heart rate during a set | Active workout | Lifting screen | Hosted |
+| Live heart rate during a set | Active workout | Lifting screen | Clean |
 | Heart rate in history (avg / max per set) | History cards | History rows and workout detail | Clean |
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
 | Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
@@ -44,14 +44,14 @@ Android status:
 | Connection lost / error dialogs | Dialogs | Connection lost sheet | Hosted |
 | Auto-connect | Settings | Settings → Connect automatically | Hosted |
 | Countdown before a set | Countdown card | Get ready screen | Hosted |
-| Live reps, load, velocity, power, cable bars | Active workout | Lifting screen | Hosted |
-| Performer banner, set X of Y, up next | Active workout | Lifting screen band + up next | Hosted |
-| Adjust weight mid-set | Active workout | − / + on lifting screen | Hosted |
-| PR celebration (heaviest, best volume) | PR animation | New PR overlay | Hosted |
+| Live reps, load, velocity, power, cable bars | Active workout | Lifting screen | Clean (velocity, cable bars: Classic button) |
+| Performer banner, set X of Y, up next | Active workout | Lifting screen band + up next | Clean |
+| Adjust weight mid-set | Active workout | − / + on lifting screen | Hosted (Classic button) |
+| PR celebration (heaviest, best volume) | PR animation | New PR overlay | Clean (banner) |
 | Set summary: avg, peak, force over time | Set summary card | Rest screen summary card | Hosted |
-| Rest timer, skip, adjust next set, up next, end workout | Rest timer card | Rest screen | Hosted |
+| Rest timer, skip, adjust next set, up next, end workout | Rest timer card | Rest screen | Clean (adjust next set: Classic button) |
 | Autoplay | Settings | Settings → Autoplay | Clean |
-| Workout complete summary | Active workout | Done screen | Hosted |
+| Workout complete summary | Active workout | Done screen | Clean |
 | Just Lift with auto-start and auto-stop | Just Lift | Train → Just Lift | Hosted |
 | Strength assessment (9 anchors, too easy/right/hard) | Baseline Assessment | Replaced by the 1RM test | Hosted |
 | 1RM test: demo, warm-up, single-rep attempts going up until a miss; starts at 90% of a known 1RM | — (new) | Train → 1RM test, or Test 1RM on a lifter card in Set setup | Clean (attempts load on the trainer) |

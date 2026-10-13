@@ -59,6 +59,31 @@ object TrainingStats {
 
     data class Record(val exerciseName: String, val kg: Float, val timestamp: Long)
 
+    /** Averages of one exercise's workouts: top load per cable (null for Echo only) and reps per set. */
+    data class Averages(val workouts: Int, val avgKg: Float?, val avgRepsPerSet: Float, val bestKg: Float?)
+
+    /** One lifter's workouts of [exerciseName] from [since] on; null when there are none. */
+    fun exerciseAverages(
+        entries: List<HistoryEntry>,
+        exerciseName: String,
+        lifterId: String?,
+        since: Long = 0L
+    ): Averages? {
+        val mine = entries.filter {
+            it.exerciseName.equals(exerciseName, ignoreCase = true) &&
+                (lifterId == null || it.lifterId == lifterId) && it.timestamp >= since
+        }
+        if (mine.isEmpty()) return null
+        val loads = mine.mapNotNull { it.topKgPerCable }
+        val sets = mine.sumOf { it.sets }.coerceAtLeast(1)
+        return Averages(
+            workouts = mine.size,
+            avgKg = if (loads.isEmpty()) null else loads.average().toFloat(),
+            avgRepsPerSet = mine.sumOf { it.reps }.toFloat() / sets,
+            bestKg = loads.maxOrNull()
+        )
+    }
+
     /** Workouts, sets and reps from [since] on. A workout is one exercise on one day. */
     fun totals(entries: List<HistoryEntry>, since: Long): Totals {
         val recent = entries.filter { it.timestamp >= since }
