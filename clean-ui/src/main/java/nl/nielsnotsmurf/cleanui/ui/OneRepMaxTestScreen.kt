@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +54,7 @@ import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
+import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
@@ -180,18 +181,20 @@ fun OneRepMaxTestScreen(
 
 @Composable
 private fun IntroContent(test: TestState, knownKg: Float?) {
-    val uriHandler = LocalUriHandler.current
     val guide = test.guide
     val videoUrl = guide?.videoUrl
+    var playing by remember(videoUrl) { mutableStateOf(false) }
     val shape = RoundedCornerShape(16.dp)
-    Box(
+    if (playing && videoUrl != null) {
+        DemoVideo(videoUrl)
+    } else Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
             .clip(shape)
             .background(Color(0xFF1F2937))
             .then(
-                if (videoUrl != null) Modifier.clickable(role = Role.Button) { runCatching { uriHandler.openUri(videoUrl) } }
+                if (videoUrl != null) Modifier.clickable(role = Role.Button) { playing = true }
                 else Modifier
             ),
         contentAlignment = Alignment.Center

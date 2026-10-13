@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,6 +49,7 @@ import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
+import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
 import nl.nielsnotsmurf.cleanui.ui.components.Dot
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
@@ -74,8 +74,8 @@ fun SetSetupScreen(
     val bodyweight = setup.exercise.isBodyweight
     val isEcho = setup.mode == TrainingMode.ECHO && !bodyweight
     val unit = state.unit
-    val uriHandler = LocalUriHandler.current
     val videoUrl = setup.guide?.videoUrl
+    var showVideo by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -98,10 +98,14 @@ fun SetSetupScreen(
                     )
                 }
                 if (videoUrl != null) {
-                    IconButton(onClick = { runCatching { uriHandler.openUri(videoUrl) } }) {
+                    IconButton(onClick = { showVideo = !showVideo }) {
                         Icon(Icons.Filled.PlayCircle, contentDescription = "Watch how it's done", tint = CleanColors.Accent)
                     }
                 }
+            }
+
+            if (showVideo && videoUrl != null) {
+                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp))
             }
 
             if (!bodyweight) LazyRow(

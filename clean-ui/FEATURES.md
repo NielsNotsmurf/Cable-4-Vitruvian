@@ -24,7 +24,7 @@ Android status:
 | Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |
 | Exercise search, muscle/equipment filters | Exercise picker | Exercises screen | Clean |
 | Favourites + "favourites only" | Exercise picker | ★ on rows, Favourites chip | Clean |
-| Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Clean (▶ in Set setup and the 1RM test) |
+| Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Clean (▶ in Set setup and the 1RM test, played in the app) |
 | Modes: Old School, Pump, TUT, TUT Beast, Eccentric Only, Echo | Exercise config | Set setup mode chips + description | Clean |
 | Echo level (Hard…Epic) and eccentric load 0–150% | Exercise config | Set setup when Echo is picked | Clean |
 | % of 1RM loading per lifter | — (new) | Set setup presets, slider, lifter cards | Clean |
