@@ -75,6 +75,8 @@ data class SetupState(
     val overridesKg: Map<String, Float> = emptyMap(),
     /** Last load used per lifter, for lifters without a 1RM. */
     val lastUsedKg: Map<String, Float> = emptyMap(),
+    /** Demo video and description, when the exercise has one. */
+    val guide: ExerciseGuide? = null,
     val isStarting: Boolean = false,
     val error: String? = null
 ) {
@@ -180,7 +182,11 @@ class CleanViewModel(
 
     fun openSetup(exercise: ExerciseCard) {
         requestEstimates(exercise)
-        _setup.value = SetupState(exercise = exercise, sets = List(3) { SetSpec(reps = defaultReps) })
+        _setup.value = SetupState(
+            exercise = exercise,
+            sets = List(3) { SetSpec(reps = defaultReps) },
+            durationSeconds = if (exercise.isBodyweight) 30 else null
+        )
         viewModelScope.launch {
             // Start from what the first lifter did last time: mode, sets, reps, rest.
             val lifter = state.value.activeLifters.firstOrNull()?.id ?: return@launch
@@ -189,13 +195,17 @@ class CleanViewModel(
                 it?.copy(
                     mode = last.mode,
                     sets = last.sets.ifEmpty { it.sets },
-                    durationSeconds = last.durationSeconds,
+                    durationSeconds = last.durationSeconds ?: if (exercise.isBodyweight) 30 else null,
                     cableConfig = last.cableConfig,
                     eccentricLoadPercent = last.eccentricLoadPercent,
                     echoLevel = last.echoLevel,
                     progressionKg = last.progressionKg
                 )
             }
+        }
+        viewModelScope.launch {
+            val guide = runCatching { gateway.exerciseGuide(exercise.id) }.getOrNull() ?: return@launch
+            _setup.update { if (it?.exercise?.id == exercise.id) it.copy(guide = guide) else it }
         }
         viewModelScope.launch {
             val pct = store.lastPercent(exercise.id).first()

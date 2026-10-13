@@ -8,8 +8,7 @@ are replaced by clean versions one by one.
 Android status:
 - **Clean**: built as a Clean screen.
 - **Hosted**: the classic screen runs inside the Clean layout (light theme), so nothing is lost.
-  Reached from the Train tiles, the History / Analytics / Settings tabs, or (for per-set options)
-  through Muscle groups, which opens the classic exercise config.
+  Reached from the Train tiles or the History / Analytics / Settings tabs.
 - **Not yet**: new in the Clean design and not in the app yet.
 
 | Feature | Classic location | Clean layout | Android |
@@ -18,22 +17,22 @@ Android status:
 | Add profile from training | Profiles screen | Train → + Add | Hosted (Manage) |
 | Profiles: add, edit colour, delete, default | Profiles screen | Settings → Profiles (also Train → Manage) | Hosted |
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
-| Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean (partial, see below) |
-| Train by muscle group | Muscle Group Training | Train → Muscle groups | Hosted |
-| Exercise search, muscle/equipment filters | Exercise picker | Exercises screen | Clean (no equipment filter yet) |
-| Favourites + "favourites only" | Exercise picker | ★ on rows, Favourites chip | Hosted (Muscle groups) |
-| Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Hosted (Muscle groups) |
+| Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
+| Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |
+| Exercise search, muscle/equipment filters | Exercise picker | Exercises screen | Clean |
+| Favourites + "favourites only" | Exercise picker | ★ on rows, Favourites chip | Clean |
+| Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Clean (▶ in Set setup and the 1RM test) |
 | Modes: Old School, Pump, TUT, TUT Beast, Eccentric Only, Echo | Exercise config | Set setup mode chips + description | Clean |
-| Echo level (Hard…Epic) and eccentric load 0–150% | Exercise config | Set setup when Echo is picked | Clean (eccentric only) |
+| Echo level (Hard…Epic) and eccentric load 0–150% | Exercise config | Set setup when Echo is picked | Clean |
 | % of 1RM loading per lifter | — (new) | Set setup presets, slider, lifter cards | Clean |
-| Per-set reps, weights (%), rest | Exercise config sets list | Set setup → tap a set | Hosted (Muscle groups) |
-| AMRAP and timed (duration) sets | Exercise config | Set type: Reps / AMRAP / Timed | Hosted (Muscle groups) |
-| Bodyweight exercises | Exercise config | Bodyweight exercises skip loads | Hosted (Muscle groups) |
-| Single / double cable | Exercise config | Set setup → Cables | Hosted (Muscle groups) |
+| Per-set reps, weights (%), rest | Exercise config sets list | Set setup → tap a set | Clean |
+| AMRAP and timed (duration) sets | Exercise config | Set type: Reps / AMRAP per set; Timed for the whole exercise | Clean |
+| Bodyweight exercises | Exercise config | Bodyweight exercises skip loads, timed sets | Clean |
+| Single / double cable | Exercise config | Set setup → More options → Cables | Clean |
 | Weight change per rep (progression/regression) | Exercise config, Just Lift | More options / Just Lift | Clean (Just Lift hosted) |
-| Warm-up reps | Active workout | More options + Settings default | Hosted |
-| Stop at top | Settings / config | More options + Settings | Hosted (Settings, Muscle groups) |
-| Remember as exercise default | Saved per-profile defaults | More options → Remember | Clean (automatic) |
+| Warm-up reps | Settings | Settings (shown in More options) | Hosted (Settings) |
+| Stop at top | Settings | Settings (shown in More options) | Hosted (Settings) |
+| Remember as exercise default | Saved per-profile defaults | Automatic per lifter; Set setup starts from last time | Clean |
 | Trainer scan, pick, connect, disconnect | Device picker, banner | Connection pill on Train, Settings → Trainer | Hosted (classic dialogs) |
 | Bluetooth permissions | Permission screen | Allow Bluetooth sheet | Clean |
 | Connection lost / error dialogs | Dialogs | Connection lost sheet | Hosted |

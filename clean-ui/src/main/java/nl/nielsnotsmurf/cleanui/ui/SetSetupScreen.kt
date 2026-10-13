@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,8 +71,11 @@ fun SetSetupScreen(
     onStart: () -> Unit
 ) {
     var showMore by rememberSaveable { mutableStateOf(false) }
-    val isEcho = setup.mode == TrainingMode.ECHO
+    val bodyweight = setup.exercise.isBodyweight
+    val isEcho = setup.mode == TrainingMode.ECHO && !bodyweight
     val unit = state.unit
+    val uriHandler = LocalUriHandler.current
+    val videoUrl = setup.guide?.videoUrl
 
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -87,13 +92,19 @@ fun SetSetupScreen(
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
                 Column(Modifier.weight(1f)) {
                     Text(setup.exercise.name, style = MaterialTheme.typography.headlineMedium, maxLines = 2)
-                    if (setup.exercise.equipment.isNotBlank()) {
-                        Text(setup.exercise.equipment, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        if (bodyweight) "Bodyweight · timed sets, no cable load" else setup.exercise.equipment,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (videoUrl != null) {
+                    IconButton(onClick = { runCatching { uriHandler.openUri(videoUrl) } }) {
+                        Icon(Icons.Filled.PlayCircle, contentDescription = "Watch how it's done", tint = CleanColors.Accent)
                     }
                 }
             }
 
-            LazyRow(
+            if (!bodyweight) LazyRow(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -102,7 +113,7 @@ fun SetSetupScreen(
                 }
             }
 
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (!bodyweight) Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (isEcho) {
                     SectionLabel("Echo level")
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -150,7 +161,7 @@ fun SetSetupScreen(
                 }
             }
 
-            if (!isEcho) {
+            if (!isEcho && !bodyweight) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -179,7 +190,7 @@ fun SetSetupScreen(
                 }
             }
 
-            SetsSection(setup = setup, isEcho = isEcho, onUpdate = onUpdate)
+            SetsSection(setup = setup, isEcho = isEcho || bodyweight, onUpdate = onUpdate)
 
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -194,9 +205,15 @@ fun SetSetupScreen(
                 ) {
                     Text(
                         buildString {
-                            append(if (setup.cableConfig == "SINGLE") "One cable" else "Both cables")
+                            append(
+                                when {
+                                    bodyweight -> "No cables"
+                                    setup.cableConfig == "SINGLE" -> "One cable"
+                                    else -> "Both cables"
+                                }
+                            )
                             setup.durationSeconds?.let { append(" · Timed ${it}s") }
-                            if (!isEcho) {
+                            if (!isEcho && !bodyweight) {
                                 append(" · Progression ")
                                 append(if (setup.progressionKg == 0f) "off" else "%+.1f kg/rep".format(setup.progressionKg))
                             }
@@ -206,7 +223,7 @@ fun SetSetupScreen(
                     )
                     Text(if (showMore) "Done" else "More options", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
                 }
-                if (showMore) {
+                if (showMore && !bodyweight) {
                     SectionLabel("Cables")
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PresetBox("Both cables", selected = setup.cableConfig != "SINGLE", Modifier.weight(1f)) {
@@ -216,8 +233,10 @@ fun SetSetupScreen(
                             onUpdate { it.copy(cableConfig = "SINGLE") }
                         }
                     }
-                    SectionLabel("Set type")
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                }
+                if (showMore) {
+                    if (!bodyweight) SectionLabel("Set type")
+                    if (!bodyweight) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PresetBox("Count reps", selected = setup.durationSeconds == null, Modifier.weight(1f)) {
                             onUpdate { it.copy(durationSeconds = null) }
                         }
@@ -225,14 +244,7 @@ fun SetSetupScreen(
                             onUpdate { it.copy(durationSeconds = it.durationSeconds ?: 30) }
                         }
                     }
-                    setup.durationSeconds?.let { secs ->
-                        Stepper(
-                            "Seconds per set", "${secs}s",
-                            onMinus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) - 5).coerceAtLeast(5)) } },
-                            onPlus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) + 5).coerceAtMost(300)) } }
-                        )
-                    }
-                    if (!isEcho) {
+                    if (!isEcho && !bodyweight) {
                         Stepper(
                             "Weight change per rep", "%+.1f kg".format(setup.progressionKg),
                             onMinus = { onUpdate { it.copy(progressionKg = (it.progressionKg - 0.5f).coerceAtLeast(-3f)) } },
@@ -255,7 +267,7 @@ fun SetSetupScreen(
             Text(
                 buildString {
                     append(summary(setup))
-                    if (!isEcho && setup.sets.all { it.percent == null }) append(" @ ${setup.percent}%")
+                    if (!isEcho && !bodyweight && setup.sets.all { it.percent == null }) append(" @ ${setup.percent}%")
                     if (who != null && state.activeLifters.size > 1) append(" · $who first")
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -374,7 +386,14 @@ private fun SetsSection(setup: SetupState, isEcho: Boolean, onUpdate: ((SetupSta
                 onPlus = { updateSets { if (it.size < 10) it + it.last() else it } },
                 modifier = Modifier.weight(1f)
             )
-            if (!timed) {
+            if (timed) {
+                Stepper(
+                    "Seconds per set", "${setup.durationSeconds}s",
+                    onMinus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) - 5).coerceAtLeast(5)) } },
+                    onPlus = { onUpdate { it.copy(durationSeconds = ((it.durationSeconds ?: 30) + 5).coerceAtMost(300)) } },
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
                 Stepper(
                     "Reps · all sets", firstReps.toString(),
                     onMinus = { updateSets { sets -> sets.map { it.copy(reps = (firstReps - 1).coerceAtLeast(1)) } } },

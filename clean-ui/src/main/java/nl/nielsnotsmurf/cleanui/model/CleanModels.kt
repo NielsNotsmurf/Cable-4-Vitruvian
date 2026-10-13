@@ -25,7 +25,10 @@ data class ExerciseCard(
     val popularity: Float = 0f,
     /** Body region for the muscle-group picker ("Chest", "Back", "Shoulders", "Arms", "Legs", "Core"). */
     val region: String = ""
-)
+) {
+    /** No cable load: the classic app runs these as timed sets only. */
+    val isBodyweight: Boolean get() = equipment.isBlank() || equipment.equals("bodyweight", ignoreCase = true)
+}
 
 /** A completed set from history, used to estimate a 1RM. */
 data class LiftRecord(
