@@ -1,10 +1,37 @@
-# vitruvian-
+<p align="center">
+  <img src="docs/banner.svg" alt="vitruvian-" width="100%">
+</p>
 
-A minimal, personal Android app for training on a Vitruvian Trainer. Black and white,
-offline, no cloud accounts. It talks to the trainer directly over Bluetooth.
+<p align="center">
+  <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/NielsNotsmurf/vitruvian-app?style=flat-square&color=000000&label=release"></a>
+  <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/vitruvian-app/total?style=flat-square&color=000000"></a>
+  <img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-000000?style=flat-square&logo=android&logoColor=white">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-000000?style=flat-square"></a>
+  <a href="https://github.com/ImranR98/Obtainium"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/get%20it%20on-Obtainium-000000?style=flat-square"></a>
+</p>
 
-This README grows with the app: every change that adds or changes a feature also adds a line
-to **Features** and **Changelog** below.
+<p align="center">
+  <b>Train on your Vitruvian Trainer without a subscription.</b><br>
+  Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
+  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
+</p>
+
+> [!NOTE]
+> vitruvian- is an independent community project. It is not made, endorsed or supported by
+> Vitruvian. "Vitruvian" and "Vitruvian Trainer" are trademarks of their owner and are only
+> used here to say which hardware the app works with. Use it at your own risk.
+
+## Why vitruvian-
+
+| | |
+|---|---|
+| **Free, for good** | No subscription, no ads, no tracking. MIT licensed. |
+| **Offline first** | Everything stays on your phone. Back up to a single JSON file. |
+| **Train together** | Up to 4 lifters per session, sets rotate, each with their own 1RM and PIN. |
+| **Smart loading** | Loads as a % of your 1RM, with estimated 1RMs for 362 exercises. |
+| **Auto updates** | Install once with Obtainium and new versions arrive by themselves. |
+
+<!-- This README grows with the app: every change that adds or changes a feature also adds a line to Features and Changelog. -->
 
 ## Features
 

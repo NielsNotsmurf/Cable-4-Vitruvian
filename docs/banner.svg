@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
+  <rect width="1200" height="360" rx="24" fill="#000"/>
+  <g fill="none" stroke="#fff" stroke-width="22" stroke-linecap="square">
+    <path d="M150,110 L200,216 L250,110" stroke-linejoin="miter"/>
+    <path d="M276,184 L306,184"/>
+  </g>
+  <text x="380" y="190" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="-2">vitruvian-</text>
+  <text x="384" y="248" fill="#bbb" font-family="Helvetica, Arial, sans-serif" font-size="30">Free, offline Android app for the Vitruvian Trainer</text>
+</svg>
