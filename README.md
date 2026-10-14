@@ -7,13 +7,14 @@
   <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/vitruvian-app/total?style=flat-square&color=000000"></a>
   <img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-000000?style=flat-square&logo=android&logoColor=white">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-000000?style=flat-square"></a>
+  <a href="https://github.com/sponsors/NielsNotsmurf"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-%E2%99%A5-000000?style=flat-square&logo=githubsponsors&logoColor=white"></a>
   <a href="https://github.com/ImranR98/Obtainium"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/get%20it%20on-Obtainium-000000?style=flat-square"></a>
 </p>
 
 <p align="center">
   <b>Train on your Vitruvian Trainer without a subscription.</b><br>
   Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
-  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
+  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/vitruvian-app/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
 </p>
 
 > [!NOTE]
@@ -32,6 +33,18 @@
 | **Auto updates** | Install once with Obtainium and new versions arrive by themselves. |
 
 <!-- This README grows with the app: every change that adds or changes a feature also adds a line to Features and Changelog. -->
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/welcome.png" width="23%" alt="Welcome">
+  <img src="docs/screenshots/train.png" width="23%" alt="Training">
+  <img src="docs/screenshots/exercises.png" width="23%" alt="Exercises">
+  <img src="docs/screenshots/analytics.png" width="23%" alt="Analytics body map">
+</p>
+
+**Try it in your browser:** the [live demo](https://nielsnotsmurf.github.io/vitruvian-app/demo/) is a
+clickable web version with a simulated trainer and example lifters. Nothing to install.
 
 ## Features
 
@@ -104,6 +117,12 @@ no imports from `:app`).
   and no more Phoenix branding.
 - **2026-10-13:** signed APK releases on every master push, and live Garmin heart rate.
 - **2026-10-12:** Clean layout, per-lifter 1RM and % loading.
+
+## Support
+
+vitruvian- is free and stays free. If it saves you a subscription and you want to say thanks,
+you can [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). Stars, bug reports
+and sharing the app with other Vitruvian owners help just as much.
 
 ## Credits
 
