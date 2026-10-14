@@ -332,7 +332,7 @@ private fun AttemptList(attempts: List<Attempt>, fmt: (Float) -> String) {
         attempts.forEachIndexed { i, a ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Attempt ${i + 1}", modifier = Modifier.weight(1f))
-                Text(fmt(a.kg) + "  ")
+                Text(fmt(a.kg) + (a.measuredKg?.let { " · measured ${fmt(it)}" } ?: "") + "  ")
                 Text(
                     when (a.outcome) {
                         AttemptOutcome.MADE_EASY -> "✓ easy"

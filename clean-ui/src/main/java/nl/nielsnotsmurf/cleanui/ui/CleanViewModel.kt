@@ -106,6 +106,8 @@ data class TestState(
     val attempts: List<Attempt> = emptyList(),
     /** When the rest before the next attempt ends (epoch ms); 0 means no rest running. */
     val restEndsAt: Long = 0L,
+    /** When the current attempt was sent to the trainer; 0 when none is waiting to be recorded. */
+    val liftStartedAt: Long = 0L,
     val guide: ExerciseGuide? = null,
     val isStarting: Boolean = false,
     val error: String? = null
@@ -393,15 +395,27 @@ class CleanViewModel(
         it.copy(kg = LoadCalculator.roundToStep(it.kg + deltaKg).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG))
     }
 
-    fun testRecord(outcome: AttemptOutcome) = updateTest {
-        val attempts = it.attempts + Attempt(it.kg, outcome)
+    fun testRecord(outcome: AttemptOutcome) {
+        val t = _test.value ?: return
+        viewModelScope.launch {
+            // The measured peak of the set just lifted on the trainer, if it was lifted there.
+            val measured = if (t.liftStartedAt == 0L) null else gateway.history.first()
+                .filter { it.lifterId == t.lifterId && it.exerciseId == t.exerciseId && it.timestamp >= t.liftStartedAt }
+                .mapNotNull { it.topKgPerCable }
+                .maxOrNull()
+            recordAttempt(outcome, measured)
+        }
+    }
+
+    private fun recordAttempt(outcome: AttemptOutcome, measuredKg: Float?) = updateTest {
+        val attempts = it.attempts + Attempt(it.kg, outcome, measuredKg)
         val fromKnown = it.startReason == OneRepMaxTest.StartReason.KNOWN_ONE_REP_MAX
         if (outcome == AttemptOutcome.MISSED) {
             // After a miss with nothing made, suggest a lighter retry.
             val nextKg = if (OneRepMaxTest.best(attempts) == null) OneRepMaxTest.next(it.kg, outcome, fromKnown) else it.kg
-            it.copy(attempts = attempts, kg = nextKg, phase = TestPhase.RESULT, restEndsAt = 0L)
+            it.copy(attempts = attempts, kg = nextKg, phase = TestPhase.RESULT, restEndsAt = 0L, liftStartedAt = 0L)
         } else {
-            it.copy(attempts = attempts, kg = OneRepMaxTest.next(it.kg, outcome, fromKnown), restEndsAt = restEnd())
+            it.copy(attempts = attempts, kg = OneRepMaxTest.next(it.kg, outcome, fromKnown), restEndsAt = restEnd(), liftStartedAt = 0L)
         }
     }
 
@@ -414,7 +428,7 @@ class CleanViewModel(
     fun testLiftOnTrainer(onStarted: () -> Unit) {
         val t = _test.value ?: return
         val exercise = state.value.exercises.firstOrNull { it.id == t.exerciseId } ?: return
-        updateTest { it.copy(isStarting = true) }
+        updateTest { it.copy(isStarting = true, liftStartedAt = System.currentTimeMillis()) }
         gateway.startSingleAttempt(
             t.lifterId, exercise, t.kg,
             onStarted = {
@@ -425,7 +439,7 @@ class CleanViewModel(
         )
     }
 
-    /** Saves the 1RM estimated from the best made 3-rep set. Returns true when the test is finished. */
+    /** Saves the 1RM estimated from the best made 3-rep set (its measured peak). Returns true when the test is finished. */
     fun testSave(): Boolean {
         val t = _test.value ?: return true
         val best = t.best ?: return testSkip()

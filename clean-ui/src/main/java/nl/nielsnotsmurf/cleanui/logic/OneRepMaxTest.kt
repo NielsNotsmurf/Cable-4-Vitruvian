@@ -51,14 +51,14 @@ object OneRepMaxTest {
     }.let { if (outcome != AttemptOutcome.MISSED && it <= currentKg) clamp(currentKg + LoadCalculator.STEP_KG) else it }
 
     /** Heaviest made set (the 3RM), or null when nothing was made yet. */
-    fun best(attempts: List<Attempt>): Float? = attempts.filter { it.made }.maxOfOrNull { it.kg }
+    fun best(attempts: List<Attempt>): Float? = attempts.filter { it.made }.maxOfOrNull { it.resultKg }
 
     /** The test ends at the first miss. */
     fun isFinished(attempts: List<Attempt>): Boolean = attempts.lastOrNull()?.outcome == AttemptOutcome.MISSED
 
     /** One extra try halfway between the best made set and the last miss, if there's room. */
     fun midpoint(attempts: List<Attempt>): Float? {
-        val best = best(attempts) ?: return null
+        val best = attempts.filter { it.made }.maxOfOrNull { it.kg } ?: return null
         val miss = attempts.lastOrNull { !it.made }?.kg ?: return null
         val mid = clamp((best + miss) / 2f)
         return mid.takeIf { it > best && it < miss }

@@ -40,6 +40,14 @@ class OneRepMaxTestTest {
     }
 
     @Test
+    fun bestUsesTheMeasuredPeak() {
+        val a = listOf(Attempt(50f, MADE_TOUGH, measuredKg = 47f), Attempt(52f, MISSED))
+        assertEquals(47f, OneRepMaxTest.best(a)!!, 0.001f)
+        // The retry still sits between the set weights.
+        assertEquals(51f, OneRepMaxTest.midpoint(a)!!, 0.001f)
+    }
+
+    @Test
     fun noOneRepMaxUsesTheDefault() {
         assertEquals(15f, OneRepMaxTest.start(null, 15f).kg, 0.001f)
     }

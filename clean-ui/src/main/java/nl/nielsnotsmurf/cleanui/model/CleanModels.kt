@@ -138,8 +138,12 @@ data class ExerciseGuide(
 /** Result of one single-rep attempt in the 1RM test. */
 enum class AttemptOutcome { MADE_EASY, MADE_TOUGH, MISSED }
 
-data class Attempt(val kg: Float, val outcome: AttemptOutcome) {
+/** One test attempt: the load set on the trainer and, once the set is saved, what it measured. */
+data class Attempt(val kg: Float, val outcome: AttemptOutcome, val measuredKg: Float? = null) {
     val made: Boolean get() = outcome != AttemptOutcome.MISSED
+
+    /** What counts for the 3RM: the measured peak when there is one, like every PR. */
+    val resultKg: Float get() = measuredKg ?: kg
 }
 
 /** How a lifter did an exercise last time, used to prefill set setup. */
