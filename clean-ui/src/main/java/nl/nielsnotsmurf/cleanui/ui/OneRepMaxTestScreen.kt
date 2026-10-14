@@ -137,7 +137,7 @@ fun OneRepMaxTestScreen(
             when (test.phase) {
                 TestPhase.INTRO -> IntroContent(test, current?.takeIf { !it.isEstimate }?.kg)
                 TestPhase.ATTEMPT -> AttemptContent(test, lifter?.color ?: CleanColors.Ink, fmt, unit, cables, onNudge)
-                TestPhase.RESULT -> ResultContent(test, lifter?.name ?: "", current, fmt, onTryAgain)
+                TestPhase.RESULT -> ResultContent(test, lifter?.name ?: "", current, fmt, cables, onTryAgain)
             }
             test.error?.let { Text(it, color = CleanColors.Danger, style = MaterialTheme.typography.bodyMedium) }
         }
@@ -290,6 +290,7 @@ private fun ResultContent(
     lifterName: String,
     current: nl.nielsnotsmurf.cleanui.model.OneRepMax?,
     fmt: (Float) -> String,
+    cables: Int,
     onTryAgain: (Float?) -> Unit
 ) {
     val best = test.best
