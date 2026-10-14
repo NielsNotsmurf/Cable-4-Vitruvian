@@ -14,7 +14,7 @@
 <p align="center">
   <b>Train on your Vitruvian Trainer without a subscription.</b><br>
   Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
-  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
+  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/vitruvian-app/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
 </p>
 
 > [!NOTE]
@@ -33,6 +33,18 @@
 | **Auto updates** | Install once with Obtainium and new versions arrive by themselves. |
 
 <!-- This README grows with the app: every change that adds or changes a feature also adds a line to Features and Changelog. -->
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/welcome.png" width="23%" alt="Welcome">
+  <img src="docs/screenshots/train.png" width="23%" alt="Training">
+  <img src="docs/screenshots/exercises.png" width="23%" alt="Exercises">
+  <img src="docs/screenshots/analytics.png" width="23%" alt="Analytics body map">
+</p>
+
+**Try it in your browser:** the [live demo](https://nielsnotsmurf.github.io/vitruvian-app/demo/) is a
+clickable web version with a simulated trainer and example lifters. Nothing to install.
 
 ## Features
 
