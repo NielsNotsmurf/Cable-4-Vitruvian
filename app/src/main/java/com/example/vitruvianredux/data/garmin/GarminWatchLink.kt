@@ -22,8 +22,10 @@ import javax.inject.Singleton
 import kotlin.random.Random
 
 /**
- * Live link to the vitruvian- Connect IQ app on a Garmin watch (source in /watch), through
- * Garmin Connect Mobile on this tablet.
+ * Live link to the vitruvian- Connect IQ app on a Garmin watch (source in /watch): through
+ * Garmin Connect Mobile when the watch is paired to this tablet, or directly over Bluetooth
+ * ([BleWatchServer]) when it is paired to a phone. The direct route can't open the watch app,
+ * so the lifter opens it before training.
  *
  * At a profile's first set the watch is asked to open the app, which records heart rate and
  * each set this class sends (exercise, reps, weight). "Finish training", or 30 minutes without
@@ -40,6 +42,8 @@ class GarminWatchLink @Inject constructor(
         const val WATCH_APP_ID = "9ff78d152cd74db0ab2362fb6f1c5352"
         const val IDLE_FINISH_MS = 30 * 60_000L
         private const val PREFS = "garmin_watch_links"
+        /** Watches that linked directly over Bluetooth before: id -> name. */
+        private const val DIRECT_PREFS = "garmin_direct_watches"
     }
 
     data class Watch(val id: Long, val name: String, val connected: Boolean, val problem: String? = null)
@@ -53,6 +57,14 @@ class GarminWatchLink @Inject constructor(
     private var ciq: ConnectIQ? = null
     private var ready = false
     private val devices = mutableMapOf<Long, IQDevice>()
+    private val directPrefs = context.getSharedPreferences(DIRECT_PREFS, Context.MODE_PRIVATE)
+    private var connectWatches: List<Watch> = emptyList()
+    private val direct = BleWatchServer(
+        context,
+        onHello = { id, name -> onDirectHello(id, name) },
+        onLine = { id, fields -> onWatchMessage(id, mapOf("t" to fields[0], "tr" to fields.getOrNull(1)?.toIntOrNull())) },
+        onDisconnected = { publishWatches() }
+    )
 
     private val _watches = MutableStateFlow<List<Watch>>(emptyList())
     /** Garmin watches known to Garmin Connect Mobile on this tablet. */
@@ -66,7 +78,7 @@ class GarminWatchLink @Inject constructor(
     /** Watches recording the current training. */
     val recording: StateFlow<Set<Long>> = _recording.asStateFlow()
 
-    private val _status = MutableStateFlow<String?>("Looking for Garmin Connect on this device")
+    private val _status = MutableStateFlow<String?>(null)
     /** Why no watch is listed, or null when watches were found. */
     val status: StateFlow<String?> = _status.asStateFlow()
 
@@ -79,6 +91,8 @@ class GarminWatchLink @Inject constructor(
 
     /** Connects to Garmin Connect Mobile. Safe to call more than once. */
     fun start() {
+        direct.start()
+        publishWatches()
         if (ciq != null) return
         try {
             val sdk = ConnectIQ.getInstance(context, ConnectIQ.IQConnectType.WIRELESS)
@@ -92,11 +106,6 @@ class GarminWatchLink @Inject constructor(
                 override fun onInitializeError(status: ConnectIQ.IQSdkErrorStatus) {
                     // Usually Garmin Connect Mobile isn't installed: no watches, nothing to do.
                     Timber.i("Garmin Connect IQ unavailable: $status")
-                    _status.value = when (status) {
-                        ConnectIQ.IQSdkErrorStatus.GCM_NOT_INSTALLED -> "Garmin Connect is not installed on this device"
-                        ConnectIQ.IQSdkErrorStatus.GCM_UPGRADE_NEEDED -> "Update Garmin Connect on this device"
-                        else -> "Garmin Connect did not respond ($status)"
-                    }
                     // Try again the next time the watch list is opened.
                     ciq = null
                 }
@@ -107,7 +116,6 @@ class GarminWatchLink @Inject constructor(
             })
         } catch (e: Exception) {
             Timber.w(e, "Garmin Connect IQ failed to start")
-            _status.value = "Garmin Connect could not be reached"
             ciq = null
         }
     }
@@ -144,10 +152,9 @@ class GarminWatchLink @Inject constructor(
         // Callers may be on any thread; the SDK and this state live on the main thread.
         scope.launch {
             val watch = watchFor(profileId) ?: return@launch
-            val device = devices[watch.id] ?: return@launch
             touch()
-            if (watch.id !in _recording.value) beginOn(device)
-            send(device, message("go", profileId), queue = false)
+            if (watch.id !in _recording.value) beginOn(watch.id)
+            send(watch.id, message("go", profileId), queue = false)
         }
     }
 
@@ -156,12 +163,11 @@ class GarminWatchLink @Inject constructor(
         // Callers may be on any thread; the SDK and this state live on the main thread.
         scope.launch {
             val watch = watchFor(profileId) ?: return@launch
-            val device = devices[watch.id] ?: return@launch
             touch()
             // The set started before the watch was linked or reachable.
-            if (watch.id !in _recording.value) beginOn(device)
+            if (watch.id !in _recording.value) beginOn(watch.id)
             send(
-                device,
+                watch.id,
                 message("set", profileId) + mapOf(
                     "id" to nextSetId++,
                     "ex" to exercise,
@@ -178,7 +184,7 @@ class GarminWatchLink @Inject constructor(
     fun finishTraining() {
         idleJob?.cancel()
         _recording.value.forEach { id ->
-            devices[id]?.let { send(it, mapOf("t" to "end", "tr" to training), queue = true) }
+            send(id, mapOf("t" to "end", "tr" to training), queue = true)
         }
         _recording.value = emptySet()
         training = newTrainingId()
@@ -193,6 +199,7 @@ class GarminWatchLink @Inject constructor(
 
     /** Ends the training on its own after [IDLE_FINISH_MS] without a set (the watch does the same). */
     private fun touch() {
+        direct.start()
         idleJob?.cancel()
         idleJob = scope.launch {
             delay(IDLE_FINISH_MS)
@@ -201,10 +208,10 @@ class GarminWatchLink @Inject constructor(
     }
 
     /** Starts this training on [device]; anything left from an earlier training is dropped. */
-    private fun beginOn(device: IQDevice) {
-        pending.remove(device.deviceIdentifier)
-        _recording.update { it + device.deviceIdentifier }
-        openApp(device)
+    private fun beginOn(watchId: Long) {
+        pending.remove(watchId)
+        _recording.update { it + watchId }
+        devices[watchId]?.let { openApp(it) }
     }
 
     private fun openApp(device: IQDevice) {
@@ -217,17 +224,22 @@ class GarminWatchLink @Inject constructor(
                     else -> null
                 }
                 if (problem != null) _recording.update { it - device.deviceIdentifier }
-                _watches.update { list -> list.map { if (it.id == device.deviceIdentifier) it.copy(problem = problem) else it } }
+                connectWatches = connectWatches.map { if (it.id == device.deviceIdentifier) it.copy(problem = problem) else it }
+                publishWatches()
             }
         } catch (e: Exception) {
             Timber.w(e, "Garmin open app failed")
         }
     }
 
-    private fun send(device: IQDevice, payload: Map<String, Any>, queue: Boolean) {
-        val sdk = ciq?.takeIf { ready } ?: return
-        val id = device.deviceIdentifier
+    private fun send(id: Long, payload: Map<String, Any>, queue: Boolean) {
         if (queue) pending.getOrPut(id) { mutableListOf() }.add(payload)
+        if (direct.isConnected(id)) {
+            if (direct.send(id, lineFor(payload))) pending[id]?.remove(payload)
+            return
+        }
+        val device = devices[id] ?: return
+        val sdk = ciq?.takeIf { ready } ?: return
         try {
             sdk.sendMessage(device, app, payload) { _, _, status ->
                 if (status == ConnectIQ.IQMessageStatus.SUCCESS) {
@@ -241,22 +253,53 @@ class GarminWatchLink @Inject constructor(
         }
     }
 
-    private fun onWatchMessage(device: IQDevice, data: List<Any>) {
-        val msg = data.firstOrNull() as? Map<*, *> ?: return
+    private fun onWatchMessage(id: Long, msg: Map<*, *>) {
         when (msg["t"]) {
             // The app just opened: deliver what it missed.
-            "ready" -> pending[device.deviceIdentifier]?.toList()?.forEach { send(device, it, queue = false) }
+            "ready" -> flush(id)
             // Saved or discarded on the watch: the next set starts a new activity.
             "saved" -> if (msg["tr"] == null || msg["tr"] == training) {
-                pending.remove(device.deviceIdentifier)
-                _recording.update { it - device.deviceIdentifier }
+                pending.remove(id)
+                _recording.update { it - id }
             }
+        }
+    }
+
+    private fun flush(id: Long) {
+        pending[id]?.toList()?.forEach { send(id, it, queue = false) }
+    }
+
+    /** The watch app linked directly: remember it, and send what it missed. */
+    private fun onDirectHello(id: Long, name: String) {
+        directPrefs.edit().putString(id.toString(16), name).apply()
+        publishWatches()
+        flush(id)
+    }
+
+    /** The same fields as the Connect IQ message, as the line TabletLink.mc parses. */
+    private fun lineFor(p: Map<String, Any>): List<String> {
+        fun f(key: String) = p[key]?.let { if (it is Float) String.format(java.util.Locale.US, "%.1f", it) else it.toString() } ?: ""
+        return listOf(f("t"), f("tr"), f("who"), f("id"), f("cat"), f("reps"), f("kg"), f("ex"))
+    }
+
+    private fun publishWatches() {
+        val directWatches = directPrefs.all.mapNotNull { (k, v) ->
+            val id = k.toLongOrNull(16) ?: return@mapNotNull null
+            Watch(id, v as? String ?: "Garmin watch", direct.isConnected(id))
+        }
+        val all = connectWatches + directWatches.filter { d -> connectWatches.none { it.id == d.id } }
+        _watches.value = all
+        _status.value = when {
+            all.isNotEmpty() -> null
+            !direct.hasPermissions() -> "Allow Nearby devices for vitruvian- so your watch can link"
+            else -> "Open the vitruvian- app on your watch near this tablet to link it"
         }
     }
 
     /** Looks for watches paired in Garmin Connect Mobile since the app started. */
     fun refreshWatches() {
-        if (ciq == null) start()
+        if (ciq == null) start() else direct.start()
+        publishWatches()
         val sdk = ciq?.takeIf { ready } ?: return
         try {
             val known = sdk.knownDevices.orEmpty()
@@ -264,14 +307,15 @@ class GarminWatchLink @Inject constructor(
                 if (devices.put(device.deviceIdentifier, device) != null) return@forEach
                 sdk.registerForDeviceEvents(device) { d, _ -> updateWatch(d) }
                 sdk.registerForAppEvents(device, app) { d, _, data, status ->
-                    if (status == ConnectIQ.IQMessageStatus.SUCCESS) onWatchMessage(d, data)
+                    val msg = data.firstOrNull() as? Map<*, *>
+                    if (status == ConnectIQ.IQMessageStatus.SUCCESS && msg != null) onWatchMessage(d.deviceIdentifier, msg)
                 }
             }
-            _watches.value = known.map { d ->
-                val old = _watches.value.firstOrNull { it.id == d.deviceIdentifier }
+            connectWatches = known.map { d ->
+                val old = connectWatches.firstOrNull { it.id == d.deviceIdentifier }
                 Watch(d.deviceIdentifier, d.friendlyName ?: "Garmin", statusOf(d) == IQDevice.IQDeviceStatus.CONNECTED, old?.problem)
             }
-            _status.value = if (known.isEmpty()) "No watch is paired in Garmin Connect on this device" else null
+            publishWatches()
         } catch (e: Exception) {
             Timber.w(e, "Garmin device list failed")
         }
@@ -279,8 +323,9 @@ class GarminWatchLink @Inject constructor(
 
     private fun updateWatch(device: IQDevice) {
         val connected = statusOf(device) == IQDevice.IQDeviceStatus.CONNECTED
-        _watches.update { list -> list.map { if (it.id == device.deviceIdentifier) it.copy(connected = connected) else it } }
-        if (connected) pending[device.deviceIdentifier]?.toList()?.forEach { send(device, it, queue = false) }
+        connectWatches = connectWatches.map { if (it.id == device.deviceIdentifier) it.copy(connected = connected) else it }
+        publishWatches()
+        if (connected) flush(device.deviceIdentifier)
     }
 
     private fun statusOf(device: IQDevice): IQDevice.IQDeviceStatus? =

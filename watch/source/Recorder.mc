@@ -37,6 +37,8 @@ class Recorder {
     var status = "Waiting for the first set";
     var done = false;
     var lastActivityMs = 0;
+    // Direct link to the tablet (TabletLink), next to the phone route.
+    var link = null;
 
     function initialize() {
     }
@@ -198,6 +200,9 @@ class Recorder {
 
     function sendToPhone(data) {
         Communications.transmit(data, null, new PhoneListener());
+        if (link != null) {
+            link.send(data["t"] + "|" + (data["tr"] != null ? data["tr"].toString() : ""));
+        }
     }
 
     function numberOr(value, fallback) {

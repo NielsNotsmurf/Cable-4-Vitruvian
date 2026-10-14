@@ -7,12 +7,14 @@ import Toybox.WatchUi;
 
 class VitruvianView extends WatchUi.View {
     var recorder;
+    var link;
     var timer;
     var savedTicks = 0;
 
-    function initialize(rec) {
+    function initialize(rec, tablet) {
         View.initialize();
         recorder = rec;
+        link = tablet;
     }
 
     function onShow() {
@@ -62,5 +64,7 @@ class VitruvianView extends WatchUi.View {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.64, Graphics.FONT_XTINY, recorder.lastSet, Graphics.TEXT_JUSTIFY_CENTER);
         }
+        dc.setColor(link.connected ? Graphics.COLOR_GREEN : Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, link.connected ? "Tablet linked" : "Looking for tablet", Graphics.TEXT_JUSTIFY_CENTER);
     }
 }

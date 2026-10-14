@@ -1,8 +1,14 @@
 # Garmin watch app
 
 `watch/` is a Connect IQ watch app (Monkey C) that records a Vitruvian training on the
-lifter's Garmin watch. `:app` talks to it through Garmin Connect Mobile with the Connect IQ
-Mobile SDK (`data/garmin/GarminWatchLink.kt`).
+lifter's Garmin watch. `:app` talks to it in one of two ways (`data/garmin/GarminWatchLink.kt`):
+
+- **Direct Bluetooth** (`BleWatchServer.kt` and `watch/source/TabletLink.mc`), for a watch paired
+  to a phone rather than the tablet. The tablet advertises a GATT service; the open watch app
+  connects to it, says `hi|<id>|<name>`, and gets `type|tr|who|id|cat|reps|kg|exercise` lines
+  in 20-byte pieces. The tablet can't open the watch app this way, so the lifter opens it.
+- **Garmin Connect Mobile** with the Connect IQ Mobile SDK, when the watch is paired to the
+  tablet itself. Then the tablet opens the app on the watch at the first set.
 
 ## Flow
 
