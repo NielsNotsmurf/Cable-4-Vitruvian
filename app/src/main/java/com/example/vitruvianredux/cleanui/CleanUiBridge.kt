@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
+import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.LastPlan
@@ -353,10 +354,11 @@ class CleanUiBridge(
                     exercise = ex,
                     cableConfig = ex.resolveDefaultCableConfig(),
                     orderIndex = 0,
-                    setReps = listOf(1),
+                    setReps = listOf(OneRepMaxTest.TEST_REPS),
                     weightPerCableKg = kg,
                     progressionKg = 0f,
                     setRestSeconds = listOf(0),
+                    // Old School: the same load up and down, so the eccentric is 100%, never boosted.
                     workoutType = WorkoutType.Program(ProgramMode.OldSchool),
                     eccentricLoad = EccentricLoad.LOAD_100,
                     echoLevel = EchoLevel.HARDER

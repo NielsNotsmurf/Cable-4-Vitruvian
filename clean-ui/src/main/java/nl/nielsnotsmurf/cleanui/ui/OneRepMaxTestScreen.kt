@@ -56,10 +56,14 @@ import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
+import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
+import nl.nielsnotsmurf.cleanui.ui.components.cablesOf
 
 /**
- * The 1RM test: for each exercise, how to do it, then single-rep attempts that go up after
- * every made rep until one is missed. The heaviest made rep becomes the lifter's 1RM.
+ * The strength test: for each exercise, how to do it, then 3-rep attempts that go up after
+ * every made set until one is missed. The heaviest made set is the 3RM, and the lifter's 1RM
+ * is estimated from it. Loads are per cable, with a mark for how many cables carry them.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -80,6 +84,8 @@ fun OneRepMaxTestScreen(
     val lifter = state.lifters.firstOrNull { it.id == test.lifterId }
     val exercise = state.exercises.firstOrNull { it.id == test.exerciseId }
     val current = state.oneRepMax(test.lifterId, test.exerciseId)
+    // Every load is per cable, like everywhere else in the app; the cable mark says how many.
+    val cables = cablesOf(exercise?.cableConfig)
     val fmt = { kg: Float -> LoadCalculator.format(kg, unit) }
     // System back closes the test the same way the arrow does, so who's training is restored.
     BackHandler(onBack = onBack)
@@ -90,7 +96,7 @@ fun OneRepMaxTestScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-            Text("1RM test", style = MaterialTheme.typography.headlineLarge)
+            Text("3RM test", style = MaterialTheme.typography.headlineLarge)
         }
 
         Column(
@@ -130,8 +136,8 @@ fun OneRepMaxTestScreen(
 
             when (test.phase) {
                 TestPhase.INTRO -> IntroContent(test, current?.takeIf { !it.isEstimate }?.kg)
-                TestPhase.ATTEMPT -> AttemptContent(test, lifter?.color ?: CleanColors.Ink, fmt, unit, onNudge)
-                TestPhase.RESULT -> ResultContent(test, lifter?.name ?: "", current, fmt, onTryAgain)
+                TestPhase.ATTEMPT -> AttemptContent(test, lifter?.color ?: CleanColors.Ink, fmt, unit, cables, onNudge)
+                TestPhase.RESULT -> ResultContent(test, lifter?.name ?: "", current, fmt, cables, onTryAgain)
             }
             test.error?.let { Text(it, color = CleanColors.Danger, style = MaterialTheme.typography.bodyMedium) }
         }
@@ -145,12 +151,13 @@ fun OneRepMaxTestScreen(
                 }
                 TestPhase.ATTEMPT -> {
                     PrimaryButton(
-                        "Lift ${fmt(test.kg)} on the trainer",
+                        "Lift ${OneRepMaxTest.TEST_REPS} × ${fmt(test.kg)}" + (if (cables == 2) " per cable" else "") + " on the trainer",
                         onClick = onLiftOnTrainer,
                         loading = test.isStarting
                     )
+                    TrainerSearchHint(state.connection, waiting = test.isStarting)
                     Text(
-                        "How did the rep go?",
+                        "How did the ${OneRepMaxTest.TEST_REPS} reps go?",
                         style = MaterialTheme.typography.labelMedium,
                         color = CleanColors.Muted,
                         modifier = Modifier.fillMaxWidth(),
@@ -211,9 +218,10 @@ private fun IntroContent(test: TestState, knownKg: Float?) {
     InfoCard("How the test works") {
         Text(
             "1. Warm up: 10 easy reps, then 3 reps a bit heavier.\n" +
-                "2. Lift one rep at the start weight" + (if (knownKg != null) " (90% of your 1RM)" else "") + ".\n" +
-                "3. Made it? The weight goes up for the next attempt.\n" +
-                "4. Keep going until you miss a rep. Your 1RM is the heaviest rep you made.",
+                "2. Lift 3 reps at the start weight" + (if (knownKg != null) " (80% of your 1RM)" else "") + ".\n" +
+                "3. Made all 3? The weight goes up for the next attempt.\n" +
+                "4. Keep going until you can't finish 3 reps. Your 3RM is the heaviest set you made; your 1RM is estimated from it.\n" +
+                "Loads are per cable (the mark shows 1 or 2 cables). The lowering part is the same weight as the lift (no extra eccentric).",
             style = MaterialTheme.typography.bodyMedium,
             color = CleanColors.Muted
         )
@@ -221,7 +229,7 @@ private fun IntroContent(test: TestState, knownKg: Float?) {
 }
 
 @Composable
-private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String, unit: WeightUnit, onNudge: (Float) -> Unit) {
+private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String, unit: WeightUnit, cables: Int, onNudge: (Float) -> Unit) {
     val n = test.attempts.size + 1
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(test.restEndsAt) {
@@ -250,8 +258,13 @@ private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        SectionLabel("Attempt $n · one rep")
-        Text(fmt(test.kg), style = MaterialTheme.typography.displayLarge.copy(color = color, fontSize = 64.sp))
+        SectionLabel("Attempt $n · ${OneRepMaxTest.TEST_REPS} reps")
+        LoadText(fmt(test.kg), cables, style = MaterialTheme.typography.displayLarge.copy(fontSize = 64.sp), color = color)
+        Text(
+            if (cables == 2) "per cable · ${LoadCalculator.format(test.kg * 2, unit)} total" else "one cable",
+            style = MaterialTheme.typography.labelMedium,
+            color = CleanColors.Muted
+        )
         Text(
             if (n == 1) startNote(test.startReason) else "Heaviest made so far: ${test.best?.let(fmt) ?: "none"}",
             style = MaterialTheme.typography.bodySmall,
@@ -277,22 +290,25 @@ private fun ResultContent(
     lifterName: String,
     current: nl.nielsnotsmurf.cleanui.model.OneRepMax?,
     fmt: (Float) -> String,
+    cables: Int,
     onTryAgain: (Float?) -> Unit
 ) {
     val best = test.best
     if (best != null) {
         val previous = current?.takeIf { it.source != OneRepMaxSource.RELATED }
+        val oneRm = OneRepMaxTest.oneRepMaxFromTest(best)
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CleanColors.AccentSoft).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            SectionLabel("New 1RM · $lifterName")
-            Text(fmt(best), style = MaterialTheme.typography.displayMedium, color = CleanColors.AccentInk)
+            SectionLabel("New 3RM · $lifterName")
+            LoadText(fmt(best), cables, style = MaterialTheme.typography.displayMedium, color = CleanColors.AccentInk)
+            Text("Estimated 1RM ${fmt(oneRm)}", style = MaterialTheme.typography.titleMedium, color = CleanColors.AccentInk)
             Text(
                 when {
                     previous == null -> "Your first tested 1RM for this exercise"
-                    best > previous.kg + 0.01f -> "Up from ${fmt(previous.kg)}"
-                    best < previous.kg - 0.01f -> "Down from ${fmt(previous.kg)}. Save it only if today was a normal day."
+                    oneRm > previous.kg + 0.01f -> "1RM up from ${fmt(previous.kg)}"
+                    oneRm < previous.kg - 0.01f -> "1RM down from ${fmt(previous.kg)}. Save it only if today was a normal day."
                     else -> "Same as before"
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -300,7 +316,7 @@ private fun ResultContent(
             )
         }
     } else {
-        InfoCard("No rep made yet") {
+        InfoCard("No set made yet") {
             Text("Rest, then try lighter. We suggest ${fmt(test.kg)}.", style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -317,7 +333,7 @@ private fun AttemptList(attempts: List<Attempt>, fmt: (Float) -> String) {
         attempts.forEachIndexed { i, a ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Attempt ${i + 1}", modifier = Modifier.weight(1f))
-                Text(fmt(a.kg) + "  ")
+                Text(fmt(a.kg) + (a.measuredKg?.let { " · measured ${fmt(it)}" } ?: "") + "  ")
                 Text(
                     when (a.outcome) {
                         AttemptOutcome.MADE_EASY -> "✓ easy"
@@ -354,7 +370,7 @@ private fun OutcomeButton(text: String, color: Color, modifier: Modifier, onClic
 }
 
 private fun startNote(reason: OneRepMaxTest.StartReason) = when (reason) {
-    OneRepMaxTest.StartReason.KNOWN_ONE_REP_MAX -> "90% of your current 1RM"
+    OneRepMaxTest.StartReason.KNOWN_ONE_REP_MAX -> "80% of your current 1RM"
     OneRepMaxTest.StartReason.ESTIMATE -> "A careful start, based on your other lifts"
-    OneRepMaxTest.StartReason.DEFAULT -> "A light start. It goes up quickly while reps feel easy."
+    OneRepMaxTest.StartReason.DEFAULT -> "A light start. It goes up quickly while sets feel easy."
 }

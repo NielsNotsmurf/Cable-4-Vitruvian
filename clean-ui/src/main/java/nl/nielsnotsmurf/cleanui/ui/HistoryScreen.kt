@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
+import nl.nielsnotsmurf.cleanui.ui.components.cables
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
@@ -154,11 +156,16 @@ fun HistoryScreen(
                                 buildString {
                                     append(l?.name ?: "Removed profile")
                                     append(" · ${list.sumOf { it.sets }} sets · ${list.sumOf { it.reps }} reps")
-                                    append(if (top != null) " · top ${LoadCalculator.format(top, state.unit)}" else " · adaptive load")
+                                    if (top == null) append(" · adaptive load")
                                     if (maxHr != null) append(" · ♥ max $maxHr")
                                 },
                                 style = MaterialTheme.typography.bodySmall
                             )
+                            if (top != null) {
+                                val topEntry = list.first { it.topKgPerCable == top }
+                                val cables = state.exercises.firstOrNull { it.id == topEntry.exerciseId }?.cables ?: 2
+                                LoadText("measured top " + LoadCalculator.format(top, state.unit), cables, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                     if (open) {

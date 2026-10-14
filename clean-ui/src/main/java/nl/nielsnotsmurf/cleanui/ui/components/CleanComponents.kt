@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.cleanui.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,16 +21,25 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
@@ -129,14 +139,79 @@ fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
     val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = modifier
+            .fillMaxWidth()
             .heightIn(min = 52.dp)
             .clip(shape)
             .border(1.5.dp, CleanColors.Line, shape)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, style = MaterialTheme.typography.titleMedium)
+        Text(text, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
     }
+}
+
+/** Cables an exercise pulls on. Every load in the app is per cable; this says how many carry it. */
+fun cablesOf(cableConfig: String?): Int = if (cableConfig == "SINGLE") 1 else 2
+
+val ExerciseCard.cables: Int get() = cablesOf(cableConfig)
+
+/**
+ * Small cable mark next to a load: one or two cables, each a line with a handle. Every load
+ * shown is per cable, so two cables means the trainer pulls that load on each side.
+ */
+@Composable
+fun CableIcon(cables: Int, color: Color = CleanColors.Muted, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(width = if (cables == 2) 14.dp else 8.dp, height = 16.dp)) {
+        val w = 2.dp.toPx()
+        val r = 2.5.dp.toPx()
+        val xs = if (cables == 2) listOf(size.width * 0.25f, size.width * 0.75f) else listOf(size.width / 2)
+        xs.forEach { x ->
+            drawLine(color, Offset(x, 0f), Offset(x, size.height - 2 * r), strokeWidth = w, cap = StrokeCap.Round)
+            drawCircle(color, r, Offset(x, size.height - r))
+        }
+    }
+}
+
+/** A load with its cable mark, e.g. "50 kg ‖" for 50 kg on each of two cables. */
+@Composable
+fun LoadText(
+    text: String,
+    cables: Int,
+    style: TextStyle = MaterialTheme.typography.titleMedium,
+    color: Color = CleanColors.Ink,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = style, color = color, maxLines = 1)
+        Spacer(Modifier.width(4.dp))
+        CableIcon(cables, color = color.copy(alpha = 0.7f))
+    }
+}
+
+/**
+ * Shown while a set is waiting to start: after a few seconds without a connected trainer it
+ * says that's why nothing happens yet, instead of an endless spinner.
+ */
+@Composable
+fun TrainerSearchHint(connection: TrainerConnection, waiting: Boolean, modifier: Modifier = Modifier) {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(waiting) {
+        slow = false
+        if (waiting) { delay(4000); slow = true }
+    }
+    if (!waiting || !slow || connection is TrainerConnection.Connected) return
+    val text = when (connection) {
+        is TrainerConnection.Failed -> "Couldn't connect to your Vitruvian: ${connection.message}"
+        else -> "No Vitruvian found yet. The set starts once the trainer is connected. Check it's switched on and nearby."
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = CleanColors.Danger,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 /** Square-ish shortcut on the Train screen. */
@@ -241,18 +316,14 @@ fun Tag(text: String) {
 fun OneRepMaxColumn(
     lifters: List<UiLifter>,
     oneRepMaxFor: (String) -> OneRepMax?,
-    unit: WeightUnit
+    unit: WeightUnit,
+    cables: Int
 ) {
     val missing = lifters.filter { oneRepMaxFor(it.id) == null }
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         lifters.forEach { l ->
             val orm = oneRepMaxFor(l.id) ?: return@forEach
-            Text(
-                (if (orm.isEstimate) "~" else "") + LoadCalculator.format(orm.kg, unit),
-                style = MaterialTheme.typography.titleMedium,
-                color = l.color,
-                maxLines = 1
-            )
+            LoadText((if (orm.isEstimate) "~" else "") + LoadCalculator.format(orm.kg, unit), cables, color = l.color)
         }
         when {
             missing.isEmpty() -> Unit
@@ -299,7 +370,7 @@ fun ExerciseRow(
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
-            OneRepMaxColumn(lifters, oneRepMaxFor, unit)
+            OneRepMaxColumn(lifters, oneRepMaxFor, unit, exercise.cables)
             trailing?.invoke()
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(CleanColors.Line))
