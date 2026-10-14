@@ -20,6 +20,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
@@ -129,14 +135,41 @@ fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
     val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = modifier
+            .fillMaxWidth()
             .heightIn(min = 52.dp)
             .clip(shape)
             .border(1.5.dp, CleanColors.Line, shape)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, style = MaterialTheme.typography.titleMedium)
+        Text(text, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
     }
+}
+
+/**
+ * Shown while a set is waiting to start: after a few seconds without a connected trainer it
+ * says that's why nothing happens yet, instead of an endless spinner.
+ */
+@Composable
+fun TrainerSearchHint(connection: TrainerConnection, waiting: Boolean, modifier: Modifier = Modifier) {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(waiting) {
+        slow = false
+        if (waiting) { delay(4000); slow = true }
+    }
+    if (!waiting || !slow || connection is TrainerConnection.Connected) return
+    val text = when (connection) {
+        is TrainerConnection.Failed -> "Couldn't connect to your Vitruvian: ${connection.message}"
+        else -> "No Vitruvian found yet. The set starts once the trainer is connected. Check it's switched on and nearby."
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = CleanColors.Danger,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 /** Square-ish shortcut on the Train screen. */

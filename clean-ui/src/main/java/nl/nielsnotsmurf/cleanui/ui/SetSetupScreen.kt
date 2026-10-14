@@ -55,6 +55,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Stepper
+import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
 
 private val ECCENTRIC_OPTIONS = listOf(0, 50, 75, 100, 125, 150)
 
@@ -289,6 +290,7 @@ fun SetSetupScreen(
                 enabled = state.activeLifters.isNotEmpty(),
                 loading = setup.isStarting
             )
+            TrainerSearchHint(state.connection, waiting = setup.isStarting)
         }
     }
 }

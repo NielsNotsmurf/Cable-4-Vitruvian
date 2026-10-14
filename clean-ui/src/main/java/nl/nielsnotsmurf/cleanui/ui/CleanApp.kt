@@ -448,7 +448,18 @@ private fun SignedInApp(
                     val l = live
                     // A 1RM attempt is running while the test is open underneath.
                     val attemptMode = test != null
-                    if (l == null || classicView || !l.isCleanReady()) {
+                    // Leave only once: the screen stays composed while it animates out, and a
+                    // second pop would close the test as well.
+                    var left by remember { mutableStateOf(false) }
+                    val done = { if (!left) { left = true; nav.popBackStack(); gateway.resetForNewWorkout() } }
+                    var attemptStarted by remember { mutableStateOf(false) }
+                    if (l?.isCleanReady() == true) attemptStarted = true
+                    if (attemptMode && attemptStarted && !classicView && l?.isCleanReady() != true) {
+                        // The rep is over and the trainer went idle: back to the test to record
+                        // it instead of showing the (blank) classic screen.
+                        LaunchedEffect(Unit) { done() }
+                        Box(Modifier.fillMaxSize().background(CleanColors.Background))
+                    } else if (l == null || classicView || !l.isCleanReady()) {
                         activeWorkoutContent(nav)
                     } else {
                         LiveWorkoutScreen(
@@ -457,12 +468,13 @@ private fun SignedInApp(
                             heartRate = heartRate,
                             history = history,
                             personalRecord = record,
+                            connection = state.connection,
                             attemptMode = attemptMode,
                             onSkipRest = gateway::skipRest,
                             onContinue = gateway::proceedFromSummary,
                             onNextExercise = gateway::advanceToNextExercise,
-                            onStop = { gateway.stopWorkout(); nav.popBackStack() },
-                            onDone = { nav.popBackStack(); gateway.resetForNewWorkout() },
+                            onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
+                            onDone = done,
                             onClassicView = { classicView = true }
                         )
                     }

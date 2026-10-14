@@ -56,6 +56,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
+import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
 
 /**
  * The 1RM test: for each exercise, how to do it, then single-rep attempts that go up after
@@ -149,6 +150,7 @@ fun OneRepMaxTestScreen(
                         onClick = onLiftOnTrainer,
                         loading = test.isStarting
                     )
+                    TrainerSearchHint(state.connection, waiting = test.isStarting)
                     Text(
                         "How did the rep go?",
                         style = MaterialTheme.typography.labelMedium,

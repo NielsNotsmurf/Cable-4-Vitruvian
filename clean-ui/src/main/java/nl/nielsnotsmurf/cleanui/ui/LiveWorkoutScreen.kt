@@ -50,16 +50,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.TrainingStats
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LivePhase
 import nl.nielsnotsmurf.cleanui.model.LiveWorkout
+import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
+import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 
@@ -79,6 +80,7 @@ fun LiveWorkoutScreen(
     heartRate: Int?,
     history: List<HistoryEntry>,
     personalRecord: String?,
+    connection: TrainerConnection,
     attemptMode: Boolean,
     onSkipRest: () -> Unit,
     onContinue: () -> Unit,
@@ -92,12 +94,13 @@ fun LiveWorkoutScreen(
     val busy = live.phase in setOf(LivePhase.STARTING, LivePhase.COUNTDOWN, LivePhase.LIFTING, LivePhase.RESTING)
     BackHandler { if (busy) confirmStop = true else onDone() }
 
-    // A 1RM attempt has one rep: go straight back to the test to record how it went.
+    // A 1RM attempt has one rep: as soon as it's done, go straight back to the test to record
+    // how it went. Waiting for the trainer's own "finished" state left a blank screen.
     LaunchedEffect(attemptMode, live.phase) {
         if (!attemptMode) return@LaunchedEffect
         when (live.phase) {
-            LivePhase.SET_DONE -> onContinue()
-            LivePhase.FINISHED -> { delay(600); onDone() }
+            LivePhase.SET_DONE -> { onContinue(); onDone() }
+            LivePhase.FINISHED, LivePhase.RESTING -> onDone()
             else -> Unit
         }
     }
@@ -122,7 +125,10 @@ fun LiveWorkoutScreen(
         ) { phase ->
             Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
                 when (phase) {
-                    LivePhase.STARTING -> Waiting("Getting the trainer ready")
+                    LivePhase.STARTING -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Waiting("Getting the trainer ready")
+                        TrainerSearchHint(connection, waiting = true, modifier = Modifier.padding(top = 16.dp))
+                    }
                     LivePhase.COUNTDOWN -> BigNumber(live.countdown.toString(), "Get set")
                     LivePhase.LIFTING -> Lifting(live, fmt, history)
                     LivePhase.RESTING -> Resting(live)
