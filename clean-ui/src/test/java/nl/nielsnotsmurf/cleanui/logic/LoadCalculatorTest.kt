@@ -84,6 +84,13 @@ class LoadCalculatorTest {
     }
 
     @Test
+    fun `a newer lower benchmark replaces older history`() {
+        val stored = OneRepMax(55f, OneRepMaxSource.BENCHMARK, 5L)
+        val history = listOf(LiftRecord("bench", 50f, 8, 2L)) // 63.3, but older than the test
+        assertEquals(stored, LoadCalculator.resolveOneRepMax(stored, history, relatedKg = null))
+    }
+
+    @Test
     fun `resolve falls back to a related estimate`() {
         val resolved = LoadCalculator.resolveOneRepMax(null, emptyList(), relatedKg = 28f)!!
         assertEquals(OneRepMaxSource.RELATED, resolved.source)
