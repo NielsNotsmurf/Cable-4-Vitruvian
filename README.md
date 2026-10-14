@@ -55,6 +55,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-14:** the body map shows each region's best 1RM as total load (both cables), and the
+  1RM list shows totals with the per-cable load next to them.
 - **2026-10-14:** estimated 1RMs for 362 exercises, scaled from your tested lifts.
 - **2026-10-13:** first-launch onboarding, local accounts with a PIN, an arrow-and-overlay app
   tour, and Settings regrouped. The Clean layout is now on by default for new installs.

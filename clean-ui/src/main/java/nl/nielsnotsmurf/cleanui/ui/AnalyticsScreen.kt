@@ -65,6 +65,7 @@ import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.Measure
 import nl.nielsnotsmurf.cleanui.logic.TrainingStats
 import nl.nielsnotsmurf.cleanui.logic.Window
+import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
@@ -187,6 +188,7 @@ fun AnalyticsScreen(
             window = window,
             unit = unit,
             region = region,
+            prs = remember(state.oneRepMaxes, state.exercises, lifter?.id) { regionPrs(state, lifter) },
             side = side,
             onSide = { side = it },
             onRegion = ::pickRegion
@@ -363,6 +365,7 @@ private fun BodyCard(
     window: Window,
     unit: WeightUnit,
     region: String?,
+    prs: Map<String, Float>,
     side: BodySide,
     onSide: (BodySide) -> Unit,
     onRegion: (String?) -> Unit
@@ -372,7 +375,7 @@ private fun BodyCard(
     val fills = stats.associate { s ->
         s.region to if (max == null || s.value <= 0f) CleanColors.Line else lerp(CleanColors.Line, accent, 0.2f + 0.8f * s.value / max)
     }
-    val labels = stats.mapNotNull { s -> s.bestKg?.let { s.region to LoadCalculator.format(it, unit, withUnit = false) } }.toMap()
+    val labels = prs.mapValues { LoadCalculator.format(it.value, unit, withUnit = false) }
     val unitName = if (unit == WeightUnit.LB) "lb" else "kg"
 
     Card {
@@ -419,8 +422,7 @@ private fun BodyCard(
             Text(max?.let { formatMeasure(it, measure, unit, compact = true) } ?: "–", style = MaterialTheme.typography.bodySmall)
         }
         Text(
-            if (window == Window.ALL) "Numbers are your PR per region, heaviest $unitName per cable."
-            else "Numbers are the heaviest $unitName per cable ${window.now}.",
+            "Numbers are your best 1RM per region in $unitName, total load (both cables together).",
             style = MaterialTheme.typography.bodySmall
         )
         if (region != null) {
@@ -487,8 +489,8 @@ private fun OneRepMaxCard(state: CleanUiState, lifter: UiLifter?, region: String
     val exercises = state.exercises.filter { region == null || it.region == region }.associateBy { it.id }
     val maxes = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
         .filterValues { !it.isEstimate }
-        .mapNotNull { (id, orm) -> exercises[id]?.let { it.name to orm } }
-        .sortedByDescending { it.second.kg }
+        .mapNotNull { (id, orm) -> exercises[id]?.let { Triple(it.name, orm, cablesFor(it)) } }
+        .sortedByDescending { it.second.kg * it.third }
     Card {
         SectionLabel("1RMs${region?.let { " · $it" } ?: ""}")
         if (maxes.isEmpty()) {
@@ -497,7 +499,7 @@ private fun OneRepMaxCard(state: CleanUiState, lifter: UiLifter?, region: String
                 style = MaterialTheme.typography.bodySmall
             )
         }
-        maxes.take(8).forEach { (name, orm) ->
+        maxes.take(8).forEach { (name, orm, cables) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
@@ -506,15 +508,30 @@ private fun OneRepMaxCard(state: CleanUiState, lifter: UiLifter?, region: String
                             OneRepMaxSource.BENCHMARK -> "Tested"
                             OneRepMaxSource.MANUAL -> "Entered by hand"
                             else -> "Worked out from your sets"
-                        },
+                        } + if (cables == 2) " · ${LoadCalculator.format(orm.kg, state.unit)} per cable" else " · one cable",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                Text(LoadCalculator.format(orm.kg, state.unit), style = MaterialTheme.typography.titleMedium, color = accent)
+                Text(LoadCalculator.format(orm.kg * cables, state.unit), style = MaterialTheme.typography.titleMedium, color = accent)
             }
         }
         if (maxes.size > 8) Text("and ${maxes.size - 8} more", style = MaterialTheme.typography.bodySmall)
     }
+}
+
+/** Cables an exercise pulls on: 1RMs are stored per cable, so the total is this many times the stored load. */
+private fun cablesFor(exercise: ExerciseCard): Int = if (exercise.cableConfig == "SINGLE") 1 else 2
+
+/**
+ * Best real 1RM per body region for [lifter], as total load (both cables).
+ * Estimates scaled from other lifts are left out, so a number is always something lifted or tested.
+ */
+private fun regionPrs(state: CleanUiState, lifter: UiLifter?): Map<String, Float> {
+    val maxes = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
+    return state.exercises
+        .mapNotNull { ex -> maxes[ex.id]?.takeIf { !it.isEstimate && ex.region.isNotEmpty() }?.let { ex.region to it.kg * cablesFor(ex) } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, totals) -> totals.max() }
 }
 
 /** Bars per day, week or month; tap a bar to read its value. */

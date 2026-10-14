@@ -62,7 +62,7 @@ Android status:
 | 1RM test: demo, warm-up, single-rep attempts going up until a miss; starts at 90% of a known 1RM | — (new) | Train → 1RM test, or Test 1RM on a lifter card in Set setup | Clean (attempts load on the trainer) |
 | Workout history, per session detail, delete, delete all | History tab | History tab | Clean (delete all in Settings, hosted) |
 | Analytics: strength score, this week, recent PRs, top exercises | Analytics dashboard | Analytics → Overview | Clean (this week, week streak, 1RMs, recent records, progress per exercise) |
-| Body map: Vitruvian figure (front and back) coloured per region by the picked measure and period, with the heaviest load inside each region; tap a region to narrow the screen to it | — (new) | Analytics → top | Clean |
+| Body map: Vitruvian figure (front and back) coloured per region by the picked measure and period, with the best 1RM inside each region as total load (both cables); tap a region to narrow the screen to it | — (new) | Analytics → top | Clean |
 | Measure (reps, sets, volume, heaviest, workouts, time) and period (week, month, 3 months, year, all) for the whole Analytics screen | — (new) | Analytics → chips and slider | Clean |
 | Trend bars, headline numbers against the period before, insights, balance per region, exercise cards | — (new) | Analytics | Clean |
 | PR tracker, weight/volume PR, chart or list | Analytics progression | Analytics → Progress | Clean (progress lines); full PR charts hosted under Charts and insights |
