@@ -19,7 +19,10 @@ to **Features** and **Changelog** below.
 - **Exercise library:** search, muscle and equipment filters, favourites and video demos.
 - **Live heart rate:** pair a Garmin watch broadcast or a chest strap per lifter. HR shows
   during a set and in history.
-- **History and analytics:** workouts, personal records and volume over time.
+- **History and analytics:** workouts, personal records and volume over time. Analytics opens
+  on a Vitruvian body map: each region is coloured by the measure and period you pick (reps,
+  volume, … this week, this year, …) and shows its heaviest load. Those two filters drive the
+  whole screen: trend bars, headline numbers, insights, balance and exercise cards.
 - **Backup and restore:** a full JSON backup saved to `Download/vitruvian-`.
 - **Theme:** black and white, with light and dark modes.
 
@@ -40,6 +43,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-13:** new Analytics screen with a body map, measure and period filters, trend
+  bars, insights and exercise cards. Clean lifting screen during a set.
 - **2026-10-13:** rebranded to vitruvian-. New black and white theme, a "V-" icon and splash,
   and no more Phoenix branding.
 - **2026-10-13:** signed APK releases on every master push, and live Garmin heart rate.

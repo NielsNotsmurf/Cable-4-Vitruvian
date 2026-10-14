@@ -402,7 +402,8 @@ class CleanUiBridge(
                 durationMs = s.duration,
                 avgHeartRate = s.avgHeartRate,
                 maxHeartRate = s.maxHeartRate,
-                groupId = s.routineSessionId ?: s.id
+                groupId = s.routineSessionId ?: s.id,
+                exerciseId = s.exerciseId.orEmpty()
             )
         }
     }
