@@ -73,6 +73,8 @@ fun TodayScreen(
     history: List<HistoryEntry>,
     heartRate: Int?,
     onToggleLifter: (String) -> Unit,
+    garminRecording: List<String> = emptyList(),
+    onFinishTraining: () -> Unit = {},
     onPickExercise: () -> Unit,
     onJustLift: () -> Unit,
     onOpenExercise: (ExerciseCard) -> Unit,
@@ -161,6 +163,10 @@ fun TodayScreen(
                     unit = state.unit
                 )
             }
+        }
+
+        if (garminRecording.isNotEmpty()) {
+            item { GarminRecording(garminRecording, onFinishTraining) }
         }
 
         item {
@@ -406,5 +412,27 @@ private fun ageText(ms: Long): String {
         days < 14 -> "set $days days ago"
         days < 60 -> "set ${days / 7} weeks ago"
         else -> "set ${days / 30} months ago"
+    }
+}
+
+/** The Garmin watch app is recording: finishing saves the activity to Garmin Connect. */
+@Composable
+private fun GarminRecording(watches: List<String>, onFinish: () -> Unit) {
+    Card {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Dot(CleanColors.Accent)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Recording on ${watches.joinToString(" & ")}",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Text(
+            "Finish when you're done and the watch saves it to Garmin Connect. " +
+                "After 30 minutes without a set it finishes on its own.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        PrimaryButton("Finish training", onClick = onFinish, accent = true)
     }
 }

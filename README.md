@@ -29,6 +29,8 @@ to **Features** and **Changelog** below.
 - **Exercise library:** search, muscle and equipment filters, favourites and video demos.
 - **Live heart rate:** pair a Garmin watch broadcast or a chest strap per lifter. HR shows
   during a set and in history.
+- **Garmin watch app:** the lifter's Garmin watch records the training live: heart rate and
+  every set, saved to Garmin Connect as strength training. See `docs/GARMIN_WATCH.md`.
 - **History and analytics:** workouts, personal records and volume over time. Analytics opens
   on a Vitruvian body map: each region is coloured by the measure and period you pick (reps,
   volume, … this week, this year, …) and shows its heaviest load. Those two filters drive the
@@ -55,6 +57,7 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-14:** Garmin watch app that records each lifter's training on their own watch.
 - **2026-10-14:** the body map shows each region's best 1RM as total load (both cables), and the
   1RM list shows totals with the per-cable load next to them.
 - **2026-10-14:** estimated 1RMs for 362 exercises, scaled from your tested lifts.

@@ -121,6 +121,9 @@ fun ProfilesScreen(
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
+                            l.lifter.garminWatch?.let { watch ->
+                                Text("⌚ $watch · records this lifter's sets", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                         if (onHeartRate != null) {
                             // The tour points at the first profile's heart button.

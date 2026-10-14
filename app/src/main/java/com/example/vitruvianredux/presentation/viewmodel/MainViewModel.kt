@@ -92,7 +92,8 @@ class MainViewModel @Inject constructor(
     private val workoutGenerator: com.example.vitruvianredux.domain.usecase.WorkoutGeneratorUseCase,
     val progressionEngine: com.example.vitruvianredux.domain.usecase.ProgressionEngine,
     private val adaptiveLearningRepository: com.example.vitruvianredux.data.baseline.AdaptiveLearningRepository,
-    private val heartRateMonitor: HeartRateMonitor
+    private val heartRateMonitor: HeartRateMonitor,
+    val garminWatchLink: com.example.vitruvianredux.data.garmin.GarminWatchLink
 ) : AndroidViewModel(application) {
 
     // Use application context directly instead of storing it
@@ -359,6 +360,15 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             heartRateSensorByProfile.collect { heartRateMonitor.setTargets(it.values.toSet()) }
+        }
+        // Garmin watch app: each profile's sets go to their own watch (see GarminWatchLink)
+        garminWatchLink.start()
+        viewModelScope.launch {
+            userProfileRepository.getAllProfiles().collect { list ->
+                garminWatchLink.updateProfiles(
+                    list.map { com.example.vitruvianredux.data.garmin.GarminWatchLink.Profile(it.id, it.name, it.hrSensorName) }
+                )
+            }
         }
         // Record every new reading from the current lifter's own sensor while a set is running
         viewModelScope.launch {
@@ -1450,6 +1460,7 @@ class MainViewModel @Inject constructor(
             workoutStartTime = System.currentTimeMillis()
             collectedMetrics.clear()
             synchronized(heartRateSamples) { heartRateSamples.clear() }
+            garminWatchLink.setStarted(currentSetProfileId.value)
             maxHeuristicKgMax = 0f // Reset Echo mode force tracking (for history)
             _currentHeuristicKgMax.value = 0f // Reset Echo mode live display
 
@@ -2366,6 +2377,15 @@ class MainViewModel @Inject constructor(
         }
 
         workoutRepository.saveSession(session)
+
+        // The lifter's Garmin watch records the set as a lap; the watch wants the total load.
+        val cables = if (currentExercise?.cableConfig == CableConfiguration.SINGLE) 1 else 2
+        garminWatchLink.setCompleted(
+            profileId = effectiveProfileId,
+            exercise = exerciseName ?: "Just Lift",
+            reps = working,
+            kg = measuredPerCableKg * cables
+        )
 
         // Record actual weight for adaptive learning (non-JustLift, cable exercises only)
         if (!params.isJustLift && params.selectedExerciseId != null && !isBodyweight) {

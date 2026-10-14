@@ -64,3 +64,7 @@
 -keepclassmembers class kotlinx.coroutines.android.AndroidExceptionPreHandler {
     <init>();
 }
+
+# Garmin Connect IQ companion SDK: binds to Garmin Connect Mobile over AIDL and parcels its own types
+-keep class com.garmin.** { *; }
+-dontwarn com.garmin.**

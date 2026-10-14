@@ -96,3 +96,53 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "vitruvian- ${APP_VERSION_NAME}" \
             --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"
+
+  # The Garmin watch app (watch/). The compiler and the Venu 4 device files are in
+  # watch/toolchain (copied from the Connect IQ SDK Manager), so no Garmin login is needed.
+  # The .prg is attached to the same release as the APK. See docs/GARMIN_WATCH.md.
+  watch:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CIQ_DEVELOPER_KEY_BASE64: ${{ secrets.CIQ_DEVELOPER_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build watch app
+        run: |
+          KEY="$RUNNER_TEMP/developer_key.der"
+          if [ -n "$CIQ_DEVELOPER_KEY_BASE64" ]; then
+            echo "$CIQ_DEVELOPER_KEY_BASE64" | base64 -d > "$KEY"
+          else
+            # A sideloaded app installs with any key; set CIQ_DEVELOPER_KEY_BASE64 to keep one.
+            openssl genrsa -out "$RUNNER_TEMP/key.pem" 4096
+            openssl pkcs8 -topk8 -inform PEM -outform DER -in "$RUNNER_TEMP/key.pem" -out "$KEY" -nocrypt
+          fi
+          # The compiler looks for device files in ~/.Garmin/ConnectIQ/Devices.
+          mkdir -p "$HOME/.Garmin/ConnectIQ"
+          ln -s "$GITHUB_WORKSPACE/watch/toolchain/Devices" "$HOME/.Garmin/ConnectIQ/Devices"
+          mkdir -p dist
+          for DEVICE in $(grep -oP '<iq:product id="\K[^"]+' watch/manifest.xml); do
+            java -Xms1g -Dfile.encoding=UTF-8 -classpath watch/toolchain/sdk-bin/monkeybrains.jar \
+              com.garmin.monkeybrains.Monkeybrains -f watch/monkey.jungle -d "$DEVICE" -y "$KEY" -l 2 -r \
+              -o "dist/vitruvian-$DEVICE.prg"
+          done
+          rm -f dist/*.debug.xml
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitruvian-watch-app
+          path: dist/*.prg
+
+      - name: Attach to the release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}" dist/*.prg --clobber

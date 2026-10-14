@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.vitruvianredux.data.local.UserProfileEntity
 import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
+import nl.nielsnotsmurf.cleanui.logic.GarminWatches
 import com.example.vitruvianredux.ui.theme.*
 
 val PROFILE_PRESET_COLORS = listOf(
@@ -370,6 +371,7 @@ internal fun HeartRateSensorDialog(
                         }
                     }
                 }
+                GarminWatchSection(viewModel, profile, otherProfiles)
             }
         },
         confirmButton = {
@@ -387,4 +389,58 @@ internal fun HeartRateSensorDialog(
             }
         }
     )
+}
+
+/**
+ * Which Garmin watch records this profile's sets with the vitruvian- watch app. Without a choice
+ * the watch goes to the profile whose heart rate sensor it is.
+ */
+@Composable
+private fun GarminWatchSection(
+    viewModel: MainViewModel,
+    profile: UserProfileEntity,
+    otherProfiles: List<UserProfileEntity>
+) {
+    val link = viewModel.garminWatchLink
+    val watches by link.watches.collectAsState()
+    val chosen by link.chosen.collectAsState()
+    LaunchedEffect(Unit) { link.refreshWatches() }
+    if (watches.isEmpty()) return
+
+    val all = otherProfiles + profile
+    val sensors = all.associate { it.id to it.hrSensorName }
+    val garmin = watches.map { GarminWatches.Watch(it.id, it.name) }
+    fun ownerOf(watchId: Long) = all.firstOrNull { GarminWatches.watchFor(it.id, garmin, chosen, sensors)?.id == watchId }
+
+    HorizontalDivider()
+    Text("Garmin watch app", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text(
+        "The watch records ${profile.name}'s training: heart rate and every set. " +
+            "Finish training on the home screen saves it to Garmin Connect.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    watches.forEach { watch ->
+        val owner = ownerOf(watch.id)
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { link.choose(profile.id, watch.id) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(watch.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text(
+                    watch.problem ?: when {
+                        owner?.id == profile.id -> "Records ${profile.name}'s sets"
+                        owner != null -> "Records ${owner.name}'s sets, tap to move to ${profile.name}"
+                        else -> "Tap to use for ${profile.name}"
+                    } + if (watch.connected) "" else " · not connected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (watch.problem != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+    if (watches.any { ownerOf(it.id)?.id == profile.id }) {
+        TextButton(onClick = { link.choose(profile.id, GarminWatches.NO_WATCH) }) { Text("No watch for ${profile.name}") }
+    }
 }
