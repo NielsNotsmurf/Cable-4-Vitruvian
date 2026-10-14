@@ -40,9 +40,20 @@ to **Features** and **Changelog** below.
 
 ## Install
 
-Android only. Every merge to `master` builds a signed APK and publishes it as a GitHub
-release. Phones install it and get updates through Obtainium. The full steps are in
-[docs/RELEASES.md](docs/RELEASES.md).
+Android only (Android 8 or newer) and free.
+
+1. Install [Obtainium](https://github.com/ImranR98/Obtainium/releases) on your phone or tablet.
+   It installs apps straight from GitHub and keeps them updated.
+2. In Obtainium, tap **Add app**, paste `https://github.com/NielsNotsmurf/vitruvian-app` and
+   tap **Add**, then **Install**. Allow Obtainium to install apps when Android asks.
+3. Open vitruvian-, follow the welcome steps and connect to your trainer over Bluetooth.
+
+Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/vitruvian-app/releases)
+on your phone and tap the `.apk` of the latest version. You then have to repeat this for
+every update.
+
+Every merge to `master` builds a signed APK and publishes it as a release. How the signing
+works is in [docs/RELEASES.md](docs/RELEASES.md).
 
 ## Build
 

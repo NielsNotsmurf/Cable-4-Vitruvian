@@ -19,7 +19,7 @@ concurrency:
 
 env:
   # Bump the prefix by hand for a bigger version jump; the build number is added by CI.
-  VERSION_PREFIX: "1.2"
+  VERSION_PREFIX: "1.3"
 
 jobs:
   release:
@@ -37,8 +37,9 @@ jobs:
 
       - name: Set version
         run: |
-          # Must stay above 11, the last hand-set versionCode, so installs upgrade.
-          echo "APP_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          # Must stay above 155, the last versionCode built in the old private repo
+          # (run 55, 100 + run), so installed copies keep upgrading.
+          echo "APP_VERSION_CODE=$((200 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
           echo "APP_VERSION_NAME=${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Restore signing key

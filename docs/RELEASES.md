@@ -50,17 +50,14 @@ to move to a new key.
 
 ## On the phone
 
-**Obtainium (auto-updates).** The repo is private, so Obtainium needs a GitHub
-token to see its releases:
+**Obtainium (auto-updates).** No account or token is needed:
 
-1. On GitHub, create a fine-grained personal access token limited to this
-   repository with read-only "Contents" access.
-2. Install Obtainium from https://github.com/ImranR98/Obtainium/releases.
-3. In Obtainium, Settings > GitHub > paste the token.
-4. Add app with URL `https://github.com/NielsNotsmurf/vitruvian-`.
+1. Install Obtainium from https://github.com/ImranR98/Obtainium/releases.
+2. Tap Add app, paste `https://github.com/NielsNotsmurf/vitruvian-app` and tap Add.
+3. Tap Install. Obtainium checks for new releases on its own.
 
-**Without Obtainium.** Sign in to GitHub in the phone's browser, open the repo's
-Releases page, and tap the `.apk` of the latest release.
+**Without Obtainium.** Open the repo's Releases page in the phone's browser and
+tap the `.apk` of the latest release.
 
 The first install of a CI-signed build over a copy that was built locally fails
 with "app not installed" because the signatures differ. Export a backup in the
