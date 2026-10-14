@@ -21,7 +21,9 @@ to **Features** and **Changelog** below.
 - **Clean layout:** the default screens. They're built in `:clean-ui`, and
   [clean-ui/FEATURES.md](clean-ui/FEATURES.md) lists every feature and where it lives.
 - **% of 1RM loading:** each lifter's 1RM shows next to every exercise, and loads default to a
-  percentage of it. A guided 1RM test fills it in.
+  percentage of it. A guided 1RM test fills it in. One tested lift gives an estimated 1RM
+  for every related exercise (bench 25 kg means incline about 22.5 kg), shown as "estimated"
+  until you test it. The ratios are in `clean-ui/src/main/assets/one_rep_max_map.json`.
 - **All trainer modes:** Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo, with
   per-set reps, weights, rest, AMRAP and timed sets.
 - **Exercise library:** search, muscle and equipment filters, favourites and video demos.
@@ -53,6 +55,7 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-14:** estimated 1RMs for 362 exercises, scaled from your tested lifts.
 - **2026-10-13:** first-launch onboarding, local accounts with a PIN, an arrow-and-overlay app
   tour, and Settings regrouped. The Clean layout is now on by default for new installs.
 - **2026-10-13:** new Analytics screen with a body map, measure and period filters, trend

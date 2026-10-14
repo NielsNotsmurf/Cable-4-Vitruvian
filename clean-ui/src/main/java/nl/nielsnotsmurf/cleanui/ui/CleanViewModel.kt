@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -131,23 +132,31 @@ class CleanViewModel(
         gateway.lifters,
         store.storedOneRepMaxes,
         gateway.bestSetsByLifter,
-        relatedCache
-    ) { lifters, stored, bestSets, related ->
+        relatedCache,
+        gateway.exercises
+    ) { lifters, stored, bestSets, related, exercises ->
         lifters.associate { lifter ->
             val storedForLifter = stored[lifter.id].orEmpty()
             val historyByExercise: Map<String, List<LiftRecord>> =
                 bestSets[lifter.id].orEmpty().groupBy { it.exerciseId }
             val exerciseIds = storedForLifter.keys + historyByExercise.keys +
                 related.keys.filter { it.startsWith(lifter.id + KEY_SEP) }.map { it.substringAfter(KEY_SEP) }
-            lifter.id to exerciseIds.mapNotNull { exId ->
+            val resolved = exerciseIds.mapNotNull { exId ->
                 LoadCalculator.resolveOneRepMax(
                     stored = storedForLifter[exId],
                     history = historyByExercise[exId].orEmpty(),
                     relatedKg = related[relatedKey(lifter.id, exId)]
                 )?.let { exId to it }
             }.toMap()
+            // Every exercise without a real 1RM gets one scaled from the lifter's tested lifts.
+            val real = resolved.filterValues { !it.isEstimate }
+            val mapped = exercises.mapNotNull { ex ->
+                if (ex.id in real) return@mapNotNull null
+                store.oneRepMaxMap.estimate(ex.id, real)?.let { ex.id to OneRepMax(it, OneRepMaxSource.RELATED) }
+            }
+            lifter.id to resolved + mapped
         }
-    }
+    }.flowOn(Dispatchers.Default)
 
     val state: StateFlow<CleanUiState> = combine(
         uiLifters,

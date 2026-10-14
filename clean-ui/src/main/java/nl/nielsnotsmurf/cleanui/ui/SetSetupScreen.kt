@@ -178,7 +178,7 @@ fun SetSetupScreen(
                             orm == null && setup.lastUsedKg.containsKey(l.id) -> "Last used · no 1RM yet"
                             orm == null -> "No 1RM yet · start light"
                             orm.source == OneRepMaxSource.RELATED ->
-                                "${setup.percent}% of ~${LoadCalculator.format(orm.kg, unit, withUnit = false)}"
+                                "${setup.percent}% of ~${LoadCalculator.format(orm.kg, unit, withUnit = false)} · estimated"
                             else -> "${setup.percent}% of ${LoadCalculator.format(orm.kg, unit, withUnit = false)}"
                         }
                         LifterLoadCard(

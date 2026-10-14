@@ -35,6 +35,7 @@ Android status:
 | Modes: Old School, Pump, TUT, TUT Beast, Eccentric Only, Echo | Exercise config | Set setup mode chips + description | Clean |
 | Echo level (Hard…Epic) and eccentric load 0–150% | Exercise config | Set setup when Echo is picked | Clean |
 | % of 1RM loading per lifter | — (new) | Set setup presets, slider, lifter cards | Clean |
+| Estimated 1RM for every related exercise (one_rep_max_map.json) | — (new) | Exercise rows (~), Set setup "estimated" | Clean |
 | Per-set reps, weights (%), rest | Exercise config sets list | Set setup → tap a set | Clean |
 | AMRAP and timed (duration) sets | Exercise config | Set type: Reps / AMRAP per set; Timed for the whole exercise | Clean |
 | Bodyweight exercises | Exercise config | Bodyweight exercises skip loads, timed sets | Clean |

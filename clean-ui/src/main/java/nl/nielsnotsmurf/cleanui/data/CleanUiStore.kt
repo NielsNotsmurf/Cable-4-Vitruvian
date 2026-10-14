@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import nl.nielsnotsmurf.cleanui.logic.OneRepMaxMap
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 
@@ -28,6 +29,13 @@ private val Context.cleanUiDataStore: DataStore<Preferences> by preferencesDataS
  * last, and whether each profile has had the app tour.
  */
 class CleanUiStore private constructor(private val context: Context) {
+
+    /** Exercise -> anchor ratios for estimating 1RMs of exercises a lifter hasn't tested. */
+    val oneRepMaxMap: OneRepMaxMap by lazy {
+        runCatching {
+            OneRepMaxMap.parse(context.assets.open(OneRepMaxMap.ASSET).bufferedReader().use { it.readText() })
+        }.getOrDefault(OneRepMaxMap.EMPTY)
+    }
 
     /** On unless someone switched to the classic layout. */
     val isEnabled: Flow<Boolean> = context.cleanUiDataStore.data.map { it[ENABLED] ?: true }

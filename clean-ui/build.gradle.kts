@@ -56,4 +56,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Real org.json for parsing the 1RM map in unit tests (android.jar only has stubs).
+    testImplementation("org.json:json:20240303")
 }

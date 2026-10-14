@@ -48,7 +48,7 @@ enum class OneRepMaxSource {
     MANUAL,
     /** Estimated (Epley) from the lifter's own history for this exercise. */
     HISTORY,
-    /** Scaled from a related exercise's baseline; shown with "~". */
+    /** Scaled from a related exercise (one_rep_max_map.json or the baseline); shown with "~" as estimated. */
     RELATED
 }
 
