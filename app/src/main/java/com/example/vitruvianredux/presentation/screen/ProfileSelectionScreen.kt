@@ -404,8 +404,8 @@ private fun GarminWatchSection(
     val link = viewModel.garminWatchLink
     val watches by link.watches.collectAsState()
     val chosen by link.chosen.collectAsState()
+    val status by link.status.collectAsState()
     LaunchedEffect(Unit) { link.refreshWatches() }
-    if (watches.isEmpty()) return
 
     val all = otherProfiles + profile
     val sensors = all.associate { it.id to it.hrSensorName }
@@ -420,6 +420,10 @@ private fun GarminWatchSection(
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
+    status?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        TextButton(onClick = { link.refreshWatches() }) { Text("Look again") }
+    }
     watches.forEach { watch ->
         val owner = ownerOf(watch.id)
         Card(

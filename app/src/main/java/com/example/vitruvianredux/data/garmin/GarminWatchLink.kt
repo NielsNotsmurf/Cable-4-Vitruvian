@@ -66,6 +66,10 @@ class GarminWatchLink @Inject constructor(
     /** Watches recording the current training. */
     val recording: StateFlow<Set<Long>> = _recording.asStateFlow()
 
+    private val _status = MutableStateFlow<String?>("Looking for Garmin Connect on this device")
+    /** Why no watch is listed, or null when watches were found. */
+    val status: StateFlow<String?> = _status.asStateFlow()
+
     private var profiles: List<Profile> = emptyList()
     private var training = newTrainingId()
     private var nextSetId = 1
@@ -88,6 +92,13 @@ class GarminWatchLink @Inject constructor(
                 override fun onInitializeError(status: ConnectIQ.IQSdkErrorStatus) {
                     // Usually Garmin Connect Mobile isn't installed: no watches, nothing to do.
                     Timber.i("Garmin Connect IQ unavailable: $status")
+                    _status.value = when (status) {
+                        ConnectIQ.IQSdkErrorStatus.GCM_NOT_INSTALLED -> "Garmin Connect is not installed on this device"
+                        ConnectIQ.IQSdkErrorStatus.GCM_UPGRADE_NEEDED -> "Update Garmin Connect on this device"
+                        else -> "Garmin Connect did not respond ($status)"
+                    }
+                    // Try again the next time the watch list is opened.
+                    ciq = null
                 }
 
                 override fun onSdkShutDown() {
@@ -96,6 +107,8 @@ class GarminWatchLink @Inject constructor(
             })
         } catch (e: Exception) {
             Timber.w(e, "Garmin Connect IQ failed to start")
+            _status.value = "Garmin Connect could not be reached"
+            ciq = null
         }
     }
 
@@ -243,6 +256,7 @@ class GarminWatchLink @Inject constructor(
 
     /** Looks for watches paired in Garmin Connect Mobile since the app started. */
     fun refreshWatches() {
+        if (ciq == null) start()
         val sdk = ciq?.takeIf { ready } ?: return
         try {
             val known = sdk.knownDevices.orEmpty()
@@ -257,6 +271,7 @@ class GarminWatchLink @Inject constructor(
                 val old = _watches.value.firstOrNull { it.id == d.deviceIdentifier }
                 Watch(d.deviceIdentifier, d.friendlyName ?: "Garmin", statusOf(d) == IQDevice.IQDeviceStatus.CONNECTED, old?.problem)
             }
+            _status.value = if (known.isEmpty()) "No watch is paired in Garmin Connect on this device" else null
         } catch (e: Exception) {
             Timber.w(e, "Garmin device list failed")
         }
