@@ -56,6 +56,8 @@ import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Stepper
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
+import nl.nielsnotsmurf.cleanui.ui.components.cablesOf
 
 private val ECCENTRIC_OPTIONS = listOf(0, 50, 75, 100, 125, 150)
 
@@ -185,6 +187,7 @@ fun SetSetupScreen(
                         LifterLoadCard(
                             lifter = l,
                             loadText = LoadCalculator.format(load, unit),
+                            cables = cablesOf(setup.cableConfig),
                             note = note,
                             // Offer the test to lifters without a real 1RM for this exercise.
                             onTest = if (orm == null || orm.isEstimate) ({ onTestOneRepMax(l.id) }) else null,
@@ -315,6 +318,7 @@ private fun PresetBox(text: String, selected: Boolean, modifier: Modifier = Modi
 private fun LifterLoadCard(
     lifter: UiLifter,
     loadText: String,
+    cables: Int,
     note: String,
     onTest: (() -> Unit)?,
     onMinus: () -> Unit,
@@ -333,7 +337,7 @@ private fun LifterLoadCard(
             Dot(lifter.color)
             Text(lifter.name, style = MaterialTheme.typography.titleMedium)
         }
-        Text(loadText, style = MaterialTheme.typography.displayMedium.copy(color = lifter.color))
+        LoadText(loadText, cables, style = MaterialTheme.typography.displayMedium, color = lifter.color)
         Text(note, style = MaterialTheme.typography.bodySmall, maxLines = 1)
         if (onTest != null) {
             Text(

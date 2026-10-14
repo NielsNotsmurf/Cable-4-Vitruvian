@@ -72,6 +72,7 @@ import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.theme.CleanTheme
+import nl.nielsnotsmurf.cleanui.ui.components.cables
 import nl.nielsnotsmurf.cleanui.ui.components.SetPinDialog
 import nl.nielsnotsmurf.cleanui.ui.components.UnlockPinDialog
 import nl.nielsnotsmurf.cleanui.ui.tour.LocalTour
@@ -469,6 +470,7 @@ private fun SignedInApp(
                             history = history,
                             personalRecord = record,
                             connection = state.connection,
+                            cables = state.exercises.firstOrNull { it.name == l.exerciseName }?.cables ?: 2,
                             attemptMode = attemptMode,
                             onSkipRest = gateway::skipRest,
                             onContinue = gateway::proceedFromSummary,

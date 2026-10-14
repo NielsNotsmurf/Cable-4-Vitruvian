@@ -57,11 +57,13 @@ import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
+import nl.nielsnotsmurf.cleanui.ui.components.cablesOf
 
 /**
  * The strength test: for each exercise, how to do it, then 3-rep attempts that go up after
  * every made set until one is missed. The heaviest made set is the 3RM, and the lifter's 1RM
- * is estimated from it. Loads show as total (both cables), with the per-cable load beside it.
+ * is estimated from it. Loads are per cable, with a mark for how many cables carry them.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -82,9 +84,9 @@ fun OneRepMaxTestScreen(
     val lifter = state.lifters.firstOrNull { it.id == test.lifterId }
     val exercise = state.exercises.firstOrNull { it.id == test.exerciseId }
     val current = state.oneRepMax(test.lifterId, test.exerciseId)
-    // Loads are stored per cable; people think in total load, so show that.
-    val cables = if (exercise?.cableConfig == "SINGLE") 1 else 2
-    val fmt = { kg: Float -> LoadCalculator.format(kg * cables, unit) }
+    // Every load is per cable, like everywhere else in the app; the cable mark says how many.
+    val cables = cablesOf(exercise?.cableConfig)
+    val fmt = { kg: Float -> LoadCalculator.format(kg, unit) }
     // System back closes the test the same way the arrow does, so who's training is restored.
     BackHandler(onBack = onBack)
 
@@ -149,7 +151,7 @@ fun OneRepMaxTestScreen(
                 }
                 TestPhase.ATTEMPT -> {
                     PrimaryButton(
-                        "Lift ${OneRepMaxTest.TEST_REPS} × ${fmt(test.kg)} on the trainer",
+                        "Lift ${OneRepMaxTest.TEST_REPS} × ${fmt(test.kg)}" + (if (cables == 2) " per cable" else "") + " on the trainer",
                         onClick = onLiftOnTrainer,
                         loading = test.isStarting
                     )
@@ -219,7 +221,7 @@ private fun IntroContent(test: TestState, knownKg: Float?) {
                 "2. Lift 3 reps at the start weight" + (if (knownKg != null) " (80% of your 1RM)" else "") + ".\n" +
                 "3. Made all 3? The weight goes up for the next attempt.\n" +
                 "4. Keep going until you can't finish 3 reps. Your 3RM is the heaviest set you made; your 1RM is estimated from it.\n" +
-                "Loads are total for both cables. The lowering part is the same weight as the lift (no extra eccentric).",
+                "Loads are per cable (the mark shows 1 or 2 cables). The lowering part is the same weight as the lift (no extra eccentric).",
             style = MaterialTheme.typography.bodyMedium,
             color = CleanColors.Muted
         )
@@ -257,9 +259,9 @@ private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         SectionLabel("Attempt $n · ${OneRepMaxTest.TEST_REPS} reps")
-        Text(fmt(test.kg), style = MaterialTheme.typography.displayLarge.copy(color = color, fontSize = 64.sp))
+        LoadText(fmt(test.kg), cables, style = MaterialTheme.typography.displayLarge.copy(fontSize = 64.sp), color = color)
         Text(
-            if (cables == 2) "total · ${LoadCalculator.format(test.kg, unit)} per cable" else "one cable",
+            if (cables == 2) "per cable · ${LoadCalculator.format(test.kg * 2, unit)} total" else "one cable",
             style = MaterialTheme.typography.labelMedium,
             color = CleanColors.Muted
         )
@@ -275,7 +277,7 @@ private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String
                     Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).background(CleanColors.Surface)
                         .clickable(role = Role.Button) { onNudge(d) },
                     contentAlignment = Alignment.Center
-                ) { Text((if (d > 0) "+" else "−") + LoadCalculator.format(kotlin.math.abs(d) * cables, unit, withUnit = false), fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                ) { Text((if (d > 0) "+" else "−") + LoadCalculator.format(kotlin.math.abs(d), unit, withUnit = false), fontWeight = FontWeight.Bold, fontSize = 18.sp) }
             }
         }
     }
@@ -299,7 +301,7 @@ private fun ResultContent(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             SectionLabel("New 3RM · $lifterName")
-            Text(fmt(best), style = MaterialTheme.typography.displayMedium, color = CleanColors.AccentInk)
+            LoadText(fmt(best), cables, style = MaterialTheme.typography.displayMedium, color = CleanColors.AccentInk)
             Text("Estimated 1RM ${fmt(oneRm)}", style = MaterialTheme.typography.titleMedium, color = CleanColors.AccentInk)
             Text(
                 when {

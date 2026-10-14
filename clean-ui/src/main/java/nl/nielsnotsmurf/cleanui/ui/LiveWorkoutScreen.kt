@@ -61,6 +61,7 @@ import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 
@@ -81,6 +82,7 @@ fun LiveWorkoutScreen(
     history: List<HistoryEntry>,
     personalRecord: String?,
     connection: TrainerConnection,
+    cables: Int,
     attemptMode: Boolean,
     onSkipRest: () -> Unit,
     onContinue: () -> Unit,
@@ -130,10 +132,10 @@ fun LiveWorkoutScreen(
                         TrainerSearchHint(connection, waiting = true, modifier = Modifier.padding(top = 16.dp))
                     }
                     LivePhase.COUNTDOWN -> BigNumber(live.countdown.toString(), "Get set")
-                    LivePhase.LIFTING -> Lifting(live, fmt, history)
+                    LivePhase.LIFTING -> Lifting(live, fmt, history, cables)
                     LivePhase.RESTING -> Resting(live)
                     LivePhase.SET_DONE -> if (attemptMode) Waiting("Set done") else SetDone(live)
-                    LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history)
+                    LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history, cables)
                     LivePhase.OTHER -> Waiting("")
                 }
             }
@@ -227,7 +229,7 @@ private fun BigNumber(value: String, caption: String, color: Color = CleanColors
 }
 
 @Composable
-private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>) {
+private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>, cables: Int) {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -240,10 +242,10 @@ private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<His
             PositionBar(live.position)
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("Load", fmt(live.loadKg), Modifier.weight(1f))
-            Stat("Now", fmt(live.liveLoadKg), Modifier.weight(1f))
+            Stat("Load", fmt(live.loadKg), Modifier.weight(1f), cables)
+            Stat("Now", fmt(live.liveLoadKg), Modifier.weight(1f), cables)
         }
-        Averages(live, fmt, history)
+        Averages(live, fmt, history, cables)
     }
 }
 
@@ -265,7 +267,7 @@ private fun PositionBar(position: Float?) {
 }
 
 @Composable
-private fun Averages(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>) {
+private fun Averages(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>, cables: Int) {
     val now = remember { System.currentTimeMillis() }
     val month = remember(history, live.exerciseName, live.lifterId) {
         TrainingStats.exerciseAverages(history, live.exerciseName, live.lifterId, now - 30 * DAY_MS)
@@ -276,9 +278,9 @@ private fun Averages(live: LiveWorkout, fmt: (Float) -> String, history: List<Hi
     if (allTime == null) return
     val avg = { a: TrainingStats.Averages? -> a?.avgKg?.let(fmt) ?: "–" }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Stat("30-day avg", avg(month), Modifier.weight(1f))
-        Stat("All-time avg", avg(allTime), Modifier.weight(1f))
-        Stat("Best", allTime.bestKg?.let(fmt) ?: "–", Modifier.weight(1f))
+        Stat("30-day avg", avg(month), Modifier.weight(1f), cables)
+        Stat("All-time avg", avg(allTime), Modifier.weight(1f), cables)
+        Stat("Best", allTime.bestKg?.let(fmt) ?: "–", Modifier.weight(1f), cables)
     }
     Text(
         "Usually %.0f reps a set · %d workouts".format(allTime.avgRepsPerSet, allTime.workouts),
@@ -289,12 +291,16 @@ private fun Averages(live: LiveWorkout, fmt: (Float) -> String, history: List<Hi
 }
 
 @Composable
-private fun Stat(label: String, value: String, modifier: Modifier = Modifier) {
+private fun Stat(label: String, value: String, modifier: Modifier = Modifier, cables: Int? = null) {
     Column(
         modifier.clip(RoundedCornerShape(16.dp)).background(CleanColors.Surface).padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = CleanColors.Muted)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        if (cables != null && value != "–") {
+            LoadText(value, cables, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        } else {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
     }
 }
 
@@ -344,7 +350,7 @@ private fun SetDone(live: LiveWorkout) {
 }
 
 @Composable
-private fun Finished(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>) {
+private fun Finished(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>, cables: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Box(
             Modifier.size(88.dp).clip(RoundedCornerShape(44.dp)).background(CleanColors.Accent),
@@ -352,6 +358,6 @@ private fun Finished(live: LiveWorkout, fmt: (Float) -> String, history: List<Hi
         ) { Text("✓", color = Color.White, fontSize = 40.sp) }
         Text("Nice work", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
-        Averages(live, fmt, history)
+        Averages(live, fmt, history, cables)
     }
 }

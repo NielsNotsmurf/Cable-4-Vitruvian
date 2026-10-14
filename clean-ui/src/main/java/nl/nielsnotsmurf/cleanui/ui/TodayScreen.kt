@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import nl.nielsnotsmurf.cleanui.ui.components.LoadText
+import nl.nielsnotsmurf.cleanui.ui.components.cables
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.TrainingStats
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
@@ -158,6 +160,7 @@ fun TodayScreen(
                     now = now,
                     timeFormat = timeFormat,
                     lifterFor = { liftersById[it] },
+                    cablesFor = { id -> exercisesById[id]?.cables ?: 2 },
                     unit = state.unit
                 )
             }
@@ -196,6 +199,7 @@ fun TodayScreen(
                             exercise = exercise,
                             lifter = lifter,
                             kgText = LoadCalculator.format(r.oneRepMax.kg, state.unit),
+                            cables = exercise.cables,
                             age = ageText(now - r.oneRepMax.updatedAt),
                             onRetest = { onRetest(r.lifterId, r.exerciseId) },
                             onTrain = { onOpenExercise(exercise) }
@@ -242,6 +246,7 @@ private fun CurrentTraining(
     now: Long,
     timeFormat: SimpleDateFormat,
     lifterFor: (String) -> UiLifter?,
+    cablesFor: (String) -> Int,
     unit: WeightUnit
 ) {
     val start = session.first().timestamp
@@ -307,7 +312,7 @@ private fun CurrentTraining(
                         )
                     }
                     e.topKgPerCable?.let {
-                        Text(LoadCalculator.format(it, unit), style = MaterialTheme.typography.titleMedium, color = lifter?.color ?: CleanColors.Ink)
+                        LoadText(LoadCalculator.format(it, unit), cablesFor(e.exerciseId), color = lifter?.color ?: CleanColors.Ink)
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(timeFormat.format(e.timestamp), style = MaterialTheme.typography.bodySmall)
@@ -351,6 +356,7 @@ private fun StandingRow(
     exercise: ExerciseCard,
     lifter: UiLifter?,
     kgText: String,
+    cables: Int,
     age: String,
     onRetest: () -> Unit,
     onTrain: () -> Unit
@@ -363,8 +369,10 @@ private fun StandingRow(
                     Dot(it.color, 8)
                     Spacer(Modifier.width(5.dp))
                 }
+                lifter?.let { Text("${it.name} · ", style = MaterialTheme.typography.bodySmall, maxLines = 1) }
+                LoadText(kgText, cables, style = MaterialTheme.typography.bodySmall)
                 Text(
-                    listOfNotNull(lifter?.name, kgText, age).joinToString(" · "),
+                    " · $age",
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
