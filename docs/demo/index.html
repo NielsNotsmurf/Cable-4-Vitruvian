@@ -60,6 +60,7 @@ button{font-family:inherit}
 .star.on{color:#F59E0B}
 .orm{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
 .orm b{font-family:var(--f-num);font-size:17px;font-weight:700;line-height:1.1}
+.cm{display:inline-block;vertical-align:-1px;opacity:.7;margin-left:4px}
 .tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:3px 8px;white-space:nowrap}
 .tag.grey{background:var(--soft);color:var(--muted)}
 .tag.ok{background:var(--ok-soft);color:var(--ok)}
@@ -187,7 +188,7 @@ table.sets th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color
   <p>A clickable web version of the new layout with a simulated trainer, so you can try every flow without installing the app. Open the link on your phone for the real feel.</p>
   <p>New: the first launch shows onboarding (account, optional PIN, Garmin heart rate) and an app tour with arrows. Settings → Account sets a PIN or switches account; Settings → Help replays the tour. Reset demo data to see the first launch again.</p>
   <p>Train is now a home screen: the training you're doing (anything within 5 hours of the last exercise), live heart rate, and your oldest 1RMs to re-test. Pick an LED colour in Settings and the whole app follows it.</p>
-  <p>Analytics opens on a body map: each region is coloured by the measure and period you pick, with your best 1RM inside it as total load (both cables). Tap a region to narrow the screen to it.</p>
+  <p>Analytics opens on a body map: each region is coloured by the measure and period you pick, with your best 1RM inside it per cable. Tap a region to narrow the screen to it.</p>
   <p>Everything the classic app does has a place here: training, Just Lift, the 1RM test, history, analytics, profiles, trainer connection and all settings. Example lifters and workouts are pre-filled; your changes stay in this browser.</p>
   <button type="button" id="reset">Reset demo data</button>
 </aside>
@@ -277,6 +278,10 @@ const loadFor=(orm,p)=>orm<=0?0:clampKg(orm*p/100);
 const U=()=>S.settings.unit;
 const num=kg=>{if(U()==='lb')return String(Math.round(kg*LB));const r=Math.round(kg*2)/2;return r%1===0?r.toFixed(0):r.toFixed(1)};
 const W=kg=>num(kg)+' '+U();
+// Cable mark: every load is per cable; one or two lines with a handle say how many cables carry it.
+const CM=c=>`<svg class="cm" viewBox="0 0 ${c===2?14:8} 16" width="${c===2?11:6}" height="13" role="img" aria-label="${c===2?'two cables':'one cable'}">${(c===2?[3.5,10.5]:[4]).map(x=>`<line x1="${x}" y1="1" x2="${x}" y2="10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="${x}" cy="13.5" r="2.5" fill="currentColor"/>`).join('')}</svg>`;
+const cabOf=id=>{const e=EX(id);return e&&e.single?1:2};
+const WC=(kg,c)=>W(kg)+CM(c);
 const nudgeKg=()=>U()==='lb'?1/LB:STEP;
 function hist(lid,ex){const out=[];S.sessions.forEach(s=>s.sets.forEach(x=>{if(x.lid===lid&&(!ex||s.ex===ex))out.push({ex:s.ex,kg:x.kg,reps:x.reps,t:s.t,mode:s.mode})}));return out}
 function oneRM(lid,ex,depth){
@@ -329,7 +334,7 @@ function longestStanding(limit){
 const setAgo=t=>{const d=Math.floor((Date.now()-t)/86400000);return d<=0?'set today':d===1?'set yesterday':d<14?'set '+d+' days ago':d<60?'set '+Math.floor(d/7)+' weeks ago':'set '+Math.floor(d/30)+' months ago'};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function log(level,msg){R.logs.push({t:new Date(),level,msg});if(R.logs.length>300)R.logs.shift()}
-['Phoenix started','BLE adapter ready','Loaded 31 exercises','Profiles: 2'].forEach(m=>log('INFO',m));
+['vitruvian- started','BLE adapter ready','Loaded 31 exercises','Profiles: 2'].forEach(m=>log('INFO',m));
 
 // ===================== icons =====================
 const I={
@@ -378,7 +383,7 @@ const lifterChips=(sel,attr,multi)=>S.lifters.map(l=>{const on=multi?sel.include
 function ormColumn(ex){
   const e=EX(ex); if(e.bw)return `<div class="orm"><span class="tag grey">Bodyweight</span></div>`;
   const ls=activeL();const miss=ls.filter(l=>!oneRM(l.id,ex));
-  let h=ls.map(l=>{const o=oneRM(l.id,ex);return o?`<b style="color:${color(l)}">${o.src==='RELATED'?'~':''}${W(o.kg)}</b>`:''}).join('');
+  let h=ls.map(l=>{const o=oneRM(l.id,ex);return o?`<b style="color:${color(l)}">${o.src==='RELATED'?'~':''}${WC(o.kg,cabOf(ex))}</b>`:''}).join('');
   if(miss.length&&miss.length===ls.length)h+=`<span class="tag">Benchmark</span>`;
   else if(miss.length)h+=`<span class="tag">${esc(miss.map(m=>m.name).join(', '))}: test</span>`;
   return `<div class="orm">${h}</div>`;
@@ -449,7 +454,7 @@ const views={
   const cards=ls.map(l=>{const o=oneRM(l.id,e.id),kg=setLoad(l.id,0);
    const pr=bestPR(l.id,e.id);
    const note=setup.over[l.id]!=null?'Set by hand':!o?'No 1RM yet · start light':`${setup.pct}% of ${o.src==='RELATED'?'~':''}${W(o.kg)}`;
-   return `<div class="lcard"><span class="row"><span class="dot" style="background:${color(l)}"></span><b>${esc(l.name)}</b></span><span class="big" style="color:${color(l)}">${num(kg)}<small> ${U()}</small></span><span class="small">${note}</span>${pr?`<span class="small">PR ${W(pr.kg)} × ${pr.reps}</span>`:''}${!o||o.src==='RELATED'?`<button class="pill" data-test="${l.id}" style="align-self:flex-start;min-height:32px;padding:4px 10px;margin-top:2px">Test 1RM</button>`:''}<div class="row" style="margin-top:4px"><button class="nudge" data-nudge="${l.id}" data-d="-1" aria-label="Less for ${esc(l.name)}">−</button><button class="nudge" data-nudge="${l.id}" data-d="1" aria-label="More for ${esc(l.name)}">+</button></div></div>`}).join('');
+   return `<div class="lcard"><span class="row"><span class="dot" style="background:${color(l)}"></span><b>${esc(l.name)}</b></span><span class="big" style="color:${color(l)}">${num(kg)}<small> ${U()}</small>${CM(setup.cable==='Single'?1:2)}</span><span class="small">${note}</span>${pr?`<span class="small">PR ${W(pr.kg)} × ${pr.reps}</span>`:''}${!o||o.src==='RELATED'?`<button class="pill" data-test="${l.id}" style="align-self:flex-start;min-height:32px;padding:4px 10px;margin-top:2px">Test 1RM</button>`:''}<div class="row" style="margin-top:4px"><button class="nudge" data-nudge="${l.id}" data-d="-1" aria-label="Less for ${esc(l.name)}">−</button><button class="nudge" data-nudge="${l.id}" data-d="1" aria-label="More for ${esc(l.name)}">+</button></div></div>`}).join('');
   const setRows=setup.sets.map((s,i)=>{
    const what=s.type==='amrap'?'AMRAP':s.type==='time'?s.secs+'s':s.reps+' reps';
    const pct=bw||echo?'':` · ${s.pct??setup.pct}%`;
@@ -527,11 +532,11 @@ const views={
   const nextTurn=run.turn+1<run.total?run.turn+1:null, next=nextTurn!=null?lifter(run.order[nextTurn%run.order.length]):null;
   const target=plan.type==='reps'?`<span>/${plan.reps}</span>`:'';
   return `<div class="screen"><div class="scroll" style="gap:14px">
-   <div class="band" style="background:${color(l)}"><span>${esc(l.name)}${run.order.length>1?` <span style="opacity:.8;font-weight:600">· ${run.order.indexOf(lid)+1} of ${run.order.length}</span>`:''}</span><span id="bandload">${run.bw?'Bodyweight':run.mode==='Echo'?'Echo '+run.echoLevel:W(liveLoad())+' / cable'}</span></div>
-   ${run.justLift?'':`<div class="prog">${run.plan.map((_,i)=>`<i class="${i<si?'d':i===si?'w':''}"></i>`).join('')}</div><span class="small" style="text-align:center;margin-top:-6px">Set ${si+1} of ${run.plan.length} · ${esc(run.exName)} · ${run.mode}</span>`}
+   <div class="band" style="background:${color(l)}"><span>${esc(l.name)}${run.order.length>1?` <span style="opacity:.8;font-weight:600">· ${run.order.indexOf(lid)+1} of ${run.order.length}</span>`:''}</span><span id="bandload">${run.bw?'Bodyweight':run.mode==='Echo'?'Echo '+run.echoLevel:W(liveLoad())+CM(run.cable==='Single'?1:2)}</span></div>
+   ${run.justLift?'':`<div class="prog">${run.plan.map((_,i)=>`<i class="${i<si?'d':i===si?'w':''}"></i>`).join('')}</div><span class="small" style="text-align:center;margin-top:-6px">Set ${si+1} of ${run.plan.length} · ${esc(run.exName)} · ${run.mode}${R.conn==='on'||HR.bpm?' · <span style="color:var(--danger)">♥</span> <span id="hrnow">'+HR.bpm+'</span>':''}</span>`}
    <div><div class="label" id="phase" style="text-align:center">${phaseLabel()}</div><div class="huge" id="reps">${plan.type==='time'?run.left:run.rep}${plan.type==='time'?'<span>s</span>':target}</div></div>
    ${run.bw?'':`<div class="cables"><div class="cable ${run.cable==='Single'?'off':''}"><span>L</span><i id="cl" style="height:0%"></i></div><div class="cable"><span>R</span><i id="cr" style="height:0%"></i></div></div>`}
-   ${run.bw?'':`<div class="stats"><div><span class="label">Load</span><b id="sload">${run.bw?'—':num(liveLoad()*(run.cable==='Single'?1:2))}</b><span class="small">${U()} total</span></div><div><span class="label">Velocity</span><b id="svel">${run.vel.toFixed(2)}</b><span class="small">m/s</span></div><div><span class="label">Power</span><b id="spow">${run.bw?'—':Math.round(liveLoad()*2*9.81*run.vel)}</b><span class="small">W</span></div></div>`}
+   ${run.bw?'':`<div class="stats"><div><span class="label">Load</span><b>${num(curLoad())}${CM(run.cable==='Single'?1:2)}</b><span class="small">${U()} per cable</span></div><div><span class="label">Now</span><b id="sload">${num(liveLoad())}</b><span class="small">${U()} per cable</span></div></div>${run.ex?averages(lid,run.ex,run.cable==='Single'?1:2):''}`}
    ${run.justLift?`<div class="card" style="text-align:center"><span class="small" id="autostop">${run.downLeft!=null?'<b style="color:var(--accent-ink)">Stopping in '+run.downLeft+'…</b>':'Put the handles down for 5 seconds to stop'}</span></div>`:''}
    ${next?`<div class="card" style="flex-direction:row;align-items:center"><span class="av" style="background:${color(next)}">${next.name[0]}</span><span><b>Up next: ${esc(next.name)}</b><br><span class="small">${run.bw?'':W(run.loads[next.id][Math.floor(nextTurn/run.order.length)])+' · '}${planTxt(run.plan[Math.floor(nextTurn/run.order.length)])}</span></span></div>`:''}
   </div>
@@ -563,7 +568,7 @@ const views={
   const t=V.t, l=lifter(t.lid), st=S.assess[t.lid]||(S.assess[t.lid]={done:[]});
   const exId=t.list[t.i], e=EX(exId), a=ANCHORS.find(x=>x[0]===exId), howto=a?a[2]:'Set up as you normally would for '+e.name.toLowerCase()+'. Move slowly and keep the same range every rep.';
   const o=oneRM(t.lid,exId);
-  const head=`${top('1RM test',t.back||'train')}<div class="scroll">
+  const head=`${top('3RM test',t.back||'train')}<div class="scroll">
    <div class="row wrap">${lifterChips(t.lid,'tlid')}</div>
    ${t.list.length>1?`<div class="prog">${t.list.map((id,i)=>`<i class="${st.done.includes(id)?'d':i===t.i?'w':''}"></i>`).join('')}</div>`:''}
    <span class="small">${t.list.length>1?(t.i+1)+' of '+t.list.length+' · ':''}<b style="color:var(--ink)">${esc(e.name)}</b> · ${esc(e.equip)}${o&&o.src!=='RELATED'?' · current 1RM '+W(o.kg):''}</span>`;
@@ -572,24 +577,26 @@ const views={
    <div class="video">${I.play.replace('<svg','<svg style="width:48px;height:48px;fill:#fff;stroke:none"')}</div>
    <div class="card"><span class="label">How to do it</span><span>${howto}</span></div>
    <div class="card"><span class="label">How the test works</span>
-    <span class="small" style="font-size:14px">1. Warm up: 10 easy reps, then 3 reps a bit heavier.<br>2. Lift <b>one rep</b> at the start weight${o&&o.src!=='RELATED'?' (90% of your 1RM)':''}.<br>3. Made it? The weight goes up for the next attempt.<br>4. Keep going until you miss a rep. Your 1RM is the heaviest rep you made.</span></div>
+    <span class="small" style="font-size:14px">1. Warm up: 10 easy reps, then 3 reps a bit heavier.<br>2. Lift <b>3 reps</b> at the start weight${o&&o.src!=='RELATED'?' (80% of your 1RM)':''}.<br>3. Made all 3? The weight goes up for the next attempt.<br>4. Keep going until you can't finish 3 reps. Your 3RM is the heaviest set you made; your 1RM is estimated from it.<br>Loads are per cable (the mark shows 1 or 2 cables). The lowering part is the same weight as the lift.</span></div>
   </div><div class="bar"><div class="row"><button class="ghost" data-tskip>Skip exercise</button><button class="btn accent" style="flex:2" data-tbegin>Start attempts</button></div></div></div>`;
   if(t.phase==='attempt'){
    const n=t.attempts.length+1, best=bestOk(t);
    return `<div class="screen">${head}
-   ${t.restLeft>0?`<div class="win"><span><b>Rest before attempt ${n}</b><br><span style="font-size:13px">Full rest makes the next rep count.</span></span><b class="big" style="font-size:32px" id="trest">${mmss(t.restLeft)}</b></div>`:''}
-   <div class="outline" style="align-items:center;text-align:center"><span class="label">Attempt ${n} · one rep</span>
-    <span class="big" style="font-size:72px;color:${color(l)}">${num(t.kg)}<small> ${U()}</small></span>
+   ${t.restLeft>0?`<div class="win"><span><b>Rest before attempt ${n}</b><br><span style="font-size:13px">Full rest makes the next set count.</span></span><b class="big" style="font-size:32px" id="trest">${mmss(t.restLeft)}</b></div>`:''}
+   <div class="outline" style="align-items:center;text-align:center"><span class="label">Attempt ${n} · 3 reps</span>
+    <span class="big" style="font-size:72px;color:${color(l)}">${num(t.kg)}<small> ${U()}</small>${CM(cabOf(exId))}</span>
+    <span class="small">${cabOf(exId)===2?'per cable · '+W(t.kg*2)+' total':'one cable'}</span>
     <span class="small">${n===1?(t.startNote||''):'Heaviest made so far: '+W(best)}</span>
     <div class="row" style="width:100%"><button class="nudge" data-tkg="-2">−${num(nudgeKg()*2)}</button><button class="nudge" data-tkg="-1">−${num(nudgeKg())}</button><button class="nudge" data-tkg="1">+${num(nudgeKg())}</button><button class="nudge" data-tkg="2">+${num(nudgeKg()*2)}</button></div></div>
    ${tries}
-  </div><div class="bar"><span class="label" style="text-align:center">How did the rep go?</span><div class="row"><button class="ghost danger" data-tres="miss">Missed</button><button class="ghost" data-tres="tough">Made it, tough</button><button class="ghost" data-tres="easy">Made it, easy</button></div></div></div>`;
+   ${R.conn==='on'?'':'<span class="error">No Vitruvian found yet. The set starts once the trainer is connected. Check it\'s switched on and nearby.</span>'}
+  </div><div class="bar"><span class="label" style="text-align:center">How did the 3 reps go?</span><div class="row"><button class="ghost danger" data-tres="miss">Missed</button><button class="ghost" data-tres="tough">Made it, tough</button><button class="ghost" data-tres="easy">Made it, easy</button></div></div></div>`;
   }
   // result
   const best=bestOk(t), lastMiss=[...t.attempts].reverse().find(x=>!x.ok), mid=best&&lastMiss?clampKg((best+lastMiss.kg)/2):0;
   return `<div class="screen">${head}
-   ${best?`<div class="win" style="flex-direction:column;align-items:flex-start"><span class="label" style="color:var(--accent-ink)">New 1RM · ${esc(l.name)}</span><span class="big">${num(best)} <small>${U()}</small></span><span style="font-size:13px">${o&&o.src!=='RELATED'?(best>o.kg+.01?'Up from '+W(o.kg):best<o.kg-.01?'Down from '+W(o.kg)+'. Save it only if today was a normal day.':'Same as before'):'Your first tested 1RM for this exercise'}</span></div>`
-   :`<div class="card"><b>No rep made yet</b><span class="small" style="font-size:14px">Rest, then try lighter. We suggest ${W(t.kg)}.</span></div>`}
+   ${best?`<div class="win" style="flex-direction:column;align-items:flex-start"><span class="label" style="color:var(--accent-ink)">New 3RM · ${esc(l.name)}</span><span class="big">${num(best)} <small>${U()}</small>${CM(cabOf(exId))}</span><b style="font-size:17px">Estimated 1RM ${W(est1(best))}</b><span style="font-size:13px">${o&&o.src!=='RELATED'?(est1(best)>o.kg+.01?'1RM up from '+W(o.kg):est1(best)<o.kg-.01?'1RM down from '+W(o.kg)+'. Save it only if today was a normal day.':'Same as before'):'Your first tested 1RM for this exercise'}</span></div>`
+   :`<div class="card"><b>No set made yet</b><span class="small" style="font-size:14px">Rest, then try lighter. We suggest ${W(t.kg)}.</span></div>`}
    ${tries}
    ${mid&&mid>best+.01&&mid<lastMiss.kg-.01?`<button class="ghost" data-tmid="${mid}" style="flex:none">One more try at ${W(mid)}</button>`:''}
   </div><div class="bar">${best?`<div class="row"><button class="ghost" data-tskip>Don't save</button><button class="btn accent" style="flex:2" data-tsave>Save 1RM${t.i<t.list.length-1?' · next':''}</button></div>`:`<div class="row"><button class="ghost" data-tskip>Skip exercise</button><button class="btn" style="flex:2" data-tretry>Try ${W(t.kg)}</button></div>`}</div></div>`;
@@ -679,7 +686,7 @@ const views={
    <div class="outline" style="gap:6px"><div class="row"><span class="label grow">${m}</span><div class="seg" style="width:150px;padding:3px">${['Front','Back'].map(x=>`<button class="${UI.aSide===x.toLowerCase()?'on':''}" data-aside="${x.toLowerCase()}" style="min-height:32px">${x}</button>`).join('')}</div></div>
     <div class="flipwrap" id="flip">${bodySvg(stats.map(x=>Object.assign({},x,{best:regionPr(lid,x.region)})),m,UI.aSide,reg)}</div>
     <div class="row"><span class="small">0</span><span style="flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 20%,var(--line)),var(--accent))"></span><span class="small">${max>0?fmtM(max,m,true):'–'}</span></div>
-    <span class="small">Numbers are your best 1RM per region in ${U()}, total load (both cables together).</span>
+    <span class="small">Numbers are your best 1RM per region in ${U()} per cable, like every load in the app.</span>
     ${reg?`<button class="chip on" data-areg="" style="align-self:flex-start;min-height:36px">Only ${reg} ✕</button>`:'<span class="small">Tap a region to see only that region below.</span>'}</div>
    <div class="hscroll">${kpis.map(([v,l,c])=>`<div class="outline" style="min-width:120px;flex:none;gap:2px"><b class="big" style="font-size:28px;white-space:nowrap">${v}</b><span class="small">${l}</span>${c==null?'':`<b style="font-size:13px;color:${c>=0?'var(--accent)':'var(--muted)'}">${c>0?'▲ '+c+'%':c<0?'▼ '+(-c)+'%':'= same'}</b>`}</div>`).join('')}</div>
    <div class="outline"><span class="label">${m} · ${W_[0]}${reg?' · '+reg:''}</span><b style="font-size:16px">${pb?fmtM(pb.v,m)+' · '+pb.label:'Nothing in this period'}</b>
@@ -690,8 +697,8 @@ const views={
    <div class="outline"><span class="label">Balance · ${m.toLowerCase()} per region</span>${stats.slice().sort((a,b)=>b.value-a.value).map(s=>`<button data-areg="${s.region}" style="display:flex;align-items:center;gap:8px;border:0;background:none;padding:6px 0;cursor:pointer;color:var(--ink);font:inherit"><span style="width:76px;text-align:left;font-weight:${s.region===reg?700:500}">${s.region}</span><span style="flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden"><span style="display:block;height:10px;border-radius:5px;width:${max>0?s.value/max*100:0}%;background:var(--accent);opacity:${!reg||s.region===reg?1:.35}"></span></span><span class="small" style="width:56px;text-align:right">${fmtM(s.value,m,true)}</span></button>`).join('')}</div>
    <span class="label">Exercises${reg?' · '+reg:''}</span>
    ${exs.length?`<div class="hscroll">${exs.map(e=>`<div class="outline" style="width:168px;flex:none;gap:2px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</b><span class="small">${e.region||'Other'}</span><b class="big" style="font-size:26px;color:var(--accent);margin-top:6px">${fmtM(e.v,m)}</b><span class="small">${e.best?'Heaviest '+W(e.best):'No load'}</span><div style="margin-top:6px">${spark(e.pts)}</div></div>`).join('')}</div>`:`<span class="small">Nothing ${reg?'for '+reg.toLowerCase()+' ':''}in this period yet.</span>`}
-   <div class="outline"><span class="label">1RMs${reg?' · '+reg:''}</span>${maxes.slice(0,8).map(([id,o])=>`<div class="kv"><span>${esc(exById[id].name)}<br><span class="small">${o.src==='BENCHMARK'?'Tested':o.src==='MANUAL'?'Entered by hand':'Worked out from your sets'}${exById[id].single?' · one cable':' · '+W(o.kg)+' per cable'}</span></span><b style="color:var(--accent)">${W(o.kg*(exById[id].single?1:2))}</b></div>`).join('')||'<span class="small">No 1RMs yet. Run the 1RM test from Train, or train an exercise and one is worked out from your sets.</span>'}</div>
-   ${recs.length?`<div class="outline"><span class="label">Records · ${W_[0]}</span>${recs.slice(0,6).map(x=>`<div class="kv"><span>${esc(x.ex)}</span><span>${W(x.kg)} · ${df(x.t)}</span></div>`).join('')}</div>`:''}
+   <div class="outline"><span class="label">1RMs${reg?' · '+reg:''}</span>${maxes.slice(0,8).map(([id,o])=>`<div class="kv"><span>${esc(exById[id].name)}<br><span class="small">${o.src==='BENCHMARK'?'Tested':o.src==='MANUAL'?'Entered by hand':'Worked out from your sets'}${exById[id].single?' · one cable':' · per cable, '+W(o.kg*2)+' total'}</span></span><b style="color:var(--accent)">${WC(o.kg,exById[id].single?1:2)}</b></div>`).join('')||'<span class="small">No 1RMs yet. Run the 1RM test from Train, or train an exercise and one is worked out from your sets.</span>'}</div>
+   ${recs.length?`<div class="outline"><span class="label">Records · measured · ${W_[0]}</span>${recs.slice(0,6).map(x=>`<div class="kv"><span>${esc(x.ex)}</span><span>${W(x.kg)} · ${df(x.t)}</span></div>`).join('')}</div>`:''}
    <button class="navrow" data-go="acharts" style="border:1.5px solid var(--line);border-radius:18px;padding:12px 16px"><span class="grow">More charts and CSV export<br><span class="small">PR charts, consistency, safety events and exports</span></span>${I.chev}</button>
   </div>${tabs('analytics')}</div>`;
  },
@@ -906,8 +913,8 @@ function insightsFor(all,m,w,r){
   const s=weekStreak(all);if(s>=2)out.push({t:s+' weeks in a row',b:'At least one workout every week. Keep it going.'});
   return out;
 }
-// Best real 1RM in a region as total load: 1RMs are per cable, so double-cable lifts count twice.
-function regionPr(lid,region){let best=null;EXERCISES.forEach(e=>{if(e.bw||REGION_OF[e.group]!==region)return;const o=oneRM(lid,e.id);if(!o||o.src==='RELATED')return;const t=o.kg*(e.single?1:2);if(best==null||t>best)best=t});return best}
+// Best real 1RM in a region, per cable like every load in the app.
+function regionPr(lid,region){let best=null;EXERCISES.forEach(e=>{if(e.bw||REGION_OF[e.group]!==region)return;const o=oneRM(lid,e.id);if(!o||o.src==='RELATED')return;const t=o.kg;if(best==null||t>best)best=t});return best}
 function textOn(hex){return lum(hex2rgb(hex))<.42?'#fff':'var(--ink)'}
 function bodySvg(stats,m,side,sel){
   const acc=getComputedStyle(app).getPropertyValue('--accent').trim()||DEFAULT_ACCENT, line=getComputedStyle(app).getPropertyValue('--line').trim()||'#E7E9ED';
@@ -986,7 +993,7 @@ const TOUR=[
  ['train','conn','Your trainer','Shows whether the trainer is connected. Tap it to connect over Bluetooth.'],
  ['train','pick','Start a set',"Pick an exercise to open Set setup. Choose a mode, sets and reps; the load starts at a % of each lifter's 1RM, shown next to every exercise."],
  ['train','tiles','Just Lift and muscle groups','Just Lift starts the trainer straight away with no plan. Muscle groups lists exercises by body area.'],
- ['train','orm','Find your 1RM','The 1RM test shows how each lift is done, then goes up one rep at a time until a miss. Your heaviest rep becomes your 1RM, and all loads follow from it.'],
+ ['train','orm','Find your 1RM','The 3RM test shows how each lift is done, then 3-rep sets go up until one is missed. Your 1RM is estimated from the heaviest set, and all loads follow from it.'],
  ['train','tab-history','History','Every workout with sets, loads and heart rate. Tap one for the details.'],
  ['train','tab-analytics','Analytics','Your week, streaks, 1RMs and records, with charts per exercise.'],
  ['exercises','search','Exercises','Search the library or filter by muscle and equipment. Tap ▶ on an exercise for a demo video.'],
@@ -1048,7 +1055,7 @@ function connSheet(){
   if(R.conn==='scanning'||R.conn==='connecting')return;
   if(R.conn==='on'){confirmSheet('Disconnect trainer?','You can reconnect from the Train screen at any time.','Disconnect',()=>{R.conn='off';log('INFO','Disconnected from '+S.device);toast('Disconnected');render()});return}
   if(!R.perm){
-    sheet(`<h3>Allow Bluetooth</h3><span class="small" style="font-size:14px">Phoenix needs Bluetooth and nearby-devices permission to find your trainer.</span><button class="btn" data-ok>Allow</button><button class="ghost" data-x>Not now</button>`,(d,close)=>{close();if(d.ok!=null){R.perm=true;log('INFO','Bluetooth permissions granted');connSheet()}else pendingStart=null});return;
+    sheet(`<h3>Allow Bluetooth</h3><span class="small" style="font-size:14px">vitruvian- needs Bluetooth and nearby-devices permission to find your trainer.</span><button class="btn" data-ok>Allow</button><button class="ghost" data-x>Not now</button>`,(d,close)=>{close();if(d.ok!=null){R.perm=true;log('INFO','Bluetooth permissions granted');connSheet()}else pendingStart=null});return;
   }
   R.conn='scanning';log('INFO','Scanning for Vitruvian devices');render();
   const sh=sheet(`<h3>Select your trainer</h3><div id="devlist"><span class="small">Scanning…</span></div><div class="row"><button class="ghost" data-x>Cancel</button><button class="ghost" data-rescan>Rescan</button></div>`,(d,close,el)=>{
@@ -1125,10 +1132,14 @@ function onRep(plan){
   if(ph)ph.textContent=phaseLabel();
   const v=app.querySelector('#svel'),p=app.querySelector('#spow'),sl=app.querySelector('#sload'),bl=app.querySelector('#bandload');
   if(v)v.textContent=run.vel.toFixed(2);if(p)p.textContent=Math.round(liveLoad()*2*9.81*run.vel);
-  if(sl)sl.textContent=num(liveLoad()*(run.cable==='Single'?1:2));if(bl&&run.mode!=='Echo')bl.textContent=W(liveLoad())+' / cable';
+  if(sl)sl.textContent=num(liveLoad());if(bl&&run.mode!=='Echo')bl.innerHTML=W(liveLoad())+CM(run.cable==='Single'?1:2);
   if(plan.type==='reps'&&run.rep>=plan.reps)finishSet();
   else if(plan.type==='amrap'&&!run.justLift&&run.rep>=run.failAt){toast('Handles down · set ends');finishSet()}
 }
+// Same three numbers as the app's live screen: this lifter's 30-day and all-time average set load, and the best.
+function averages(lid,ex,c){const h=hist(lid,ex);if(!h.length)return '';const m=h.filter(x=>Date.now()-x.t<30*86400000),avg=xs=>xs.length?num(xs.reduce((a,x)=>a+x.kg,0)/xs.length)+CM(c):'–';
+  const st=(l,v)=>`<div><span class="label">${l}</span><b style="font-size:20px">${v}</b></div>`,days=new Set(h.map(x=>Math.floor(x.t/86400000))).size;
+  return `<div class="stats">${st('30-day avg',avg(m))}${st('All-time avg',avg(h))}${st('Best',num(Math.max(...h.map(x=>x.kg)))+CM(c))}</div><span class="small" style="text-align:center;margin-top:-6px">Usually ${Math.round(h.reduce((a,x)=>a+x.reps,0)/h.length)} reps a set · ${days} workouts</span>`}
 function finishSet(){
   stopTimers();
   const lid=curLid(), si=curSet(), plan=run.plan[si], kg=run.bw?0:curLoad();
@@ -1231,13 +1242,15 @@ const STEPS={
  defreps:d=>S.settings.defaultReps=Math.min(30,Math.max(1,S.settings.defaultReps+d)),
  defwarm:d=>S.settings.warmup=Math.min(5,Math.max(0,S.settings.warmup+d))
 };
-// 1RM test: demo, warm-up, then single-rep attempts that go up until a miss.
+// Strength test: demo, warm-up, then 3-rep attempts that go up until a set is missed.
+// The heaviest made set is the 3RM; the stored 1RM is estimated from it (Epley, 3RM × 1.1).
+const est1=kg=>roundStep(fromWorkingSet(kg,3,0));
 const bestOk=t=>Math.max(0,...t.attempts.filter(x=>x.ok).map(x=>x.kg));
 function testStart(lid,ex){
   const o=oneRM(lid,ex), a=ANCHORS.find(x=>x[0]===ex);
-  if(o&&o.src!=='RELATED')return {kg:clampKg(o.kg*.9),note:'90% of your 1RM of '+W(o.kg),known:true};
-  if(o)return {kg:clampKg(o.kg*.7),note:'A careful start, based on your other lifts'};
-  return {kg:a?a[1]:10,note:'A light start. It goes up quickly while reps feel easy.'};
+  if(o&&o.src!=='RELATED')return {kg:clampKg(o.kg*.8),note:'80% of your 1RM of '+W(o.kg),known:true};
+  if(o)return {kg:clampKg(o.kg*.65),note:'A careful start, based on your other lifts'};
+  return {kg:a?a[1]:10,note:'A light start. It goes up quickly while sets feel easy.'};
 }
 function testFor(lid,t){const s=testStart(lid,t.list[t.i]);Object.assign(t,{lid,phase:'intro',attempts:[],kg:s.kg,startNote:s.note,known:!!s.known,restLeft:0})}
 function openTest(lid,list,back){
@@ -1249,7 +1262,7 @@ function testRest(){
   clearInterval(timer);V.t.restLeft=120;
   timer=setInterval(()=>{const t=V.t;if(!t){clearInterval(timer);return}t.restLeft--;const el=app.querySelector('#trest');if(t.restLeft<=0){clearInterval(timer);timer=null;render();return}if(el)el.textContent=mmss(t.restLeft)},1000);
 }
-function testNext(){const t=V.t;clearInterval(timer);timer=null;if(t.i<t.list.length-1){t.i++;testFor(t.lid,t);render()}else{toast(t.list.length>1?'1RM test complete':'Saved');go(t.back||'train')}}
+function testNext(){const t=V.t;clearInterval(timer);timer=null;if(t.i<t.list.length-1){t.i++;testFor(t.lid,t);render()}else{toast(t.list.length>1?'Strength test complete':'Saved');go(t.back||'train')}}
 
 function flipTo(side){if(UI.aSide===side){render();return}const f=app.querySelector('#flip');UI.aSide=side;if(!f||matchMedia('(prefers-reduced-motion: reduce)').matches){render();return}f.style.transform="perspective(800px) rotateY(90deg)";setTimeout(()=>{render();const g=app.querySelector('#flip');if(!g)return;g.style.transition='none';g.style.transform="perspective(800px) rotateY(-90deg)";requestAnimationFrame(()=>requestAnimationFrame(()=>{g.style.transition='';g.style.transform=''}))},160)}
 app.addEventListener('click',ev=>{
@@ -1316,7 +1329,7 @@ app.addEventListener('click',ev=>{
   // workout
   if(d.skipcount!=null){liftSet();return}
   if(d.stop!=null){finishSet();return}
-  if(d.adj){const lid=curLid(),si=curSet();run.loads[lid][si]=clampKg(run.loads[lid][si]+ +d.adj*nudgeKg());const bl=app.querySelector('#bandload'),sl=app.querySelector('#sload');if(bl)bl.textContent=W(liveLoad())+' / cable';if(sl)sl.textContent=num(liveLoad()*(run.cable==='Single'?1:2));return}
+  if(d.adj){const lid=curLid(),si=curSet();run.loads[lid][si]=clampKg(run.loads[lid][si]+ +d.adj*nudgeKg());const bl=app.querySelector('#bandload'),sl=app.querySelector('#sload');if(bl)bl.innerHTML=W(liveLoad())+CM(run.cable==='Single'?1:2);if(sl)sl.textContent=num(liveLoad());return}
   if(d.ready!=null){countdown();return}
   if(d.endall!=null){confirmSheet('End workout?','Sets you already finished are saved to History.','End workout',()=>{if(V.screen==='lifting'&&run.rep>0){run.total=run.turn+1}endWorkoutNow()},true);return}
   // 1RM test
@@ -1331,7 +1344,7 @@ app.addEventListener('click',ev=>{
     toast('Made it. Next: '+W(t.kg));testRest();render();return}
   if(d.tmid){V.t.kg=+d.tmid;V.t.phase='attempt';testRest();render();return}
   if(d.tretry!=null){V.t.phase='attempt';testRest();render();return}
-  if(d.tsave!=null){const t=V.t,ex=t.list[t.i];(S.stored[t.lid]=S.stored[t.lid]||{})[ex]={kg:bestOk(t),src:'BENCHMARK',t:Date.now()};const st=S.assess[t.lid]||(S.assess[t.lid]={done:[]});if(!st.done.includes(ex))st.done.push(ex);save();toast('Saved '+lifter(t.lid).name+"'s 1RM: "+W(bestOk(t)));testNext();return}
+  if(d.tsave!=null){const t=V.t,ex=t.list[t.i];(S.stored[t.lid]=S.stored[t.lid]||{})[ex]={kg:est1(bestOk(t)),src:'BENCHMARK',t:Date.now()};const st=S.assess[t.lid]||(S.assess[t.lid]={done:[]});if(!st.done.includes(ex))st.done.push(ex);save();toast('Saved '+lifter(t.lid).name+"'s 1RM: "+W(est1(bestOk(t))));testNext();return}
   if(d.tskip!=null){testNext();return}
   if(d.test){openTest(d.test,[setup.ex],'setup');return}
   if(d.retest){openTest(d.retest,[d.rex],'train');return}
