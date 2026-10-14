@@ -7,6 +7,7 @@
   <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/vitruvian-app/total?style=flat-square&color=000000"></a>
   <img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-000000?style=flat-square&logo=android&logoColor=white">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-000000?style=flat-square"></a>
+  <a href="https://github.com/sponsors/NielsNotsmurf"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-%E2%99%A5-000000?style=flat-square&logo=githubsponsors&logoColor=white"></a>
   <a href="https://github.com/ImranR98/Obtainium"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/get%20it%20on-Obtainium-000000?style=flat-square"></a>
 </p>
 
@@ -104,6 +105,12 @@ no imports from `:app`).
   and no more Phoenix branding.
 - **2026-10-13:** signed APK releases on every master push, and live Garmin heart rate.
 - **2026-10-12:** Clean layout, per-lifter 1RM and % loading.
+
+## Support
+
+vitruvian- is free and stays free. If it saves you a subscription and you want to say thanks,
+you can [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). Stars, bug reports
+and sharing the app with other Vitruvian owners help just as much.
 
 ## Credits
 
