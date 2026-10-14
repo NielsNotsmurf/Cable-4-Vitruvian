@@ -1,10 +1,14 @@
 name: Android build
 
+# Pull requests only: master is built by release.yml, which saves Actions minutes.
 on:
   pull_request:
-  push:
-    branches: [master]
   workflow_dispatch:
+
+# A new push to the same PR stops the run for the old one.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -28,6 +32,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: phoenix-debug-apk
           path: app/build/outputs/apk/production/debug/*.apk
           if-no-files-found: warn
