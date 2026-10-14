@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
@@ -45,9 +46,11 @@ import androidx.compose.ui.unit.dp
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
+import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
+import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 
 /** The classic app's profile colours, so profiles look the same in both layouts. */
-private val PROFILE_COLORS = listOf(
+internal val PROFILE_COLORS = listOf(
     Color(0xFF6200EE), Color(0xFF2196F3), Color(0xFF4CAF50), Color(0xFFFF9800),
     Color(0xFFF44336), Color(0xFF009688), Color(0xFFE91E63), Color(0xFFFF5722)
 )
@@ -56,6 +59,7 @@ private val PROFILE_COLORS = listOf(
 @Composable
 fun ProfilesScreen(
     state: CleanUiState,
+    account: AccountState,
     onBack: () -> Unit,
     onToggleLifter: (String) -> Unit,
     onAdd: (name: String, colorArgb: Int) -> Unit,
@@ -96,7 +100,12 @@ fun ProfilesScreen(
                             Text(l.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(l.name, style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(l.name, style = MaterialTheme.typography.titleMedium)
+                                if (account.hasPin(l.id)) {
+                                    Icon(Icons.Filled.Lock, contentDescription = "Has a PIN", tint = CleanColors.Muted, modifier = Modifier.size(14.dp))
+                                }
+                            }
                             Text(
                                 when {
                                     !training -> "Not training"
@@ -114,7 +123,9 @@ fun ProfilesScreen(
                             }
                         }
                         if (onHeartRate != null) {
-                            IconButton(onClick = { onHeartRate(l.id) }) {
+                            // The tour points at the first profile's heart button.
+                            val target = if (l.id == state.lifters.first().id) Modifier.tourTarget(TourTargets.HEART_RATE) else Modifier
+                            IconButton(onClick = { onHeartRate(l.id) }, modifier = target) {
                                 Icon(
                                     if (l.lifter.heartRateSensor != null) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                     contentDescription = "Heart rate sensor for ${l.name}",
@@ -151,7 +162,7 @@ fun ProfilesScreen(
         AlertDialog(
             onDismissRequest = { deleteId = null },
             title = { Text("Delete $name?") },
-            text = { Text("Their workout history stays in the app.") },
+            text = { Text("Their workout history stays in the app, and their PIN is removed.") },
             confirmButton = {
                 TextButton(onClick = { onDelete(id); deleteId = null }) { Text("Delete", color = CleanColors.Danger) }
             },

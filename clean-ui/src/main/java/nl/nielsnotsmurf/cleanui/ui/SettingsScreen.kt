@@ -18,17 +18,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.LedScheme
@@ -38,22 +46,43 @@ import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.ConnectionPill
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Stepper
+import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
+import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+/**
+ * Settings, from personal to technical: account, people, training, sound and video,
+ * trainer, help, data, and the developer tools folded away under Advanced.
+ */
 @Composable
 fun SettingsScreen(
     state: CleanUiState,
     settings: CleanSettings,
+    account: AccountState,
     ledSchemes: List<LedScheme>,
     /** The scheme picked last, or -1. */
     ledIndex: Int,
     onUpdate: ((CleanSettings) -> CleanSettings) -> Unit,
     onLedScheme: (Int) -> Unit,
     onProfiles: () -> Unit,
-    onMoreSettings: () -> Unit,
+    onSetPin: () -> Unit,
+    onChangePin: () -> Unit,
+    onRemovePin: () -> Unit,
+    onSwitchAccount: () -> Unit,
+    onStartTour: () -> Unit,
+    onPairHeartRate: ((lifterId: String) -> Unit)?,
+    onBackup: () -> Unit,
     onConnectionLogs: () -> Unit,
     onProtocolTester: () -> Unit,
     onSwitchToClassic: () -> Unit
 ) {
+    val me = state.lifters.firstOrNull { it.id == account.signedInId }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    var showHeartRateGuide by rememberSaveable { mutableStateOf(false) }
+    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.getDefault()) }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -61,6 +90,45 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Settings", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
             ConnectionPill(state.connection)
+        }
+
+        if (me != null) {
+            SectionLabel("Account", Modifier.padding(top = 8.dp))
+            Group(Modifier.tourTarget(TourTargets.ACCOUNT)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(me.color), contentAlignment = Alignment.Center) {
+                        Text(me.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(me.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (account.hasPin(me.id)) "PIN on. Asked when the app opens as you." else "No PIN. Anyone with this phone can open your account.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                if (account.hasPin(me.id)) {
+                    LinkRow("Change PIN", "Type the current one, then a new one", onChangePin)
+                    LinkRow("Remove PIN", "Your history becomes visible to everyone on this phone", onRemovePin)
+                } else {
+                    LinkRow("Set a PIN", "Keep your history, 1RMs and heart rate private", onSetPin)
+                }
+                LinkRow("Switch account", "Locks the app and asks who's training", onSwitchAccount)
+            }
+        }
+
+        SectionLabel("People", Modifier.padding(top = 8.dp))
+        Group(Modifier.tourTarget(TourTargets.SETTINGS_PROFILES)) {
+            val sensors = state.lifters.count { it.lifter.heartRateSensor != null }
+            LinkRow(
+                "Profiles and heart rate",
+                "${state.lifters.size} profiles · " + if (sensors == 0) "no heart rate sensors" else "$sensors heart rate sensor" + if (sensors > 1) "s" else "",
+                onProfiles
+            )
         }
 
         SectionLabel("Training", Modifier.padding(top = 8.dp))
@@ -75,19 +143,20 @@ fun SettingsScreen(
                 CleanFilterChip("lb", selected = settings.unit == WeightUnit.LB, onClick = { onUpdate { it.copy(unit = WeightUnit.LB) } })
             }
             Stepper(
-                "Default reps for a new exercise", settings.defaultReps.toString(),
+                "Reps for an exercise you've never done", settings.defaultReps.toString(),
                 onMinus = { onUpdate { it.copy(defaultReps = (it.defaultReps - 1).coerceAtLeast(1)) } },
                 onPlus = { onUpdate { it.copy(defaultReps = (it.defaultReps + 1).coerceAtMost(50)) } },
                 modifier = Modifier.padding(vertical = 10.dp)
             )
             Toggle("Autoplay", "Start the next set by itself after rest", settings.autoplay) { v -> onUpdate { it.copy(autoplay = v) } }
             Toggle("Stop at top", "End sets at the top of the last rep instead of the bottom", settings.stopAtTop) { v -> onUpdate { it.copy(stopAtTop = v) } }
-            Toggle("Workout beeps", "Sounds for countdown and rest", settings.beeps) { v -> onUpdate { it.copy(beeps = v) } }
-            Toggle("Show exercise videos", "Demo videos in set setup and the 1RM test", settings.videos) { v -> onUpdate { it.copy(videos = v) } }
         }
 
-        SectionLabel("People", Modifier.padding(top = 8.dp))
-        Group { LinkRow("Profiles", "${state.lifters.size} profiles", onProfiles) }
+        SectionLabel("Sound and video", Modifier.padding(top = 8.dp))
+        Group {
+            Toggle("Workout beeps", "Sounds for countdown and rest", settings.beeps) { v -> onUpdate { it.copy(beeps = v) } }
+            Toggle("Exercise videos", "Demo clips in Set setup and the 1RM test", settings.videos) { v -> onUpdate { it.copy(videos = v) } }
+        }
 
         if (ledSchemes.isNotEmpty()) {
             SectionLabel("Trainer LED colour", Modifier.padding(top = 8.dp))
@@ -113,20 +182,73 @@ fun SettingsScreen(
             }
         }
 
-        SectionLabel("Data and app", Modifier.padding(top = 8.dp))
-        Group {
-            LinkRow("Backup, restore and delete all", "Everything else from the classic settings", onMoreSettings)
-            LinkRow("Connection logs", "Bluetooth events, search and export", onConnectionLogs)
-            LinkRow("Protocol tester", "For debugging the trainer connection", onProtocolTester)
-            LinkRow("Switch to the classic layout", "You can switch back from its Settings", onSwitchToClassic)
+        SectionLabel("Help", Modifier.padding(top = 8.dp))
+        Group(Modifier.tourTarget(TourTargets.SETTINGS_HELP)) {
+            val tour = me?.let { account.tour(it.id) } ?: TourStatus.NotSeen
+            LinkRow(
+                "App tour",
+                when (tour) {
+                    is TourStatus.Done -> "Watched on ${dateFormat.format(Date(tour.at))}. Watch it again"
+                    is TourStatus.Skipped -> "Skipped. Arrows walk you through every screen"
+                    TourStatus.NotSeen -> "Arrows walk you through every screen"
+                },
+                onStartTour
+            )
+            LinkRow("Heart rate setup", "Broadcast from a Garmin watch, or use a chest strap", { showHeartRateGuide = true })
         }
+
+        SectionLabel("Data", Modifier.padding(top = 8.dp))
+        Group {
+            LinkRow("Backup and restore", "Save everything to Download/vitruvian-, restore it, or delete all workouts", onBackup)
+        }
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(role = Role.Button) { showAdvanced = !showAdvanced }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SectionLabel("Advanced", Modifier.weight(1f))
+            Text(if (showAdvanced) "Hide" else "Show", style = MaterialTheme.typography.bodySmall)
+        }
+        if (showAdvanced) {
+            Group {
+                LinkRow("Connection logs", "Bluetooth events, search and export", onConnectionLogs)
+                LinkRow("Protocol tester", "For debugging the trainer connection", onProtocolTester)
+                LinkRow("Switch to the classic layout", "You can switch back from its Settings", onSwitchToClassic)
+            }
+        }
+    }
+
+    if (showHeartRateGuide) {
+        AlertDialog(
+            onDismissRequest = { showHeartRateGuide = false },
+            containerColor = CleanColors.Background,
+            title = { Text("Heart rate setup") },
+            text = { Column(Modifier.verticalScroll(rememberScrollState())) { HeartRateSteps() } },
+            confirmButton = {
+                if (me != null && onPairHeartRate != null) {
+                    TextButton(onClick = { showHeartRateGuide = false; onPairHeartRate(me.id) }) { Text("Pair for ${me.name}") }
+                } else {
+                    TextButton(onClick = { showHeartRateGuide = false }) { Text("OK") }
+                }
+            },
+            dismissButton = {
+                if (me != null && onPairHeartRate != null) {
+                    TextButton(onClick = { showHeartRateGuide = false }) { Text("Close") }
+                }
+            }
+        )
     }
 }
 
 @Composable
-private fun Group(content: @Composable () -> Unit) {
+private fun Group(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).border(1.5.dp, CleanColors.Line, RoundedCornerShape(18.dp))
+        modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).border(1.5.dp, CleanColors.Line, RoundedCornerShape(18.dp))
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) { content() }
 }

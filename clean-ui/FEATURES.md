@@ -13,6 +13,10 @@ Android status:
 
 | Feature | Classic location | Clean layout | Android |
 |---|---|---|---|
+| First-launch onboarding: welcome, pick or add your account, optional PIN, Garmin heart rate, tour offer | — (new) | Shown once before the tabs | Clean |
+| Local accounts: every profile is one; a PIN locks opening the app as you, joining a training, pairing a sensor and deleting the profile; a protected profile's history is hidden until unlocked; screen lock resets a forgotten PIN | — (new) | Lock screen, Settings → Account | Clean |
+| App tour with arrows and overlays across Train, tabs, Exercises, Settings and Profiles (Garmin pairing); remembered per account | — (new) | Settings → Help → App tour | Clean |
+| Heart rate setup guide (Garmin broadcast steps, chest straps) | — (new) | Onboarding, Settings → Help | Clean |
 | Who's training (up to 4, sets rotate) | Home participants picker | Train → Who's training card | Clean |
 | Add profile from training | Profiles screen | Train → + Add | Clean (Manage) |
 | Current training: everything done with less than 5 hours between exercises, with sets, reps, time and heart rate | — (new) | Train → Current training card | Clean |
@@ -72,8 +76,8 @@ Android status:
 | LED colour scheme | Settings | Settings → LED colour (remembered, and the app takes on the colour) | Clean |
 | App accent, centre Train button and a faint edge glow in the LED colour (orange until one is picked) | — (new) | Everywhere | Clean |
 | Theme light / dark / system | Settings | Settings → Theme | Not yet (Clean is light only) |
-| Backup and restore | Settings | Settings → Data | Hosted (Settings → Backup, restore and delete all) |
-| Connection logs (search, level filter, export) | Connection logs | Settings → Connection logs | Hosted (Settings) |
-| Protocol tester | Developer screen | Settings → About → Protocol tester | Hosted (Settings) |
+| Backup and restore | Settings | Settings → Data | Hosted (Settings → Data → Backup and restore) |
+| Connection logs (search, level filter, export) | Connection logs | Settings → Advanced → Connection logs | Hosted (Settings → Advanced) |
+| Protocol tester | Developer screen | Settings → Advanced → Protocol tester | Hosted (Settings → Advanced) |
 | Support link, app info | Settings | Settings → About | Hosted (Settings) |
-| Switch layout | Settings → Clean layout | Settings → Switch to classic layout | Hosted (Settings, both ways) |
+| Switch layout | Settings → Clean layout | Settings → Advanced → Switch to the classic layout | Hosted (Settings, both ways) |

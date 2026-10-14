@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -52,6 +53,8 @@ import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Tile
+import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
+import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -117,13 +120,13 @@ fun TodayScreen(
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.weight(1f)
                     )
-                    ConnectionPill(state.connection)
+                    Box(Modifier.tourTarget(TourTargets.CONNECTION)) { ConnectionPill(state.connection) }
                 }
             }
         }
 
         item {
-            Card {
+            Card(Modifier.tourTarget(TourTargets.WHO)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SectionLabel("Who's training", Modifier.weight(1f))
                     TextButton(onClick = onManageProfiles) { Text("Manage", color = CleanColors.Ink) }
@@ -160,12 +163,21 @@ fun TodayScreen(
             }
         }
 
-        item { PrimaryButton(if (session.isEmpty()) "Pick an exercise" else "Add an exercise", onClick = onPickExercise, accent = true) }
+        item {
+            PrimaryButton(
+                if (session.isEmpty()) "Pick an exercise" else "Add an exercise",
+                onClick = onPickExercise,
+                accent = true,
+                modifier = Modifier.tourTarget(TourTargets.PICK_EXERCISE)
+            )
+        }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
-                Tile("Muscle groups", "Browse by area", onMuscleGroups, Modifier.weight(1f))
-                Tile("1RM test", "Find your max", onAssessment, Modifier.weight(1f))
+                Row(Modifier.weight(2f).tourTarget(TourTargets.TILES), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
+                    Tile("Muscle groups", "Browse by area", onMuscleGroups, Modifier.weight(1f))
+                }
+                Tile("1RM test", "Find your max", onAssessment, Modifier.weight(1f).tourTarget(TourTargets.ONE_RM_TEST))
             }
         }
 
@@ -212,9 +224,9 @@ fun TodayScreen(
 }
 
 @Composable
-private fun Card(content: @Composable () -> Unit) {
+private fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(CleanColors.Surface)

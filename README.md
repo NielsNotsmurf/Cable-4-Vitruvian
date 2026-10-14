@@ -1,13 +1,21 @@
 # vitruvian-
 
 A minimal, personal Android app for training on a Vitruvian Trainer. Black and white,
-offline, no accounts. It talks to the trainer directly over Bluetooth.
+offline, no cloud accounts. It talks to the trainer directly over Bluetooth.
 
 This README grows with the app: every change that adds or changes a feature also adds a line
 to **Features** and **Changelog** below.
 
 ## Features
 
+- **First launch:** a short onboarding picks or creates your account, offers a PIN, explains
+  Garmin heart rate and offers the app tour.
+- **Local accounts:** every profile is an account. A PIN (4 to 6 digits, stored only as a salted
+  hash) is asked when the app opens as you, before a protected profile joins a training, and
+  before it's deleted. Others on the phone don't see a protected profile's history until it's
+  unlocked. A forgotten PIN is reset with the phone's own screen lock.
+- **App tour:** arrows and a dimmed overlay point out every part of the app, including Garmin
+  heart rate pairing. Each account's tour status is remembered; replay it from Settings → Help.
 - **Lifters:** up to 4 people train together and sets rotate between them. Each lifter has a
   profile, a colour and their own defaults.
 - **Clean layout:** the default screens. They're built in `:clean-ui`, and
@@ -25,6 +33,8 @@ to **Features** and **Changelog** below.
   whole screen: trend bars, headline numbers, insights, balance and exercise cards.
 - **Backup and restore:** a full JSON backup saved to `Download/vitruvian-`.
 - **Theme:** black and white, with light and dark modes.
+- **Settings:** grouped as Account, People, Training, Sound and video, Trainer LED colour,
+  Help, Data, and Advanced (connection logs, protocol tester, classic layout) folded away.
 
 ## Install
 
@@ -43,6 +53,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-13:** first-launch onboarding, local accounts with a PIN, an arrow-and-overlay app
+  tour, and Settings regrouped. The Clean layout is now on by default for new installs.
 - **2026-10-13:** new Analytics screen with a body map, measure and period filters, trend
   bars, insights and exercise cards. Clean lifting screen during a set.
 - **2026-10-13:** rebranded to vitruvian-. New black and white theme, a "V-" icon and splash,

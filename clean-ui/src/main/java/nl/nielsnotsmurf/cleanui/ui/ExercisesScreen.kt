@@ -1,6 +1,7 @@
 package nl.nielsnotsmurf.cleanui.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,8 @@ import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.ExerciseRow
+import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
+import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 
 private const val ALL = "All"
 private const val FAVOURITES = "Favourites"
@@ -102,7 +105,7 @@ fun ExercisesScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).tourTarget(TourTargets.SEARCH),
             placeholder = { Text("Search ${pool.size} exercises") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
@@ -118,7 +121,11 @@ fun ExercisesScreen(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(groups) { g -> CleanFilterChip(g, selected = g == group, onClick = { group = g }) }
+            items(groups) { g ->
+                Box(if (g == FAVOURITES) Modifier.tourTarget(TourTargets.FAVOURITES) else Modifier) {
+                    CleanFilterChip(g, selected = g == group, onClick = { group = g })
+                }
+            }
         }
         if (equipmentOptions.size > 2) {
             LazyRow(

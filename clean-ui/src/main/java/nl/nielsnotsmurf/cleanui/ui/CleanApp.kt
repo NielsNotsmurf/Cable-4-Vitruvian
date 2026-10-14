@@ -22,12 +22,16 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +72,13 @@ import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.theme.CleanTheme
+import nl.nielsnotsmurf.cleanui.ui.components.SetPinDialog
+import nl.nielsnotsmurf.cleanui.ui.components.UnlockPinDialog
+import nl.nielsnotsmurf.cleanui.ui.tour.LocalTour
+import nl.nielsnotsmurf.cleanui.ui.tour.TourController
+import nl.nielsnotsmurf.cleanui.ui.tour.TourOverlay
+import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
+import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 
 /**
  * Route names the host can rely on. [TRAIN], [ACTIVE_WORKOUT] and [JUST_LIFT] match the
@@ -129,9 +140,107 @@ fun CleanApp(
     val context = LocalContext.current
     val vm: CleanViewModel = viewModel(factory = CleanViewModel.factory(gateway, CleanUiStore.get(context)))
     val state by vm.state.collectAsStateWithLifecycle()
+    val account by vm.account.collectAsStateWithLifecycle()
+    val tour = remember { TourController() }
+    // Heart rate pairing for one lifter, opened from Profiles, Settings or onboarding.
+    var heartRateFor by rememberSaveable { mutableStateOf<String?>(null) }
+    // A PIN to type before something happens to a protected profile.
+    var pinRequest by remember { mutableStateOf<PinRequest?>(null) }
+    var newPinFor by rememberSaveable { mutableStateOf<String?>(null) }
+
+    /** Runs [action] once [lifterId]'s PIN is typed, if it's locked (or [always] when it has one). */
+    fun withPin(lifterId: String, reason: String, always: Boolean, action: () -> Unit) {
+        val ask = vm.needsPin(lifterId) || (always && account?.hasPin(lifterId) == true)
+        if (ask) pinRequest = PinRequest(lifterId, reason, action) else action()
+    }
+
+    CleanTheme {
+        Surface(color = CleanColors.Background, modifier = Modifier.fillMaxSize()) {
+            val a = account
+            Box(Modifier.fillMaxSize().edgeGlow(CleanColors.Glow).safeDrawingPadding()) {
+                when {
+                    // Storage not read yet: blank for a moment beats a flash of the wrong screen.
+                    a == null -> Unit
+                    !a.onboarded -> OnboardingScreen(
+                        state = state,
+                        account = a,
+                        onCreateAccount = vm::createAccount,
+                        checkPin = vm::checkPin,
+                        onSetPin = vm::setPin,
+                        onPairHeartRate = if (heartRateContent != null) ({ heartRateFor = it }) else null,
+                        onFinish = { id, takeTour ->
+                            vm.finishOnboarding(id)
+                            if (takeTour) tour.start() else vm.setTourStatus(id, done = false)
+                        }
+                    )
+                    a.signedInId == null -> LockScreen(
+                        state = state,
+                        account = a,
+                        checkPin = vm::checkPin,
+                        onResetPin = vm::removePin,
+                        onSignIn = vm::signIn
+                    )
+                    else -> CompositionLocalProvider(LocalTour provides tour) {
+                        SignedInApp(
+                            gateway = gateway,
+                            vm = vm,
+                            account = a,
+                            me = a.signedInId,
+                            tour = tour,
+                            withPin = { id, reason, always, action -> withPin(id, reason, always, action) },
+                            onNewPin = { newPinFor = it },
+                            onHeartRate = if (heartRateContent != null) ({ heartRateFor = it }) else null,
+                            activeWorkoutContent = activeWorkoutContent,
+                            justLiftContent = justLiftContent,
+                            classicContent = classicContent
+                        )
+                    }
+                }
+            }
+        }
+
+        heartRateFor?.let { id -> heartRateContent?.invoke(id) { heartRateFor = null } }
+        pinRequest?.let { request ->
+            UnlockPinDialog(
+                name = state.lifters.firstOrNull { it.id == request.lifterId }?.name.orEmpty(),
+                reason = request.reason,
+                check = { pin, onOk, onWrong -> vm.checkPin(request.lifterId, pin, onOk, onWrong) },
+                onUnlocked = { pinRequest = null; request.action() },
+                onDismiss = { pinRequest = null }
+            )
+        }
+        newPinFor?.let { id ->
+            SetPinDialog(
+                name = state.lifters.firstOrNull { it.id == id }?.name.orEmpty(),
+                onSet = { pin -> vm.setPin(id, pin); newPinFor = null },
+                onDismiss = { newPinFor = null }
+            )
+        }
+    }
+}
+
+/** Something to do once [lifterId]'s PIN has been typed. */
+private class PinRequest(val lifterId: String, val reason: String, val action: () -> Unit)
+
+/** The tabs and every screen behind them, once someone has signed in as [me]. */
+@Composable
+private fun SignedInApp(
+    gateway: TrainerGateway,
+    vm: CleanViewModel,
+    account: AccountState,
+    me: String,
+    tour: TourController,
+    withPin: (lifterId: String, reason: String, always: Boolean, action: () -> Unit) -> Unit,
+    onNewPin: (String) -> Unit,
+    onHeartRate: ((String) -> Unit)?,
+    activeWorkoutContent: @Composable (NavController) -> Unit,
+    justLiftContent: @Composable (NavController) -> Unit,
+    classicContent: @Composable (ClassicScreen, NavController) -> Unit
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
     val test by vm.test.collectAsStateWithLifecycle()
-    val history by vm.history.collectAsStateWithLifecycle()
+    val history by vm.visibleHistory.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
@@ -150,189 +259,232 @@ fun CleanApp(
         }
     }
 
-    CleanTheme {
-        Surface(color = CleanColors.Background, modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().edgeGlow(CleanColors.Glow).safeDrawingPadding()) {
-                NavHost(
-                    navController = nav,
-                    startDestination = CleanRoutes.TRAIN,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    composable(CleanRoutes.TRAIN) {
-                        TodayScreen(
+    /** Adding a PIN-protected lifter to the training asks for their PIN; taking anyone out doesn't. */
+    fun toggleLifter(lifterId: String) {
+        if (state.activeLifters.any { it.id == lifterId }) vm.toggleLifter(lifterId)
+        else withPin(lifterId, "To join the training", false) { vm.toggleLifter(lifterId) }
+    }
+
+    // The tour opens the screen of each step.
+    LaunchedEffect(tour.index) {
+        val route = tour.step?.route ?: return@LaunchedEffect
+        if (nav.currentDestination?.route?.substringBefore('?') == route) return@LaunchedEffect
+        // Back to a screen that's already open underneath (Profiles → Settings) is a pop;
+        // anything else opens its tab or screen.
+        if (nav.popBackStack(route, inclusive = false)) return@LaunchedEffect
+        if (TABS.any { it.route == route }) openTab(route) else nav.navigate(route) { launchSingleTop = true }
+    }
+    BackHandler(enabled = tour.isRunning) {
+        tour.stop()
+        vm.setTourStatus(me, done = false)
+    }
+    // Someone signing in for the first time on this phone gets the tour offered once.
+    var tourOffered by rememberSaveable(me) { mutableStateOf(false) }
+    if (!tourOffered && !tour.isRunning && account.tour(me) == TourStatus.NotSeen) {
+        val name = state.lifters.firstOrNull { it.id == me }?.name.orEmpty()
+        AlertDialog(
+            onDismissRequest = { tourOffered = true },
+            containerColor = CleanColors.Background,
+            title = { Text("Welcome, $name") },
+            text = { Text("Take a one-minute tour? Arrows point out each part of the app. It's in Settings too.") },
+            confirmButton = { TextButton(onClick = { tourOffered = true; tour.start() }) { Text("Show me around") } },
+            dismissButton = {
+                TextButton(onClick = { tourOffered = true; vm.setTourStatus(me, done = false) }) { Text("Not now") }
+            }
+        )
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            NavHost(
+                navController = nav,
+                startDestination = CleanRoutes.TRAIN,
+                modifier = Modifier.weight(1f)
+            ) {
+                composable(CleanRoutes.TRAIN) {
+                    TodayScreen(
+                        state = state,
+                        history = history,
+                        heartRate = heartRate,
+                        onToggleLifter = ::toggleLifter,
+                        onPickExercise = { openTab(CleanRoutes.EXERCISES) },
+                        onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
+                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                        onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
+                        onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
+                        onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                        onRetest = { lifterId, exerciseId ->
+                            vm.openTest(lifterId, listOf(exerciseId))
+                            nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
+                        },
+                        onRowShown = vm::requestEstimates
+                    )
+                }
+                composable(
+                    "${CleanRoutes.EXERCISES}?region={region}",
+                    arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
+                ) { entry ->
+                    val region = entry.arguments?.getString("region")
+                    ExercisesScreen(
+                        state = state,
+                        onBack = if (region != null) ({ nav.popBackStack(); Unit }) else null,
+                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                        onRowShown = vm::requestEstimates,
+                        onToggleFavorite = vm::toggleFavorite,
+                        region = region
+                    )
+                }
+                composable(CleanRoutes.HISTORY) {
+                    HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
+                }
+                composable(CleanRoutes.ANALYTICS) {
+                    AnalyticsScreen(
+                        state = state,
+                        history = history,
+                        onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) }
+                    )
+                }
+                composable(CleanRoutes.SETTINGS) {
+                    SettingsScreen(
+                        state = state,
+                        settings = settings,
+                        account = account,
+                        ledSchemes = gateway.ledSchemes,
+                        ledIndex = ledScheme,
+                        onUpdate = vm::updateSettings,
+                        onLedScheme = vm::setLedScheme,
+                        onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                        onSetPin = { onNewPin(me) },
+                        // Changing or removing a PIN asks for the current one, even when signed in.
+                        onChangePin = { withPin(me, "Type your current PIN", true) { onNewPin(me) } },
+                        onRemovePin = { withPin(me, "Type your PIN to remove it", true) { vm.removePin(me) } },
+                        onSwitchAccount = vm::signOut,
+                        onStartTour = tour::start,
+                        onPairHeartRate = onHeartRate,
+                        onBackup = { nav.navigate(ClassicScreen.SETTINGS.route) },
+                        onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
+                        onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
+                        onSwitchToClassic = vm::switchToClassic
+                    )
+                }
+                composable(CleanRoutes.PROFILES) {
+                    ProfilesScreen(
+                        state = state,
+                        account = account,
+                        onBack = { nav.popBackStack() },
+                        onToggleLifter = ::toggleLifter,
+                        onAdd = vm::addLifter,
+                        onDelete = { id -> withPin(id, "To delete this profile", true) { vm.deleteLifter(id) } },
+                        onHeartRate = onHeartRate?.let { open -> { id: String -> withPin(id, "To pair a heart rate sensor", false) { open(id) } } }
+                    )
+                }
+                composable(CleanRoutes.MUSCLE_GROUPS) {
+                    MuscleGroupsScreen(
+                        state = state,
+                        onBack = { nav.popBackStack() },
+                        onRegion = { nav.navigate("${CleanRoutes.EXERCISES}?region=${Uri.encode(it)}") },
+                        onTestOneRepMax = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) }
+                    )
+                }
+                composable(CleanRoutes.SETUP) {
+                    val s = setup
+                    if (s == null) {
+                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.SETUP, inclusive = true) }
+                    } else {
+                        SetSetupScreen(
                             state = state,
-                            history = history,
-                            heartRate = heartRate,
-                            onToggleLifter = vm::toggleLifter,
-                            onPickExercise = { openTab(CleanRoutes.EXERCISES) },
-                            onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
-                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                            onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
-                            onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
-                            onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
-                            onRetest = { lifterId, exerciseId ->
-                                vm.openTest(lifterId, listOf(exerciseId))
+                            setup = s,
+                            loadFor = { id -> vm.loadFor(id, s) },
+                            onUpdate = vm::updateSetup,
+                            onPercent = vm::setPercent,
+                            onNudge = vm::nudgeLoad,
+                            onBack = { nav.popBackStack() },
+                            onTestOneRepMax = { lifterId ->
+                                vm.openTest(lifterId, listOf(s.exercise.id))
                                 nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
                             },
-                            onRowShown = vm::requestEstimates
-                        )
-                    }
-                    composable(
-                        "${CleanRoutes.EXERCISES}?region={region}",
-                        arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
-                    ) { entry ->
-                        val region = entry.arguments?.getString("region")
-                        ExercisesScreen(
-                            state = state,
-                            onBack = if (region != null) ({ nav.popBackStack(); Unit }) else null,
-                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                            onRowShown = vm::requestEstimates,
-                            onToggleFavorite = vm::toggleFavorite,
-                            region = region
-                        )
-                    }
-                    composable(CleanRoutes.HISTORY) {
-                        HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
-                    }
-                    composable(CleanRoutes.ANALYTICS) {
-                        AnalyticsScreen(
-                            state = state,
-                            history = history,
-                            onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) }
-                        )
-                    }
-                    composable(CleanRoutes.SETTINGS) {
-                        SettingsScreen(
-                            state = state,
-                            settings = settings,
-                            ledSchemes = gateway.ledSchemes,
-                            ledIndex = ledScheme,
-                            onUpdate = vm::updateSettings,
-                            onLedScheme = vm::setLedScheme,
-                            onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
-                            onMoreSettings = { nav.navigate(ClassicScreen.SETTINGS.route) },
-                            onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
-                            onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
-                            onSwitchToClassic = vm::switchToClassic
-                        )
-                    }
-                    composable(CleanRoutes.PROFILES) {
-                        var heartRateFor by rememberSaveable { mutableStateOf<String?>(null) }
-                        ProfilesScreen(
-                            state = state,
-                            onBack = { nav.popBackStack() },
-                            onToggleLifter = vm::toggleLifter,
-                            onAdd = vm::addLifter,
-                            onDelete = vm::deleteLifter,
-                            onHeartRate = if (heartRateContent != null) ({ heartRateFor = it }) else null
-                        )
-                        heartRateFor?.let { id -> heartRateContent?.invoke(id) { heartRateFor = null } }
-                    }
-                    composable(CleanRoutes.MUSCLE_GROUPS) {
-                        MuscleGroupsScreen(
-                            state = state,
-                            onBack = { nav.popBackStack() },
-                            onRegion = { nav.navigate("${CleanRoutes.EXERCISES}?region=${Uri.encode(it)}") },
-                            onTestOneRepMax = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) }
-                        )
-                    }
-                    composable(CleanRoutes.SETUP) {
-                        val s = setup
-                        if (s == null) {
-                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.SETUP, inclusive = true) }
-                        } else {
-                            SetSetupScreen(
-                                state = state,
-                                setup = s,
-                                loadFor = { id -> vm.loadFor(id, s) },
-                                onUpdate = vm::updateSetup,
-                                onPercent = vm::setPercent,
-                                onNudge = vm::nudgeLoad,
-                                onBack = { nav.popBackStack() },
-                                onTestOneRepMax = { lifterId ->
-                                    vm.openTest(lifterId, listOf(s.exercise.id))
-                                    nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
-                                },
-                                onStart = {
-                                    vm.start {
-                                        nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
-                                            popUpTo(CleanRoutes.TRAIN)
-                                        }
+                            onStart = {
+                                vm.start {
+                                    nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
+                                        popUpTo(CleanRoutes.TRAIN)
                                     }
                                 }
-                            )
-                        }
-                    }
-                    composable(CleanRoutes.ONE_REP_MAX_TEST) {
-                        val t = test
-                        // Closing clears the test while this screen is still animating out. The
-                        // pop below must name this route: a bare popBackStack() from that leftover
-                        // frame popped the Train home too and left only the tab bar.
-                        val close = { vm.closeTest(); nav.popBackStack(); Unit }
-                        if (t == null) {
-                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.ONE_REP_MAX_TEST, inclusive = true) }
-                        } else {
-                            OneRepMaxTestScreen(
-                                state = state,
-                                test = t,
-                                onSelectLifter = vm::testSelectLifter,
-                                onBegin = vm::testBegin,
-                                onNudge = vm::testNudge,
-                                onRecord = vm::testRecord,
-                                onTryAgain = vm::testTryAgain,
-                                // Back from the lifting screen returns here to record the result.
-                                onLiftOnTrainer = { vm.testLiftOnTrainer { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) } },
-                                onSave = { if (vm.testSave()) close() },
-                                onSkip = { if (vm.testSkip()) close() },
-                                onBack = close
-                            )
-                        }
-                    }
-                    composable(CleanRoutes.ACTIVE_WORKOUT) {
-                        val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
-                        var classicView by rememberSaveable { mutableStateOf(false) }
-                        var record by remember { mutableStateOf<String?>(null) }
-                        LaunchedEffect(Unit) {
-                            gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
-                        }
-                        val l = live
-                        // A 1RM attempt is running while the test is open underneath.
-                        val attemptMode = test != null
-                        if (l == null || classicView || !l.isCleanReady()) {
-                            activeWorkoutContent(nav)
-                        } else {
-                            LiveWorkoutScreen(
-                                live = l,
-                                unit = state.unit,
-                                heartRate = heartRate,
-                                history = history,
-                                personalRecord = record,
-                                attemptMode = attemptMode,
-                                onSkipRest = gateway::skipRest,
-                                onContinue = gateway::proceedFromSummary,
-                                onNextExercise = gateway::advanceToNextExercise,
-                                onStop = { gateway.stopWorkout(); nav.popBackStack() },
-                                onDone = { nav.popBackStack(); gateway.resetForNewWorkout() },
-                                onClassicView = { classicView = true }
-                            )
-                        }
-                    }
-                    composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
-                    ClassicScreen.entries.forEach { screen ->
-                        composable(screen.route) {
-                            Column(Modifier.fillMaxSize()) {
-                                screen.title?.let { title ->
-                                    ScreenTitle(title, onBack = if (screen.showBack) ({ nav.popBackStack() }) else null)
-                                }
-                                Box(Modifier.weight(1f)) { classicContent(screen, nav) }
                             }
-                        }
+                        )
                     }
                 }
-                if (isTab) {
-                    TabBar(currentRoute, onSelect = ::openTab)
+                composable(CleanRoutes.ONE_REP_MAX_TEST) {
+                    val t = test
+                    // Closing clears the test while this screen is still animating out. The
+                    // pop below must name this route: a bare popBackStack() from that leftover
+                    // frame popped the Train home too and left only the tab bar.
+                    val close = { vm.closeTest(); nav.popBackStack(); Unit }
+                    if (t == null) {
+                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.ONE_REP_MAX_TEST, inclusive = true) }
+                    } else {
+                        OneRepMaxTestScreen(
+                            state = state,
+                            test = t,
+                            onSelectLifter = vm::testSelectLifter,
+                            onBegin = vm::testBegin,
+                            onNudge = vm::testNudge,
+                            onRecord = vm::testRecord,
+                            onTryAgain = vm::testTryAgain,
+                            // Back from the lifting screen returns here to record the result.
+                            onLiftOnTrainer = { vm.testLiftOnTrainer { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) } },
+                            onSave = { if (vm.testSave()) close() },
+                            onSkip = { if (vm.testSkip()) close() },
+                            onBack = close
+                        )
+                    }
+                }
+                composable(CleanRoutes.ACTIVE_WORKOUT) {
+                    val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
+                    var classicView by rememberSaveable { mutableStateOf(false) }
+                    var record by remember { mutableStateOf<String?>(null) }
+                    LaunchedEffect(Unit) {
+                        gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
+                    }
+                    val l = live
+                    // A 1RM attempt is running while the test is open underneath.
+                    val attemptMode = test != null
+                    if (l == null || classicView || !l.isCleanReady()) {
+                        activeWorkoutContent(nav)
+                    } else {
+                        LiveWorkoutScreen(
+                            live = l,
+                            unit = state.unit,
+                            heartRate = heartRate,
+                            history = history,
+                            personalRecord = record,
+                            attemptMode = attemptMode,
+                            onSkipRest = gateway::skipRest,
+                            onContinue = gateway::proceedFromSummary,
+                            onNextExercise = gateway::advanceToNextExercise,
+                            onStop = { gateway.stopWorkout(); nav.popBackStack() },
+                            onDone = { nav.popBackStack(); gateway.resetForNewWorkout() },
+                            onClassicView = { classicView = true }
+                        )
+                    }
+                }
+                composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
+                ClassicScreen.entries.forEach { screen ->
+                    composable(screen.route) {
+                        Column(Modifier.fillMaxSize()) {
+                            screen.title?.let { title ->
+                                ScreenTitle(title, onBack = if (screen.showBack) ({ nav.popBackStack() }) else null)
+                            }
+                            Box(Modifier.weight(1f)) { classicContent(screen, nav) }
+                        }
+                    }
                 }
             }
+            if (isTab) {
+                TabBar(currentRoute, onSelect = ::openTab)
+            }
+        }
+        if (tour.isRunning) {
+            TourOverlay(tour) { completed -> vm.setTourStatus(me, completed) }
         }
     }
 }
@@ -364,6 +516,7 @@ private fun TabBar(currentRoute: String?, onSelect: (String) -> Unit) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .tourTarget(TourTargets.tab(tab.route))
                         .heightIn(min = 52.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable(role = Role.Tab) { if (!selected) onSelect(tab.route) },

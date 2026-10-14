@@ -15,7 +15,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import nl.nielsnotsmurf.cleanui.logic.PinLock
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
@@ -204,7 +208,13 @@ class CleanViewModel(
     }
 
     fun deleteLifter(lifterId: String) {
-        if (state.value.lifters.size > 1) gateway.deleteLifter(lifterId)
+        if (state.value.lifters.size <= 1) return
+        gateway.deleteLifter(lifterId)
+        if (session.value.signedIn == lifterId) signOut()
+        viewModelScope.launch {
+            store.setPinHash(lifterId, null)
+            store.setTourStatus(lifterId, null)
+        }
     }
 
     fun toggleLifter(lifterId: String) {
@@ -450,6 +460,134 @@ class CleanViewModel(
     private fun restEnd() = System.currentTimeMillis() + OneRepMaxTest.REST_SECONDS * 1000L
 
     fun switchToClassic() = gateway.switchToClassicUi()
+
+    // ---- Accounts ----
+
+    private data class Session(
+        val signedIn: String? = null,
+        val unlocked: Set<String> = emptySet(),
+        val wrongTries: Int = 0,
+        val lockedUntil: Long = 0L
+    )
+
+    private val session = MutableStateFlow(Session())
+    private val sessionRestored = MutableStateFlow(false)
+
+    /** Accounts, PINs and tours; null until storage has been read. */
+    val account: StateFlow<AccountState?> = combine(
+        gateway.lifters,
+        store.onboarded,
+        store.pinHashes,
+        store.tourStatus,
+        combine(session, sessionRestored, store.lastAccount) { s, restored, last -> Triple(s, restored, last) }
+    ) { lifters, onboarded, pins, tours, (s, restored, last) ->
+        val ids = lifters.map { it.id }.toSet()
+        if (!restored) null else AccountState(
+            onboarded = onboarded,
+            signedInId = s.signedIn?.takeIf { it in ids },
+            lastAccountId = last?.takeIf { it in ids },
+            protectedIds = pins.keys.filter { it in ids }.toSet(),
+            unlockedIds = s.unlocked,
+            tours = tours.mapValues { TourStatus.parse(it.value) }
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** History without the workouts of PIN-protected profiles that aren't unlocked. */
+    val visibleHistory: StateFlow<List<HistoryEntry>> = combine(history, account) { entries, a ->
+        if (a == null) emptyList() else entries.filter { a.canSee(it.lifterId) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // Open as whoever used the app last, unless their account has a PIN.
+        viewModelScope.launch {
+            val last = store.lastAccount.first()
+            val pins = store.pinHashes.first()
+            if (store.onboarded.first() && last != null && last !in pins) {
+                session.value = Session(signedIn = last, unlocked = setOf(last))
+            }
+            sessionRestored.value = true
+        }
+    }
+
+    /** True when [lifterId] has a PIN that hasn't been typed on this phone since the app opened. */
+    fun needsPin(lifterId: String): Boolean = account.value?.needsPin(lifterId) ?: false
+
+    /**
+     * Checks [pin] for [lifterId]. Right: the profile is unlocked until the app closes or
+     * someone switches account, then [onOk] runs. Wrong: [onWrong] gets the seconds to wait
+     * before the next try (0 for the first few).
+     */
+    fun checkPin(lifterId: String, pin: String, onOk: () -> Unit, onWrong: (waitSeconds: Int) -> Unit) {
+        val waitMs = session.value.lockedUntil - System.currentTimeMillis()
+        if (waitMs > 0) {
+            onWrong(((waitMs + 999) / 1000).toInt())
+            return
+        }
+        viewModelScope.launch {
+            val stored = store.pinHashes.first()[lifterId]
+            val ok = stored == null || withContext(Dispatchers.Default) { PinLock.verify(pin, stored) }
+            if (ok) {
+                session.update { it.copy(unlocked = it.unlocked + lifterId, wrongTries = 0, lockedUntil = 0L) }
+                onOk()
+            } else {
+                val tries = session.value.wrongTries + 1
+                val wait = PinLock.lockoutSeconds(tries)
+                session.update {
+                    it.copy(wrongTries = tries, lockedUntil = if (wait > 0) System.currentTimeMillis() + wait * 1000L else 0L)
+                }
+                onWrong(wait)
+            }
+        }
+    }
+
+    /** Signs in as [lifterId]. Callers check the PIN first. */
+    fun signIn(lifterId: String) {
+        session.update { it.copy(signedIn = lifterId, unlocked = it.unlocked + lifterId) }
+        viewModelScope.launch { store.setLastAccount(lifterId) }
+    }
+
+    /** Locks the app: back to the account picker, and every PIN-protected profile hidden again. */
+    fun signOut() {
+        session.update { Session(wrongTries = it.wrongTries, lockedUntil = it.lockedUntil) }
+    }
+
+    fun setPin(lifterId: String, pin: String) {
+        if (!PinLock.isValid(pin)) return
+        session.update { it.copy(unlocked = it.unlocked + lifterId) }
+        viewModelScope.launch {
+            val hash = withContext(Dispatchers.Default) { PinLock.hash(pin) }
+            store.setPinHash(lifterId, hash)
+        }
+    }
+
+    fun removePin(lifterId: String) {
+        viewModelScope.launch { store.setPinHash(lifterId, null) }
+    }
+
+    /** Adds a profile and hands back its id once it exists. */
+    fun createAccount(name: String, colorArgb: Int, onCreated: (String) -> Unit) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val before = gateway.lifters.first().map { it.id }.toSet()
+            gateway.addLifter(name.trim(), colorArgb)
+            val created = withTimeoutOrNull(5_000) {
+                gateway.lifters.first { list -> list.any { it.id !in before } }
+            }?.firstOrNull { it.id !in before } ?: return@launch
+            onCreated(created.id)
+        }
+    }
+
+    /** Ends onboarding signed in as [lifterId], who trains solo to start with. */
+    fun finishOnboarding(lifterId: String) {
+        signIn(lifterId)
+        gateway.setActiveLifters(listOf(lifterId))
+        viewModelScope.launch { store.setOnboarded(true) }
+    }
+
+    /** Records that [lifterId] finished ([done]) or skipped the app tour. */
+    fun setTourStatus(lifterId: String, done: Boolean) {
+        viewModelScope.launch { store.setTourStatus(lifterId, TourStatus.encode(done, System.currentTimeMillis())) }
+    }
 
     private fun relatedKey(lifterId: String, exerciseId: String) = "$lifterId$KEY_SEP$exerciseId"
 
