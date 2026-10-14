@@ -69,7 +69,7 @@ fun CleanUiHost(viewModel: MainViewModel) {
     // Same permissions the classic screen asks for (Android 12+ doesn't need location).
     val permissions = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE)
+            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
         } else {
             listOf(
                 Manifest.permission.BLUETOOTH,

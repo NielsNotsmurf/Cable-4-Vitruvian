@@ -243,7 +243,6 @@ private fun SignedInApp(
     val history by vm.visibleHistory.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
-    val garminRecording by vm.garminRecording.collectAsStateWithLifecycle()
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
@@ -307,8 +306,6 @@ private fun SignedInApp(
                         state = state,
                         history = history,
                         heartRate = heartRate,
-                        garminRecording = garminRecording,
-                        onFinishTraining = vm::finishTraining,
                         onToggleLifter = ::toggleLifter,
                         onPickExercise = { openTab(CleanRoutes.EXERCISES) },
                         onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },

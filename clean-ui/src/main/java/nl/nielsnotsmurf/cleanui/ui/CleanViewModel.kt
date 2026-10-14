@@ -179,12 +179,6 @@ class CleanViewModel(
 
     fun updateSettings(transform: (CleanSettings) -> CleanSettings) = gateway.updateSettings(transform)
 
-    /** Garmin watches recording the current training. */
-    val garminRecording: StateFlow<List<String>> =
-        gateway.garminRecording.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun finishTraining() = gateway.finishTraining()
-
     /** Live heart rate of whoever lifts next, or null without a broadcasting sensor. */
     val heartRate: StateFlow<Int?> =
         gateway.liveHeartRate.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

@@ -13,9 +13,7 @@ data class Lifter(
     val colorArgb: Int,
     /** Name of the paired heart rate sensor (Garmin watch or strap), if any. */
     val heartRateSensor: String? = null,
-    val heartRateConnected: Boolean = false,
-    /** Garmin watch that records this lifter's sets with the vitruvian- watch app, if any. */
-    val garminWatch: String? = null
+    val heartRateConnected: Boolean = false
 )
 
 data class ExerciseCard(

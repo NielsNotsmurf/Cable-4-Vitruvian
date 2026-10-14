@@ -13,8 +13,6 @@
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- The Garmin watch app links straight to the tablet (BleWatchServer). -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
     <!-- Location permission (required for BLE scanning on older Android) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

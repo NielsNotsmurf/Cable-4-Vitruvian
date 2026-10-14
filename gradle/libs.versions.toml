@@ -1,5 +1,4 @@
 [versions]
-connectiq = "2.4.0"
 agp = "8.13.2"
 kotlin = "2.2.21"
 kotlinxSerialization = "1.9.0"
@@ -35,7 +34,6 @@ vico = "2.3.6"
 composeCharts = "0.2.0"
 
 [libraries]
-garmin-connectiq = { group = "com.garmin.connectiq", name = "ciq-companion-app-sdk", version.ref = "connectiq" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

@@ -150,8 +150,6 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
-    // Garmin Connect IQ: talks to the vitruvian- watch app through Garmin Connect Mobile
-    implementation(libs.garmin.connectiq)
 
     // Room Database
     implementation(libs.androidx.room.runtime)

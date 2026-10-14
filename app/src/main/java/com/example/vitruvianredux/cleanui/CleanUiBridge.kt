@@ -31,7 +31,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
-import nl.nielsnotsmurf.cleanui.logic.GarminWatches
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
@@ -71,29 +70,14 @@ class CleanUiBridge(
 ) : TrainerGateway {
 
     override val lifters: Flow<List<Lifter>> =
-        combine(
-            vm.profiles,
-            vm.connectedHeartRateSensors,
-            vm.garminWatchLink.watches,
-            vm.garminWatchLink.chosen
-        ) { profiles, connected, watches, chosen ->
-            val sensors = profiles.associate { it.id to it.hrSensorName }
-            val garmin = watches.map { GarminWatches.Watch(it.id, it.name) }
+        combine(vm.profiles, vm.connectedHeartRateSensors) { profiles, connected ->
             profiles.map { p ->
                 p.toLifter().copy(
                     heartRateSensor = p.hrSensorName,
-                    heartRateConnected = p.hrSensorAddress != null && p.hrSensorAddress in connected,
-                    garminWatch = GarminWatches.watchFor(p.id, garmin, chosen, sensors)?.name
+                    heartRateConnected = p.hrSensorAddress != null && p.hrSensorAddress in connected
                 )
             }
         }
-
-    override val garminRecording: Flow<List<String>> =
-        combine(vm.garminWatchLink.watches, vm.garminWatchLink.recording) { watches, recording ->
-            watches.filter { it.id in recording }.map { it.name }
-        }
-
-    override fun finishTraining() = vm.garminWatchLink.finishTraining()
 
     override val activeLifterIds: Flow<List<String>> =
         combine(vm.workoutParticipants, vm.activeProfileId) { participants, activeId ->

@@ -48,12 +48,6 @@ interface TrainerGateway {
      */
     val liveHeartRate: Flow<Int?> get() = flowOf(null)
 
-    /** Names of the Garmin watches recording the current training right now. */
-    val garminRecording: Flow<List<String>> get() = flowOf(emptyList())
-
-    /** "Finish training": the recording Garmin watches save their activity to Garmin Connect. */
-    fun finishTraining() {}
-
     val weightUnit: Flow<WeightUnit>
 
     /** The exercise library. */

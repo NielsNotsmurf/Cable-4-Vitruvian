@@ -17,7 +17,6 @@ Android status:
 | Local accounts: every profile is one; a PIN locks opening the app as you, joining a training, pairing a sensor and deleting the profile; a protected profile's history is hidden until unlocked; screen lock resets a forgotten PIN | — (new) | Lock screen, Settings → Account | Clean |
 | App tour with arrows and overlays across Train, tabs, Exercises, Settings and Profiles (Garmin pairing); remembered per account | — (new) | Settings → Help → App tour | Clean |
 | Heart rate setup guide (Garmin broadcast steps, chest straps) | — (new) | Onboarding, Settings → Help | Clean |
-| Garmin watch app: the lifter's own watch records heart rate and every set; Finish training saves it to Garmin Connect | — (new) | Profiles → heart button (pick the watch), Train → Recording card | Clean (watch picker hosted) |
 | Who's training (up to 4, sets rotate) | Home participants picker | Train → Who's training card | Clean |
 | Add profile from training | Profiles screen | Train → + Add | Clean (Manage) |
 | Current training: everything done with less than 5 hours between exercises, with sets, reps, time and heart rate | — (new) | Train → Current training card | Clean |
