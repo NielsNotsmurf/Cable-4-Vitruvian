@@ -94,7 +94,7 @@ fun LiveWorkoutScreen(
     val busy = live.phase in setOf(LivePhase.STARTING, LivePhase.COUNTDOWN, LivePhase.LIFTING, LivePhase.RESTING)
     BackHandler { if (busy) confirmStop = true else onDone() }
 
-    // A 1RM attempt has one rep: as soon as it's done, go straight back to the test to record
+    // A 3RM attempt is one short set: as soon as it's done, go straight back to the test to record
     // how it went. Waiting for the trainer's own "finished" state left a blank screen.
     LaunchedEffect(attemptMode, live.phase) {
         if (!attemptMode) return@LaunchedEffect
@@ -132,7 +132,7 @@ fun LiveWorkoutScreen(
                     LivePhase.COUNTDOWN -> BigNumber(live.countdown.toString(), "Get set")
                     LivePhase.LIFTING -> Lifting(live, fmt, history)
                     LivePhase.RESTING -> Resting(live)
-                    LivePhase.SET_DONE -> if (attemptMode) Waiting("Rep done") else SetDone(live)
+                    LivePhase.SET_DONE -> if (attemptMode) Waiting("Set done") else SetDone(live)
                     LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history)
                     LivePhase.OTHER -> Waiting("")
                 }

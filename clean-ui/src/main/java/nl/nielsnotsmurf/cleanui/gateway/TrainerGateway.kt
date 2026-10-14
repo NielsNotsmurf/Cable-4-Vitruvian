@@ -102,7 +102,7 @@ interface TrainerGateway {
     suspend fun exerciseGuide(exerciseId: String): ExerciseGuide?
 
     /**
-     * Load [kg] per cable for one rep by [lifterId] alone (a 1RM attempt). Unlike
+     * Load [kg] per cable for one strength-test attempt (3 reps) by [lifterId] alone. Unlike
      * [startExercise] this saves no per-exercise defaults. It does make [lifterId] the only
      * one training; the caller puts the previous lifters back with [setActiveLifters].
      */

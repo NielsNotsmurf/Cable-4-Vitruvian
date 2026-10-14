@@ -6,23 +6,31 @@ import nl.nielsnotsmurf.cleanui.model.OneRepMax
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 
 /**
- * Rules of the 1RM test: single-rep attempts that go up after every made rep until one is
- * missed. The 1RM is the heaviest made rep. Everything is kilograms per cable.
+ * Rules of the strength test: 3-rep attempts that go up after every made set until one is
+ * missed. The heaviest made set is the 3RM; the lifter's stored 1RM is estimated from it, so
+ * % loading keeps working. Everything is kilograms per cable.
  */
 object OneRepMaxTest {
+
+    /** Reps per attempt. A 3RM is safer to test than a true single and still a good marker. */
+    const val TEST_REPS = 3
+
+    /** Estimated 1RM from a 3RM (Epley, no reps in reserve: about 3RM × 1.1). */
+    fun oneRepMaxFromTest(kg: Float): Float =
+        LoadCalculator.roundToStep(LoadCalculator.oneRepMaxFromWorkingSet(kg, TEST_REPS, 0f))
 
     /** Where the first attempt comes from, so the screen can explain it. */
     enum class StartReason { KNOWN_ONE_REP_MAX, ESTIMATE, DEFAULT }
 
     data class Start(val kg: Float, val reason: StartReason)
 
-    const val KNOWN_START_PERCENT = 0.90f
-    const val ESTIMATE_START_PERCENT = 0.70f
+    const val KNOWN_START_PERCENT = 0.80f
+    const val ESTIMATE_START_PERCENT = 0.65f
     const val RETRY_AFTER_MISS_PERCENT = 0.85f
     const val REST_SECONDS = 120
 
     /**
-     * 90% of a real 1RM. A related-exercise estimate is only a guess, so it starts lower.
+     * 80% of a real 1RM (about 90% of the 3RM it implies). A related-exercise estimate is only a guess, so it starts lower.
      * Without either, the anchor's conservative default.
      */
     fun start(current: OneRepMax?, defaultKg: Float): Start = when {
@@ -42,13 +50,13 @@ object OneRepMaxTest {
         AttemptOutcome.MISSED -> clamp(currentKg * RETRY_AFTER_MISS_PERCENT)
     }.let { if (outcome != AttemptOutcome.MISSED && it <= currentKg) clamp(currentKg + LoadCalculator.STEP_KG) else it }
 
-    /** Heaviest made rep, or null when nothing was made yet. */
+    /** Heaviest made set (the 3RM), or null when nothing was made yet. */
     fun best(attempts: List<Attempt>): Float? = attempts.filter { it.made }.maxOfOrNull { it.kg }
 
     /** The test ends at the first miss. */
     fun isFinished(attempts: List<Attempt>): Boolean = attempts.lastOrNull()?.outcome == AttemptOutcome.MISSED
 
-    /** One extra try halfway between the best made rep and the last miss, if there's room. */
+    /** One extra try halfway between the best made set and the last miss, if there's room. */
     fun midpoint(attempts: List<Attempt>): Float? {
         val best = best(attempts) ?: return null
         val miss = attempts.lastOrNull { !it.made }?.kg ?: return null

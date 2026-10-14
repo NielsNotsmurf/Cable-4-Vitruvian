@@ -15,23 +15,28 @@ import org.junit.Test
 class OneRepMaxTestTest {
 
     @Test
-    fun startsAtNinetyPercentOfAKnownOneRepMax() {
+    fun startsAtEightyPercentOfAKnownOneRepMax() {
         val s = OneRepMaxTest.start(OneRepMax(60f, OneRepMaxSource.BENCHMARK), 15f)
-        assertEquals(54f, s.kg, 0.001f)
+        assertEquals(48f, s.kg, 0.001f)
         assertEquals(OneRepMaxTest.StartReason.KNOWN_ONE_REP_MAX, s.reason)
     }
 
     @Test
     fun historyEstimateCountsAsKnown() {
         val s = OneRepMaxTest.start(OneRepMax(50f, OneRepMaxSource.HISTORY), 15f)
-        assertEquals(45f, s.kg, 0.001f)
+        assertEquals(40f, s.kg, 0.001f)
     }
 
     @Test
     fun relatedEstimateStartsLower() {
         val s = OneRepMaxTest.start(OneRepMax(50f, OneRepMaxSource.RELATED), 15f)
-        assertEquals(35f, s.kg, 0.001f)
+        assertEquals(32.5f, s.kg, 0.001f)
         assertEquals(OneRepMaxTest.StartReason.ESTIMATE, s.reason)
+    }
+
+    @Test
+    fun oneRepMaxIsEstimatedFromTheThreeRepMax() {
+        assertEquals(55f, OneRepMaxTest.oneRepMaxFromTest(50f), 0.001f)
     }
 
     @Test

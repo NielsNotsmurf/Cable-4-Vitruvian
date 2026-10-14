@@ -425,12 +425,12 @@ class CleanViewModel(
         )
     }
 
-    /** Saves the best made rep as the lifter's 1RM. Returns true when the test is finished. */
+    /** Saves the 1RM estimated from the best made 3-rep set. Returns true when the test is finished. */
     fun testSave(): Boolean {
         val t = _test.value ?: return true
         val best = t.best ?: return testSkip()
         viewModelScope.launch {
-            store.saveOneRepMax(t.lifterId, t.exerciseId, OneRepMax(best, OneRepMaxSource.BENCHMARK, System.currentTimeMillis()))
+            store.saveOneRepMax(t.lifterId, t.exerciseId, OneRepMax(OneRepMaxTest.oneRepMaxFromTest(best), OneRepMaxSource.BENCHMARK, System.currentTimeMillis()))
         }
         return advanceTest()
     }
