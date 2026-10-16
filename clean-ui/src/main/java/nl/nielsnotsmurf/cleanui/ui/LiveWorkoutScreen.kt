@@ -52,12 +52,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.TrainingStats
+import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LivePhase
 import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
+import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
@@ -89,7 +91,7 @@ fun LiveWorkoutScreen(
     onNextExercise: () -> Unit,
     onStop: () -> Unit,
     onDone: () -> Unit,
-    onClassicView: () -> Unit
+    guide: ExerciseGuide? = null
 ) {
     val fmt = { kg: Float -> LoadCalculator.format(kg, unit) }
     var confirmStop by remember { mutableStateOf(false) }
@@ -108,7 +110,7 @@ fun LiveWorkoutScreen(
     }
 
     Column(Modifier.fillMaxSize().background(CleanColors.Background)) {
-        TopBar(live, heartRate, onClose = { if (busy) confirmStop = true else onDone() }, onClassicView = onClassicView)
+        TopBar(live, heartRate, onClose = { if (busy) confirmStop = true else onDone() })
         AnimatedVisibility(visible = personalRecord != null) {
             Text(
                 "New record · ${personalRecord.orEmpty()}",
@@ -118,6 +120,13 @@ fun LiveWorkoutScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
                     .clip(RoundedCornerShape(14.dp)).background(CleanColors.Accent).padding(12.dp)
             )
+        }
+        // The exercise demo plays while the trainer gets ready, counts down and during warm-up reps.
+        val videoUrl = guide?.videoUrl
+        val showVideo = videoUrl != null && (live.phase == LivePhase.STARTING || live.phase == LivePhase.COUNTDOWN ||
+            (live.phase == LivePhase.LIFTING && !live.warmupDone))
+        AnimatedVisibility(visible = showVideo) {
+            if (videoUrl != null) DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp, vertical = 8.dp), guide?.thumbnailUrl)
         }
         AnimatedContent(
             targetState = live.phase,
@@ -166,7 +175,7 @@ fun LiveWorkoutScreen(
 }
 
 @Composable
-private fun TopBar(live: LiveWorkout, heartRate: Int?, onClose: () -> Unit, onClassicView: () -> Unit) {
+private fun TopBar(live: LiveWorkout, heartRate: Int?, onClose: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -195,12 +204,6 @@ private fun TopBar(live: LiveWorkout, heartRate: Int?, onClose: () -> Unit, onCl
         live.lifterColorArgb?.let {
             Box(Modifier.padding(end = 8.dp).size(10.dp).clip(RoundedCornerShape(5.dp)).background(Color(it)))
         }
-        Text(
-            "Classic",
-            style = MaterialTheme.typography.labelMedium,
-            color = CleanColors.Muted,
-            modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onClassicView).padding(8.dp)
-        )
     }
 }
 

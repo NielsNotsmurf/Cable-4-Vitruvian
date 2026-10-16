@@ -17,20 +17,20 @@ object WorkoutBuilder {
     val DURATIONS = listOf(15, 30, 45, 60, 75, 90)
 
     /** Minutes one exercise takes when every lifter does [SETS] sets in turn. */
-    fun minutesPerExercise(lifters: Int): Float {
-        val turns = SETS * lifters.coerceAtLeast(1)
+    fun minutesPerExercise(lifters: Int, sets: Int = SETS): Float {
+        val turns = sets.coerceAtLeast(1) * lifters.coerceAtLeast(1)
         return (turns * (WORK_SECONDS + REST_SECONDS) + SWITCH_SECONDS) / 60f
     }
 
     /** How many exercises fit in [minutes]; at least one per chosen group. */
-    fun exerciseCount(minutes: Int, lifters: Int, groups: Int): Int {
-        val fit = (minutes / minutesPerExercise(lifters)).roundToInt()
+    fun exerciseCount(minutes: Int, lifters: Int, groups: Int, sets: Int = SETS): Int {
+        val fit = (minutes / minutesPerExercise(lifters, sets)).roundToInt()
         return maxOf(groups, fit, 1).coerceAtMost(maxOf(MAX_EXERCISES, groups))
     }
 
     /** Rough length of a workout with [exercises] exercises, in minutes. */
-    fun estimatedMinutes(exercises: Int, lifters: Int): Int =
-        (exercises * minutesPerExercise(lifters)).roundToInt()
+    fun estimatedMinutes(exercises: Int, lifters: Int, sets: Int = SETS): Int =
+        (exercises * minutesPerExercise(lifters, sets)).roundToInt()
 
     /**
      * Picks [count] exercises, taking turns over [groups] so each group gets its share. Within a

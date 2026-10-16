@@ -223,6 +223,10 @@ class CleanViewModel(
         if (settings.value.videos) this else copy(videoUrl = null, thumbnailUrl = null)
 
     private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
+    private val defaultSets: Int get() = settings.value.defaultSets.coerceIn(1, 10)
+
+    /** Sets and reps always come from Settings, never from what was done last time. */
+    private fun defaultSetList(rest: Int = 90) = List(defaultSets) { SetSpec(reps = defaultReps, restSeconds = rest) }
 
     private val _setup = MutableStateFlow<SetupState?>(null)
     val setup: StateFlow<SetupState?> = _setup.asStateFlow()
@@ -269,20 +273,17 @@ class CleanViewModel(
         requestEstimates(exercise)
         _setup.value = SetupState(
             exercise = exercise,
-            sets = List(3) { SetSpec(reps = defaultReps) },
+            sets = defaultSetList(),
             durationSeconds = if (exercise.isBodyweight) 30 else null
         )
         viewModelScope.launch {
-            // Start from what the first lifter did last time: mode, sets, reps, rest.
+            // Mode and cables follow what the first lifter did last time. Sets and reps don't:
+            // they always come from Settings and only change on this screen.
             val lifter = state.value.activeLifters.firstOrNull()?.id ?: return@launch
             val last = runCatching { gateway.lastPlan(lifter, exercise) }.getOrNull() ?: return@launch
-            // Reps per set always come from Settings. A single 3-rep set is a leftover 1RM attempt.
-            val fromTest = last.sets.size == 1 && last.sets[0].reps == OneRepMaxTest.TEST_REPS
-            val sets = if (fromTest) emptyList() else last.sets.map { set -> set.copy(reps = defaultReps) }
             _setup.update {
                 it?.copy(
                     mode = last.mode,
-                    sets = sets.ifEmpty { it.sets },
                     durationSeconds = last.durationSeconds ?: if (exercise.isBodyweight) 30 else null,
                     cableConfig = last.cableConfig,
                     eccentricLoadPercent = last.eccentricLoadPercent,
@@ -390,7 +391,7 @@ class CleanViewModel(
 
     fun buildWorkout(groups: List<String>, minutes: Int) {
         val s = state.value
-        val count = WorkoutBuilder.exerciseCount(minutes, s.activeLifters.size, groups.size)
+        val count = WorkoutBuilder.exerciseCount(minutes, s.activeLifters.size, groups.size, defaultSets)
         val exercises = WorkoutBuilder.build(s.exercises, groups, count, ::builderScore)
         _workout.value = BuiltWorkout(groups, minutes, exercises)
         exercises.forEach(::prepareWorkoutExercise)
@@ -437,7 +438,7 @@ class CleanViewModel(
             _workout.update { it?.copy(error = if (lifters.isEmpty()) "Choose who's training first." else "Add an exercise first.") }
             return
         }
-        val sets = List(WorkoutBuilder.SETS) { SetSpec(reps = defaultReps, restSeconds = WorkoutBuilder.REST_SECONDS) }
+        val sets = defaultSetList(WorkoutBuilder.REST_SECONDS)
         val plans = w.exercises.map { ex ->
             SetPlan(
                 exercise = ex,

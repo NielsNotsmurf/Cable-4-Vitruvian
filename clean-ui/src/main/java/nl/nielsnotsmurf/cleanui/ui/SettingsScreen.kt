@@ -143,7 +143,13 @@ fun SettingsScreen(
                 CleanFilterChip("lb", selected = settings.unit == WeightUnit.LB, onClick = { onUpdate { it.copy(unit = WeightUnit.LB) } })
             }
             Stepper(
-                "Reps for an exercise you've never done", settings.defaultReps.toString(),
+                "Sets per exercise", settings.defaultSets.toString(),
+                onMinus = { onUpdate { it.copy(defaultSets = (it.defaultSets - 1).coerceAtLeast(1)) } },
+                onPlus = { onUpdate { it.copy(defaultSets = (it.defaultSets + 1).coerceAtMost(10)) } },
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
+            Stepper(
+                "Reps per set", settings.defaultReps.toString(),
                 onMinus = { onUpdate { it.copy(defaultReps = (it.defaultReps - 1).coerceAtLeast(1)) } },
                 onPlus = { onUpdate { it.copy(defaultReps = (it.defaultReps + 1).coerceAtMost(50)) } },
                 modifier = Modifier.padding(vertical = 10.dp)

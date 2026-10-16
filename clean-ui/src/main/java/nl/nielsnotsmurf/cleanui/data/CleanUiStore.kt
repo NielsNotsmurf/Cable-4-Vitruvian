@@ -87,6 +87,13 @@ class CleanUiStore private constructor(private val context: Context) {
         context.cleanUiDataStore.edit { it[intPreferencesKey("$PCT_PREFIX$exerciseId")] = percent }
     }
 
+    /** Sets per exercise from Settings; 3 until changed. */
+    val defaultSets: Flow<Int> = context.cleanUiDataStore.data.map { it[DEFAULT_SETS] ?: 3 }
+
+    suspend fun setDefaultSets(sets: Int) {
+        context.cleanUiDataStore.edit { it[DEFAULT_SETS] = sets.coerceIn(1, 10) }
+    }
+
     /** Index into the gateway's LED schemes, or null when none was picked yet. */
     val ledScheme: Flow<Int?> = context.cleanUiDataStore.data.map { it[LED_SCHEME] }
 
@@ -144,6 +151,7 @@ class CleanUiStore private constructor(private val context: Context) {
     companion object {
         private val ENABLED = booleanPreferencesKey("enabled")
         private val LED_SCHEME = intPreferencesKey("led_scheme")
+        private val DEFAULT_SETS = intPreferencesKey("default_sets")
         private val ONBOARDED = booleanPreferencesKey("onboarded")
         private val LAST_ACCOUNT = stringPreferencesKey("last_account")
         private const val PIN_PREFIX = "pin|"
