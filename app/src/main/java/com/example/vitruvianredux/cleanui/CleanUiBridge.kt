@@ -244,67 +244,40 @@ class CleanUiBridge(
         preferencesManager.getSingleExerciseDefaults(exercise.id, exercise.toExercise().resolveDefaultCableConfig().name, lifterId)
             ?.weightPerCableKg
 
-    override fun startExercise(plan: SetPlan, onStarted: () -> Unit, onFailed: (String) -> Unit) {
+    override fun startExercise(plan: SetPlan, onStarted: () -> Unit, onFailed: (String) -> Unit) =
+        startRoutine(
+            id = "${MainViewModel.TEMP_SINGLE_EXERCISE_PREFIX}${UUID.randomUUID()}",
+            name = "Single Exercise: ${plan.exercise.name}",
+            plans = listOf(plan),
+            onStarted = onStarted,
+            onFailed = onFailed
+        )
+
+    override fun startWorkout(name: String, plans: List<SetPlan>, onStarted: () -> Unit, onFailed: (String) -> Unit) =
+        startRoutine(
+            id = "${MainViewModel.CLEAN_WORKOUT_PREFIX}${UUID.randomUUID()}",
+            name = name,
+            plans = plans,
+            onStarted = onStarted,
+            onFailed = onFailed
+        )
+
+    private fun startRoutine(
+        id: String,
+        name: String,
+        plans: List<SetPlan>,
+        onStarted: () -> Unit,
+        onFailed: (String) -> Unit
+    ) {
         scope.launch {
             try {
-                val exercise = plan.exercise.toExercise()
-                val cableConfig = runCatching { CableConfiguration.valueOf(plan.cableConfig) }
-                    .getOrDefault(exercise.resolveDefaultCableConfig())
-                val workoutType = plan.toWorkoutType()
-                // AMRAP sets are null reps, as in the classic exercise config.
-                val setReps: List<Int?> = plan.sets.map { if (it.kind == SetKind.AMRAP) null else it.reps }
-                val rest = plan.sets.map { it.restSeconds }
-                val isAmrap = plan.sets.any { it.kind == SetKind.AMRAP }
-                val perSetRest = rest.distinct().size > 1
-
-                // Each lifter's loads go in as their per-exercise defaults. The existing
-                // rotation loads the next performer's defaults after every set, so this is
-                // what makes everyone lift their own % of 1RM, set by set.
-                plan.loads.forEach { load ->
-                    preferencesManager.saveSingleExerciseDefaults(
-                        SingleExerciseDefaults(
-                            exerciseId = plan.exercise.id,
-                            cableConfig = cableConfig.name,
-                            workoutModeId = WorkoutModeId.fromWorkoutType(workoutType),
-                            setReps = setReps,
-                            weightPerCableKg = load.weightPerCableKg,
-                            setWeightsPerCableKg = load.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
-                            progressionKg = plan.progressionKg,
-                            setRestSeconds = rest,
-                            perSetRestTime = perSetRest,
-                            eccentricLoadPercentage = plan.eccentricLoadPercent,
-                            echoLevelValue = plan.echoLevel.toApp().levelValue,
-                            duration = plan.durationSeconds,
-                            isAMRAP = isAmrap
-                        ),
-                        profileId = load.lifterId
-                    )
-                }
-
-                val first = plan.loads.first()
-                val routineExercise = RoutineExercise(
-                    id = UUID.randomUUID().toString(),
-                    exercise = exercise,
-                    cableConfig = cableConfig,
-                    orderIndex = 0,
-                    setReps = setReps,
-                    weightPerCableKg = first.weightPerCableKg,
-                    setWeightsPerCableKg = first.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
-                    progressionKg = plan.progressionKg,
-                    setRestSeconds = rest,
-                    workoutType = workoutType,
-                    eccentricLoad = eccentricLoad(plan.eccentricLoadPercent),
-                    echoLevel = plan.echoLevel.toApp(),
-                    duration = plan.durationSeconds,
-                    isAMRAP = isAmrap,
-                    perSetRestTime = perSetRest
-                )
+                val exercises = plans.mapIndexed { index, plan -> routineExerciseFor(plan, index) }
                 vm.loadRoutine(
                     Routine(
-                        id = "${MainViewModel.TEMP_SINGLE_EXERCISE_PREFIX}${UUID.randomUUID()}",
-                        name = "Single Exercise: ${exercise.name}",
+                        id = id,
+                        name = name,
                         description = "Started from the Clean UI",
-                        exercises = listOf(routineExercise)
+                        exercises = exercises
                     )
                 )
                 vm.ensureConnection(
@@ -319,6 +292,61 @@ class CleanUiBridge(
                 onFailed("Couldn't start this exercise: ${e.message}")
             }
         }
+    }
+
+    private suspend fun routineExerciseFor(plan: SetPlan, orderIndex: Int): RoutineExercise {
+        val exercise = plan.exercise.toExercise()
+        val cableConfig = runCatching { CableConfiguration.valueOf(plan.cableConfig) }
+            .getOrDefault(exercise.resolveDefaultCableConfig())
+        val workoutType = plan.toWorkoutType()
+        // AMRAP sets are null reps, as in the classic exercise config.
+        val setReps: List<Int?> = plan.sets.map { if (it.kind == SetKind.AMRAP) null else it.reps }
+        val rest = plan.sets.map { it.restSeconds }
+        val isAmrap = plan.sets.any { it.kind == SetKind.AMRAP }
+        val perSetRest = rest.distinct().size > 1
+
+        // Each lifter's loads go in as their per-exercise defaults. The existing
+        // rotation loads the next performer's defaults after every set, so this is
+        // what makes everyone lift their own % of 1RM, set by set.
+        plan.loads.forEach { load ->
+            preferencesManager.saveSingleExerciseDefaults(
+                SingleExerciseDefaults(
+                    exerciseId = plan.exercise.id,
+                    cableConfig = cableConfig.name,
+                    workoutModeId = WorkoutModeId.fromWorkoutType(workoutType),
+                    setReps = setReps,
+                    weightPerCableKg = load.weightPerCableKg,
+                    setWeightsPerCableKg = load.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
+                    progressionKg = plan.progressionKg,
+                    setRestSeconds = rest,
+                    perSetRestTime = perSetRest,
+                    eccentricLoadPercentage = plan.eccentricLoadPercent,
+                    echoLevelValue = plan.echoLevel.toApp().levelValue,
+                    duration = plan.durationSeconds,
+                    isAMRAP = isAmrap
+                ),
+                profileId = load.lifterId
+            )
+        }
+
+        val first = plan.loads.first()
+        return RoutineExercise(
+            id = UUID.randomUUID().toString(),
+            exercise = exercise,
+            cableConfig = cableConfig,
+            orderIndex = orderIndex,
+            setReps = setReps,
+            weightPerCableKg = first.weightPerCableKg,
+            setWeightsPerCableKg = first.setWeightsKg.takeIf { it.size == setReps.size }.orEmpty(),
+            progressionKg = plan.progressionKg,
+            setRestSeconds = rest,
+            workoutType = workoutType,
+            eccentricLoad = eccentricLoad(plan.eccentricLoadPercent),
+            echoLevel = plan.echoLevel.toApp(),
+            duration = plan.durationSeconds,
+            isAMRAP = isAmrap,
+            perSetRestTime = perSetRest
+        )
     }
 
     override val oneRepMaxTestExercises: List<TestAnchor> =
@@ -365,7 +393,7 @@ class CleanUiBridge(
                 )
                 vm.loadRoutine(
                     Routine(
-                        id = "${MainViewModel.TEMP_SINGLE_EXERCISE_PREFIX}${UUID.randomUUID()}",
+                        id = "${MainViewModel.ONE_REP_MAX_ATTEMPT_PREFIX}${UUID.randomUUID()}",
                         name = "1RM attempt: ${ex.name}",
                         description = "1RM test from the Clean UI",
                         exercises = listOf(routineExercise)

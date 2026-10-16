@@ -25,6 +25,7 @@ import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
+import nl.nielsnotsmurf.cleanui.logic.WorkoutBuilder
 import nl.nielsnotsmurf.cleanui.model.Attempt
 import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
@@ -92,6 +93,18 @@ data class SetupState(
     /** The % of 1RM a set uses: its own, or the exercise's. */
     fun percentFor(setIndex: Int): Int = sets.getOrNull(setIndex)?.percent ?: percent
 }
+
+/** A workout built from muscle groups and a time budget, in equipment order. */
+data class BuiltWorkout(
+    val groups: List<String>,
+    val minutes: Int,
+    val exercises: List<ExerciseCard>,
+    val percent: Int = 75,
+    /** "lifterId::exerciseId" -> load used last time, for exercises without a 1RM. */
+    val lastUsedKg: Map<String, Float> = emptyMap(),
+    val isStarting: Boolean = false,
+    val error: String? = null
+)
 
 enum class TestPhase { INTRO, ATTEMPT, RESULT }
 
@@ -263,10 +276,13 @@ class CleanViewModel(
             // Start from what the first lifter did last time: mode, sets, reps, rest.
             val lifter = state.value.activeLifters.firstOrNull()?.id ?: return@launch
             val last = runCatching { gateway.lastPlan(lifter, exercise) }.getOrNull() ?: return@launch
+            // Reps per set always come from Settings. A single 3-rep set is a leftover 1RM attempt.
+            val fromTest = last.sets.size == 1 && last.sets[0].reps == OneRepMaxTest.TEST_REPS
+            val sets = if (fromTest) emptyList() else last.sets.map { set -> set.copy(reps = defaultReps) }
             _setup.update {
                 it?.copy(
                     mode = last.mode,
-                    sets = last.sets.ifEmpty { it.sets },
+                    sets = sets.ifEmpty { it.sets },
                     durationSeconds = last.durationSeconds ?: if (exercise.isBodyweight) 30 else null,
                     cableConfig = last.cableConfig,
                     eccentricLoadPercent = last.eccentricLoadPercent,
@@ -356,6 +372,91 @@ class CleanViewModel(
                 onStarted()
             },
             onFailed = { msg -> _setup.update { it?.copy(isStarting = false, error = msg) } }
+        )
+    }
+
+    // ---- Muscle-group workout ----
+
+    private val _workout = MutableStateFlow<BuiltWorkout?>(null)
+    val workout: StateFlow<BuiltWorkout?> = _workout.asStateFlow()
+
+    /** Ranks exercises for the builder: real 1RMs first, then estimates, favourites and popular ones. */
+    private fun builderScore(ex: ExerciseCard): Float {
+        val s = state.value
+        val orms = s.activeLifters.mapNotNull { s.oneRepMax(it.id, ex.id) }
+        return orms.count { !it.isEstimate } * 10f + orms.count { it.isEstimate } * 3f +
+            (if (ex.isFavorite) 4f else 0f) + (if (ex.lastPerformedAt != null) 1f else 0f) + ex.popularity
+    }
+
+    fun buildWorkout(groups: List<String>, minutes: Int) {
+        val s = state.value
+        val count = WorkoutBuilder.exerciseCount(minutes, s.activeLifters.size, groups.size)
+        val exercises = WorkoutBuilder.build(s.exercises, groups, count, ::builderScore)
+        _workout.value = BuiltWorkout(groups, minutes, exercises)
+        exercises.forEach(::prepareWorkoutExercise)
+    }
+
+    /** Swaps [exercise] for one in the same group on different equipment. */
+    fun substituteInWorkout(exercise: ExerciseCard) {
+        val w = _workout.value ?: return
+        val sub = WorkoutBuilder.substitute(exercise, w.exercises, state.value.exercises, ::builderScore)
+        if (sub == null) {
+            _workout.update { it?.copy(error = "No other ${exercise.region.lowercase()} exercise to swap in.") }
+            return
+        }
+        _workout.update { it?.copy(exercises = WorkoutBuilder.swap(it.exercises, exercise, sub), error = null) }
+        prepareWorkoutExercise(sub)
+    }
+
+    fun removeFromWorkout(exercise: ExerciseCard) =
+        _workout.update { w -> w?.copy(exercises = w.exercises.filterNot { it.id == exercise.id }, error = null) }
+
+    fun setWorkoutPercent(percent: Int) = _workout.update { it?.copy(percent = percent.coerceIn(30, 100)) }
+
+    private fun prepareWorkoutExercise(exercise: ExerciseCard) {
+        requestEstimates(exercise)
+        viewModelScope.launch {
+            val last = state.value.activeLifters.mapNotNull { l ->
+                runCatching { gateway.lastUsedLoadKg(l.id, exercise) }.getOrNull()?.let { relatedKey(l.id, exercise.id) to it }
+            }.toMap()
+            _workout.update { it?.copy(lastUsedKg = it.lastUsedKg + last) }
+        }
+    }
+
+    /** A lifter's load in the workout: % of their 1RM, else what they used last time. */
+    fun workoutLoad(lifterId: String, exercise: ExerciseCard, w: BuiltWorkout): Float {
+        val orm = state.value.oneRepMax(lifterId, exercise.id)
+        return if (orm != null) LoadCalculator.loadForPercent(orm.kg, w.percent)
+        else w.lastUsedKg[relatedKey(lifterId, exercise.id)] ?: DEFAULT_LOAD_KG
+    }
+
+    fun startBuiltWorkout(onStarted: () -> Unit) {
+        val w = _workout.value ?: return
+        val lifters = state.value.activeLifters
+        if (lifters.isEmpty() || w.exercises.isEmpty()) {
+            _workout.update { it?.copy(error = if (lifters.isEmpty()) "Choose who's training first." else "Add an exercise first.") }
+            return
+        }
+        val sets = List(WorkoutBuilder.SETS) { SetSpec(reps = defaultReps, restSeconds = WorkoutBuilder.REST_SECONDS) }
+        val plans = w.exercises.map { ex ->
+            SetPlan(
+                exercise = ex,
+                mode = TrainingMode.OLD_SCHOOL,
+                percentOfOneRepMax = w.percent,
+                sets = sets,
+                loads = lifters.map { l -> LifterLoad(l.id, List(sets.size) { workoutLoad(l.id, ex, w) }) },
+                cableConfig = if (ex.cableConfig == "SINGLE") "SINGLE" else "DOUBLE"
+            )
+        }
+        _workout.update { it?.copy(isStarting = true, error = null) }
+        gateway.startWorkout(
+            name = w.groups.joinToString(" & "),
+            plans = plans,
+            onStarted = {
+                _workout.update { it?.copy(isStarting = false) }
+                onStarted()
+            },
+            onFailed = { msg -> _workout.update { it?.copy(isStarting = false, error = msg) } }
         )
     }
 

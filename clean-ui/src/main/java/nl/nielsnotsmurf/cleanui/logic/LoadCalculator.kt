@@ -58,21 +58,19 @@ object LoadCalculator {
 
     /**
      * Picks the 1RM to show and load from:
-     * the higher of a stored (benchmark or manual) 1RM and the best history estimate since it
-     * was stored, so a newer test replaces older numbers even when it's lower;
-     * when neither exists, a related-exercise estimate marked as such.
+     * a stored 1RM (from the 1RM test or typed in) always wins: normal sets never change it,
+     * only a new test does. Without one, the best history estimate; failing that, a
+     * related-exercise estimate marked as such.
      */
     fun resolveOneRepMax(
         stored: OneRepMax?,
         history: List<LiftRecord>,
         relatedKg: Float?
     ): OneRepMax? {
-        val recent = if (stored != null && stored.kg > 0f) history.filter { it.timestamp > stored.updatedAt } else history
-        val historyKg = bestHistoryEstimate(recent)
-        val historyMax = historyKg?.let {
-            OneRepMax(it, OneRepMaxSource.HISTORY, recent.maxOf { r -> r.timestamp })
+        stored?.takeIf { it.kg > 0f }?.let { return it }
+        val best = bestHistoryEstimate(history)?.let {
+            OneRepMax(it, OneRepMaxSource.HISTORY, history.maxOf { r -> r.timestamp })
         }
-        val best = listOfNotNull(stored?.takeIf { it.kg > 0f }, historyMax).maxByOrNull { it.kg }
         if (best != null) return best
         return relatedKg?.takeIf { it > 0f }?.let { OneRepMax(it, OneRepMaxSource.RELATED) }
     }

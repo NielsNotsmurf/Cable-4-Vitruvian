@@ -68,10 +68,16 @@ class LoadCalculatorTest {
     }
 
     @Test
-    fun `resolve prefers the higher of stored and history`() {
+    fun `normal sets never override a tested 1RM`() {
         val stored = OneRepMax(60f, OneRepMaxSource.BENCHMARK, 1L)
-        val history = listOf(LiftRecord("bench", 50f, 8, 2L)) // 63.3
-        val resolved = LoadCalculator.resolveOneRepMax(stored, history, relatedKg = 40f)!!
+        val history = listOf(LiftRecord("bench", 50f, 8, 2L)) // 63.3, newer than the test
+        assertEquals(stored, LoadCalculator.resolveOneRepMax(stored, history, relatedKg = 40f))
+    }
+
+    @Test
+    fun `history estimates a 1RM when none was tested`() {
+        val history = listOf(LiftRecord("bench", 50f, 8, 2L))
+        val resolved = LoadCalculator.resolveOneRepMax(null, history, relatedKg = 40f)!!
         assertEquals(OneRepMaxSource.HISTORY, resolved.source)
         assertEquals(63.333f, resolved.kg, 0.01f)
     }

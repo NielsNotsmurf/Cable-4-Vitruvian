@@ -82,6 +82,13 @@ interface TrainerGateway {
      */
     fun startExercise(plan: SetPlan, onStarted: () -> Unit, onFailed: (String) -> Unit)
 
+    /**
+     * Start several exercises back to back as one workout, in the order given. Loads per
+     * lifter work as in [startExercise]. Hosts without routines start only the first.
+     */
+    fun startWorkout(name: String, plans: List<SetPlan>, onStarted: () -> Unit, onFailed: (String) -> Unit) =
+        startExercise(plans.first(), onStarted, onFailed)
+
     /** Live state of the set on the trainer, or null when the host has none to share. */
     val liveWorkout: Flow<LiveWorkout?> get() = flowOf(null)
 
