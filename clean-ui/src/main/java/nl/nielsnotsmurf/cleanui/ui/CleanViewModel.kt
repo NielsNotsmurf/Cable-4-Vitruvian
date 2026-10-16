@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.cleanui.ui
 
+import nl.nielsnotsmurf.cleanui.sound.CleanSounds
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -203,7 +204,16 @@ class CleanViewModel(
         .map { i -> i?.takeIf { it in gateway.ledSchemes.indices } ?: -1 }
         .stateIn(viewModelScope, SharingStarted.Eagerly, -1)
 
+    /** Menu and button sounds (Settings). */
+    val uiSounds: StateFlow<Boolean> = store.uiSounds.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setUiSounds(on: Boolean) {
+        viewModelScope.launch { store.setUiSounds(on) }
+    }
+
     init {
+        viewModelScope.launch { uiSounds.collect { CleanSounds.uiEnabled = it } }
+        viewModelScope.launch { gateway.settings.collect { CleanSounds.workoutEnabled = it.beeps } }
         // The app's accent follows the LED colour.
         viewModelScope.launch {
             ledScheme.collect { i ->

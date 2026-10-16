@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 
 /**
@@ -33,6 +35,7 @@ fun rememberScreenLockCheck(title: String, onConfirmed: () -> Unit): () -> Unit 
     if (askPlain) {
         AlertDialog(
             onDismissRequest = { askPlain = false },
+            modifier = Modifier.clickSounds(),
             containerColor = CleanColors.Background,
             title = { Text(title) },
             text = { Text("This phone has no screen lock, so the PIN can be removed without one.") },

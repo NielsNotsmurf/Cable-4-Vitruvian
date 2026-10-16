@@ -40,6 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.CleanSounds
+import nl.nielsnotsmurf.cleanui.sound.Sfx
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -109,6 +112,29 @@ fun LiveWorkoutScreen(
         }
     }
 
+    // Bops and boops for what happens on the trainer (Settings › Workout beeps).
+    LaunchedEffect(live.phase) {
+        when (live.phase) {
+            LivePhase.LIFTING -> CleanSounds.play(Sfx.GO)
+            LivePhase.SET_DONE -> CleanSounds.play(Sfx.SET_DONE)
+            LivePhase.FINISHED -> CleanSounds.play(Sfx.SUCCESS)
+            else -> Unit
+        }
+    }
+    LaunchedEffect(live.phase, live.countdown) {
+        if (live.phase == LivePhase.COUNTDOWN && live.countdown > 0) CleanSounds.play(Sfx.TICK)
+    }
+    LaunchedEffect(live.reps, live.warmupReps) {
+        if (live.phase == LivePhase.LIFTING && (live.reps > 0 || live.warmupReps > 0)) CleanSounds.play(Sfx.REP)
+    }
+    LaunchedEffect(live.warmupDone) {
+        if (live.warmupDone && live.phase == LivePhase.LIFTING && live.warmupTarget > 0) CleanSounds.play(Sfx.WARMUP_DONE)
+    }
+    LaunchedEffect(live.phase, live.restSeconds) {
+        if (live.phase == LivePhase.RESTING && live.restSeconds in 1..3) CleanSounds.play(Sfx.TICK)
+    }
+    LaunchedEffect(personalRecord) { if (personalRecord != null) CleanSounds.play(Sfx.SUCCESS) }
+
     Column(Modifier.fillMaxSize().background(CleanColors.Background)) {
         TopBar(live, heartRate, onClose = { if (busy) confirmStop = true else onDone() })
         AnimatedVisibility(visible = personalRecord != null) {
@@ -166,6 +192,7 @@ fun LiveWorkoutScreen(
     if (confirmStop) {
         AlertDialog(
             onDismissRequest = { confirmStop = false },
+            modifier = Modifier.clickSounds(),
             title = { Text("End this workout?") },
             text = { Text("Sets you've finished are saved.") },
             confirmButton = { TextButton(onClick = { confirmStop = false; onStop() }) { Text("End", color = CleanColors.Danger) } },

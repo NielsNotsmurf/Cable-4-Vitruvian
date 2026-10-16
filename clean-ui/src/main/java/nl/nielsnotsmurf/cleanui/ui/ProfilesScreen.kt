@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -161,6 +162,7 @@ fun ProfilesScreen(
         val name = state.lifters.firstOrNull { it.id == id }?.name ?: ""
         AlertDialog(
             onDismissRequest = { deleteId = null },
+            modifier = Modifier.clickSounds(),
             title = { Text("Delete $name?") },
             text = { Text("Their workout history stays in the app, and their PIN is removed.") },
             confirmButton = {
@@ -177,6 +179,7 @@ private fun AddProfileDialog(onDismiss: () -> Unit, onAdd: (String, Int) -> Unit
     var colorIndex by rememberSaveable { mutableStateOf(0) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.clickSounds(),
         containerColor = CleanColors.Background,
         title = { Text("New profile") },
         text = {
