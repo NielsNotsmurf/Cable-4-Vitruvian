@@ -109,6 +109,10 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-16:** sets and reps per exercise come only from Settings ("Sets per exercise",
+  "Reps per set"), never from what you did last time; change them on the set-up screen just before
+  you start. The live screen plays the exercise video during get-ready, countdown and warm-up reps,
+  and the "Classic" view button is gone.
 - **2026-10-16:** new Train home: one dark "Build a workout" card as the main action, then One
   exercise / Just Lift, "Do again" chips and one 1RM card (test + re-tests). The separate muscle
   groups screen and duplicate buttons are gone.

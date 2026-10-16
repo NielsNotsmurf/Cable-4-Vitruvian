@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -67,6 +68,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
@@ -395,6 +397,8 @@ private fun SignedInApp(
                             onSubstitute = vm::substituteInWorkout,
                             onRemove = vm::removeFromWorkout,
                             onBack = { nav.popBackStack() },
+                            sets = settings.defaultSets,
+                            reps = settings.defaultReps,
                             onStart = {
                                 vm.startBuiltWorkout {
                                     nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }
@@ -457,7 +461,6 @@ private fun SignedInApp(
                 }
                 composable(CleanRoutes.ACTIVE_WORKOUT) {
                     val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
-                    var classicView by rememberSaveable { mutableStateOf(false) }
                     var record by remember { mutableStateOf<String?>(null) }
                     LaunchedEffect(Unit) {
                         gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
@@ -471,14 +474,19 @@ private fun SignedInApp(
                     val done = { if (!left) { left = true; nav.popBackStack(); gateway.resetForNewWorkout() } }
                     var attemptStarted by remember { mutableStateOf(false) }
                     if (l?.isCleanReady() == true) attemptStarted = true
-                    if (attemptMode && attemptStarted && !classicView && l?.isCleanReady() != true) {
+                    if (attemptMode && attemptStarted && l?.isCleanReady() != true) {
                         // The rep is over and the trainer went idle: back to the test to record
                         // it instead of showing the (blank) classic screen.
                         LaunchedEffect(Unit) { done() }
                         Box(Modifier.fillMaxSize().background(CleanColors.Background))
-                    } else if (l == null || classicView || !l.isCleanReady()) {
+                    } else if (l == null || !l.isCleanReady()) {
                         activeWorkoutContent(nav)
                     } else {
+                        val card = state.exercises.firstOrNull { it.name == l.exerciseName }
+                        val guide by produceState<ExerciseGuide?>(null, card?.id, settings.videos) {
+                            value = if (card == null || !settings.videos) null
+                            else runCatching { gateway.exerciseGuide(card.id) }.getOrNull()
+                        }
                         LiveWorkoutScreen(
                             live = l,
                             unit = state.unit,
@@ -486,14 +494,14 @@ private fun SignedInApp(
                             history = history,
                             personalRecord = record,
                             connection = state.connection,
-                            cables = state.exercises.firstOrNull { it.name == l.exerciseName }?.cables ?: 2,
+                            cables = card?.cables ?: 2,
                             attemptMode = attemptMode,
                             onSkipRest = gateway::skipRest,
                             onContinue = gateway::proceedFromSummary,
                             onNextExercise = gateway::advanceToNextExercise,
                             onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
                             onDone = done,
-                            onClassicView = { classicView = true }
+                            guide = guide
                         )
                     }
                 }

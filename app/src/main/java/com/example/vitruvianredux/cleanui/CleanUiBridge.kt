@@ -442,11 +442,21 @@ class CleanUiBridge(
         ids.forEach { vm.deleteWorkout(it) }
     }
 
-    override val settings: Flow<CleanSettings> = vm.userPreferences.map { it.toCleanSettings() }
+    override val settings: Flow<CleanSettings> =
+        combine(vm.userPreferences, store.defaultSets) { p, sets ->
+            currentSets = sets
+            p.toCleanSettings().copy(defaultSets = sets)
+        }
+
+    private var currentSets = 3
 
     override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
-        val old = vm.userPreferences.value.toCleanSettings()
+        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets)
         val new = transform(old)
+        if (new.defaultSets != old.defaultSets) {
+            currentSets = new.defaultSets.coerceIn(1, 10)
+            scope.launch { store.setDefaultSets(currentSets) }
+        }
         if (new.unit != old.unit) vm.setWeightUnit(if (new.unit == WeightUnit.LB) AppWeightUnit.LB else AppWeightUnit.KG)
         if (new.defaultReps != old.defaultReps) vm.setDefaultRepCount(new.defaultReps.coerceIn(1, 50))
         if (new.autoplay != old.autoplay) vm.setAutoplayEnabled(new.autoplay)

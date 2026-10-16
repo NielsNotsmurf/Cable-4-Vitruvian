@@ -181,6 +181,8 @@ data class HistoryEntry(
 data class CleanSettings(
     val unit: WeightUnit = WeightUnit.KG,
     val defaultReps: Int = 10,
+    /** Sets per exercise. Every set gets [defaultReps]; only the pre-workout screen changes them. */
+    val defaultSets: Int = 3,
     val autoplay: Boolean = true,
     val stopAtTop: Boolean = false,
     val beeps: Boolean = true,

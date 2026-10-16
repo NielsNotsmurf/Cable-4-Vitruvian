@@ -49,10 +49,12 @@ fun WorkoutPlanScreen(
     onSubstitute: (ExerciseCard) -> Unit,
     onRemove: (ExerciseCard) -> Unit,
     onBack: () -> Unit,
-    onStart: () -> Unit
+    onStart: () -> Unit,
+    sets: Int = WorkoutBuilder.SETS,
+    reps: Int = 10
 ) {
     val lifters = state.activeLifters
-    val minutes = WorkoutBuilder.estimatedMinutes(workout.exercises.size, lifters.size)
+    val minutes = WorkoutBuilder.estimatedMinutes(workout.exercises.size, lifters.size, sets)
     val switches = WorkoutBuilder.equipmentSwitches(workout.exercises)
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -77,7 +79,7 @@ fun WorkoutPlanScreen(
                 }
             }
             Text(
-                "${WorkoutBuilder.SETS} sets each, ${WorkoutBuilder.REST_SECONDS}s rest. Without a 1RM, the last load used is taken.",
+                "$sets × $reps each (from Settings), ${WorkoutBuilder.REST_SECONDS}s rest. Without a 1RM, the last load used is taken.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CleanColors.Muted
             )
