@@ -111,6 +111,7 @@ no imports from `:app`).
 
 - **2026-10-16:** workout builder by muscle group and time, with equipment-aware swaps. Reps per
   set come from Settings, and only the 1RM test changes a tested 1RM (normal sets no longer do).
+  The body map shows chest and back 1RMs as total load (both cables).
 - **2026-10-14:** the body map shows each region's best 1RM as total load (both cables), and the
   1RM list shows totals with the per-cable load next to them.
 - **2026-10-14:** estimated 1RMs for 362 exercises, scaled from your tested lifts.

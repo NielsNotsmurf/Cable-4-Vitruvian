@@ -432,7 +432,7 @@ private fun BodyCard(
             Text(max?.let { formatMeasure(it, measure, unit, compact = true) } ?: "–", style = MaterialTheme.typography.bodySmall)
         }
         Text(
-            "Numbers are your best 1RM per region in $unitName per cable, like every load in the app.",
+            "Numbers are your best 1RM per region in $unitName: chest and back as total load (both cables on one bar), the rest per cable.",
             style = MaterialTheme.typography.bodySmall
         )
         if (region != null) {
@@ -531,16 +531,24 @@ private fun OneRepMaxCard(state: CleanUiState, lifter: UiLifter?, region: String
 
 
 /**
- * Best real 1RM per body region for [lifter], per cable like every load in the app.
+ * Best real 1RM per body region for [lifter]. Chest and back lifts move one bar with both
+ * cables, so they show total load (per cable × cables); the other regions stay per cable.
  * Estimates scaled from other lifts are left out, so a number is always something lifted or tested.
  */
 private fun regionPrs(state: CleanUiState, lifter: UiLifter?): Map<String, Float> {
     val maxes = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
     return state.exercises
-        .mapNotNull { ex -> maxes[ex.id]?.takeIf { !it.isEstimate && ex.region.isNotEmpty() }?.let { ex.region to it.kg } }
+        .mapNotNull { ex ->
+            maxes[ex.id]?.takeIf { !it.isEstimate && ex.region.isNotEmpty() }?.let {
+                ex.region to if (ex.region in TOTAL_LOAD_REGIONS) it.kg * ex.cables else it.kg
+            }
+        }
         .groupBy({ it.first }, { it.second })
         .mapValues { (_, totals) -> totals.max() }
 }
+
+/** Regions whose lifts aren't split per arm, shown as total load on the body map. */
+private val TOTAL_LOAD_REGIONS = setOf("Chest", "Back")
 
 /** Bars per day, week or month; tap a bar to read its value. */
 @Composable
