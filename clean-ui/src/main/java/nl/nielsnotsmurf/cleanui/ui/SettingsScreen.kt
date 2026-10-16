@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -66,6 +67,8 @@ fun SettingsScreen(
     ledIndex: Int,
     onUpdate: ((CleanSettings) -> CleanSettings) -> Unit,
     onLedScheme: (Int) -> Unit,
+    uiSounds: Boolean,
+    onUiSounds: (Boolean) -> Unit,
     onProfiles: () -> Unit,
     onSetPin: () -> Unit,
     onChangePin: () -> Unit,
@@ -160,7 +163,8 @@ fun SettingsScreen(
 
         SectionLabel("Sound and video", Modifier.padding(top = 8.dp))
         Group {
-            Toggle("Workout beeps", "Sounds for countdown and rest", settings.beeps) { v -> onUpdate { it.copy(beeps = v) } }
+            Toggle("Menu sounds", "Bops and boops for taps and screens", uiSounds, onUiSounds)
+            Toggle("Workout beeps", "Countdown, reps, set done and rest", settings.beeps) { v -> onUpdate { it.copy(beeps = v) } }
             Toggle("Exercise videos", "Demo clips in Set setup and the 1RM test", settings.videos) { v -> onUpdate { it.copy(videos = v) } }
         }
 
@@ -232,6 +236,7 @@ fun SettingsScreen(
     if (showHeartRateGuide) {
         AlertDialog(
             onDismissRequest = { showHeartRateGuide = false },
+            modifier = Modifier.clickSounds(),
             containerColor = CleanColors.Background,
             title = { Text("Heart rate setup") },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { HeartRateSteps() } },

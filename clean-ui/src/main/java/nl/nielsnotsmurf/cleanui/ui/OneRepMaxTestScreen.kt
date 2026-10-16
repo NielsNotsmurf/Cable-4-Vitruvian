@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.CleanSounds
+import nl.nielsnotsmurf.cleanui.sound.Sfx
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -164,9 +166,9 @@ fun OneRepMaxTestScreen(
                         textAlign = TextAlign.Center
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutcomeButton("Missed", CleanColors.Danger, Modifier.weight(1f)) { onRecord(AttemptOutcome.MISSED) }
-                        OutcomeButton("Made it, tough", CleanColors.Ink, Modifier.weight(1f)) { onRecord(AttemptOutcome.MADE_TOUGH) }
-                        OutcomeButton("Made it, easy", CleanColors.Ink, Modifier.weight(1f)) { onRecord(AttemptOutcome.MADE_EASY) }
+                        OutcomeButton("Missed", CleanColors.Danger, Modifier.weight(1f)) { CleanSounds.play(Sfx.MISS); onRecord(AttemptOutcome.MISSED) }
+                        OutcomeButton("Made it, tough", CleanColors.Ink, Modifier.weight(1f)) { CleanSounds.play(Sfx.SET_DONE); onRecord(AttemptOutcome.MADE_TOUGH) }
+                        OutcomeButton("Made it, easy", CleanColors.Ink, Modifier.weight(1f)) { CleanSounds.play(Sfx.SUCCESS); onRecord(AttemptOutcome.MADE_EASY) }
                     }
                 }
                 TestPhase.RESULT -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -240,6 +242,15 @@ private fun AttemptContent(test: TestState, color: Color, fmt: (Float) -> String
         now = System.currentTimeMillis()
     }
     val restLeft = ((test.restEndsAt - now) / 1000L).coerceAtLeast(0L)
+    // Ticks for the last seconds of rest, then a call to lift.
+    var lastLeft by remember { mutableLongStateOf(restLeft) }
+    LaunchedEffect(restLeft) {
+        if (restLeft != lastLeft) {
+            if (restLeft in 1..3) CleanSounds.play(Sfx.TICK)
+            if (restLeft == 0L && lastLeft > 0) CleanSounds.play(Sfx.REST_OVER)
+        }
+        lastLeft = restLeft
+    }
     if (restLeft > 0) {
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CleanColors.AccentSoft).padding(14.dp),

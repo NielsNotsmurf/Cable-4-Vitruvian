@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -207,6 +208,7 @@ private fun PinDialogFrame(onDismiss: () -> Unit, content: @Composable () -> Uni
     Dialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
+                .clickSounds()
                 .clip(RoundedCornerShape(24.dp))
                 .background(CleanColors.Background)
                 .padding(horizontal = 20.dp, vertical = 22.dp),

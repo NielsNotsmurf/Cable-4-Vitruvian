@@ -76,6 +76,9 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
   on a Vitruvian body map: each region is coloured by the measure and period you pick (reps,
   volume, … this week, this year, …) and shows its heaviest load. Those two filters drive the
   whole screen: trend bars, headline numbers, insights, balance and exercise cards.
+- **Sounds:** short synthesized bops and boops for every tap, screen change and dialog, plus
+  workout sounds for the countdown, each rep, warm-up done, set done, records, the end of rest and
+  1RM attempts. "Menu sounds" and "Workout beeps" each have a switch in Settings; music keeps playing.
 - **Backup and restore:** a full JSON backup saved to `Download/vitruvian-`.
 - **Theme:** black and white, with light and dark modes.
 - **Settings:** grouped as Account, People, Training, Sound and video, Trainer LED colour,
@@ -109,6 +112,9 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-16:** sounds everywhere: taps, screen changes and dialogs bop (Settings › Menu
+  sounds), and the live workout and 1RM test now beep for countdown, reps, set done, records and
+  end of rest (Settings › Workout beeps).
 - **2026-10-16:** sets and reps per exercise come only from Settings ("Sets per exercise",
   "Reps per set"), never from what you did last time; change them on the set-up screen just before
   you start. The live screen plays the exercise video during get-ready, countdown and warm-up reps,

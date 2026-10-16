@@ -42,6 +42,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.CleanSounds
+import nl.nielsnotsmurf.cleanui.sound.Sfx
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -159,7 +162,7 @@ fun CleanApp(
     CleanTheme {
         Surface(color = CleanColors.Background, modifier = Modifier.fillMaxSize()) {
             val a = account
-            Box(Modifier.fillMaxSize().edgeGlow(CleanColors.Glow).safeDrawingPadding()) {
+            Box(Modifier.fillMaxSize().edgeGlow(CleanColors.Glow).safeDrawingPadding().clickSounds()) {
                 when {
                     // Storage not read yet: blank for a moment beats a flash of the wrong screen.
                     a == null -> Unit
@@ -247,6 +250,7 @@ private fun SignedInApp(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
+    val uiSounds by vm.uiSounds.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     // Exercises takes an optional region; without one it is the Exercises tab.
@@ -269,6 +273,13 @@ private fun SignedInApp(
     }
 
     // The tour opens the screen of each step.
+    // A boop on every screen change (tabs, back, forward), after the first screen.
+    var lastRoute by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentRoute) {
+        if (lastRoute != null && currentRoute != null && currentRoute != lastRoute) CleanSounds.play(Sfx.NAV)
+        if (currentRoute != null) lastRoute = currentRoute
+    }
+
     LaunchedEffect(tour.index) {
         val route = tour.step?.route ?: return@LaunchedEffect
         if (nav.currentDestination?.route?.substringBefore('?') == route) return@LaunchedEffect
@@ -287,6 +298,7 @@ private fun SignedInApp(
         val name = state.lifters.firstOrNull { it.id == me }?.name.orEmpty()
         AlertDialog(
             onDismissRequest = { tourOffered = true },
+            modifier = Modifier.clickSounds(),
             containerColor = CleanColors.Background,
             title = { Text("Welcome, $name") },
             text = { Text("Take a one-minute tour? Arrows point out each part of the app. It's in Settings too.") },
@@ -359,6 +371,8 @@ private fun SignedInApp(
                         ledIndex = ledScheme,
                         onUpdate = vm::updateSettings,
                         onLedScheme = vm::setLedScheme,
+                        uiSounds = uiSounds,
+                        onUiSounds = vm::setUiSounds,
                         onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
                         onSetPin = { onNewPin(me) },
                         // Changing or removing a PIN asks for the current one, even when signed in.

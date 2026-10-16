@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -196,6 +197,7 @@ fun HistoryScreen(
     confirmDelete?.let { w ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
+            modifier = Modifier.clickSounds(),
             title = { Text("Delete this workout?") },
             text = { Text("${w.name} for ${w.entries.map { it.lifterId }.distinct().size} lifter(s). This can't be undone.") },
             confirmButton = {

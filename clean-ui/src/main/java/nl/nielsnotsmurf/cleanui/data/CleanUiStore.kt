@@ -101,6 +101,13 @@ class CleanUiStore private constructor(private val context: Context) {
         context.cleanUiDataStore.edit { it[LED_SCHEME] = index }
     }
 
+    /** Menu and button sounds; on until switched off. */
+    val uiSounds: Flow<Boolean> = context.cleanUiDataStore.data.map { it[UI_SOUNDS] ?: true }
+
+    suspend fun setUiSounds(on: Boolean) {
+        context.cleanUiDataStore.edit { it[UI_SOUNDS] = on }
+    }
+
     /** True once the first-launch onboarding has been finished. */
     val onboarded: Flow<Boolean> = context.cleanUiDataStore.data.map { it[ONBOARDED] ?: false }
 
@@ -151,6 +158,7 @@ class CleanUiStore private constructor(private val context: Context) {
     companion object {
         private val ENABLED = booleanPreferencesKey("enabled")
         private val LED_SCHEME = intPreferencesKey("led_scheme")
+        private val UI_SOUNDS = booleanPreferencesKey("ui_sounds")
         private val DEFAULT_SETS = intPreferencesKey("default_sets")
         private val ONBOARDED = booleanPreferencesKey("onboarded")
         private val LAST_ACCOUNT = stringPreferencesKey("last_account")
