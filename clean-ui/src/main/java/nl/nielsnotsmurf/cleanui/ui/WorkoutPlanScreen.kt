@@ -34,6 +34,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
+import nl.nielsnotsmurf.cleanui.ui.components.Stepper
 import nl.nielsnotsmurf.cleanui.ui.components.cables
 
 /**
@@ -50,11 +51,12 @@ fun WorkoutPlanScreen(
     onRemove: (ExerciseCard) -> Unit,
     onBack: () -> Unit,
     onStart: () -> Unit,
-    sets: Int = WorkoutBuilder.SETS,
-    reps: Int = 10
+    onSets: (Int) -> Unit,
+    onReps: (Int) -> Unit,
+    onNudgeLoad: (lifterId: String, exercise: ExerciseCard, steps: Int) -> Unit
 ) {
     val lifters = state.activeLifters
-    val minutes = WorkoutBuilder.estimatedMinutes(workout.exercises.size, lifters.size, sets)
+    val minutes = WorkoutBuilder.estimatedMinutes(workout.exercises.size, lifters.size, workout.sets)
     val switches = WorkoutBuilder.equipmentSwitches(workout.exercises)
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -72,14 +74,18 @@ fun WorkoutPlanScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = CleanColors.Muted
             )
-            SectionLabel("Load: % of 1RM")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Stepper("Sets", workout.sets.toString(), onMinus = { onSets(workout.sets - 1) }, onPlus = { onSets(workout.sets + 1) }, Modifier.weight(1f))
+                Stepper("Reps", workout.reps.toString(), onMinus = { onReps(workout.reps - 1) }, onPlus = { onReps(workout.reps + 1) }, Modifier.weight(1f))
+            }
+            SectionLabel("Load: ${workout.percent}% of 1RM")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LoadCalculator.PERCENT_PRESETS.forEach { p ->
                     CleanFilterChip("$p%", selected = workout.percent == p, onClick = { onPercent(p) })
                 }
             }
             Text(
-                "$sets × $reps each (from Settings), ${WorkoutBuilder.REST_SECONDS}s rest. Without a 1RM, the last load used is taken.",
+                "${WorkoutBuilder.REST_SECONDS}s rest between sets. Without a 1RM, the last load used is taken. Tap − or + next to a load to change it.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CleanColors.Muted
             )
@@ -92,7 +98,7 @@ fun WorkoutPlanScreen(
                     SectionLabel(equipment)
                     lastEquipment = equipment
                 }
-                PlanRow(ex, state, lifters, loadFor, onSubstitute, onRemove)
+                PlanRow(ex, state, lifters, loadFor, onSubstitute, onRemove, onNudgeLoad)
             }
             if (workout.exercises.isEmpty()) {
                 Text("No exercises left. Go back to build a new workout.", style = MaterialTheme.typography.bodyMedium)
@@ -119,7 +125,8 @@ private fun PlanRow(
     lifters: List<UiLifter>,
     loadFor: (String, ExerciseCard) -> Float,
     onSubstitute: (ExerciseCard) -> Unit,
-    onRemove: (ExerciseCard) -> Unit
+    onRemove: (ExerciseCard) -> Unit,
+    onNudgeLoad: (String, ExerciseCard, Int) -> Unit
 ) {
     Column {
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -137,7 +144,11 @@ private fun PlanRow(
                 lifters.forEach { l ->
                     val orm = state.oneRepMax(l.id, ex.id)
                     val prefix = if (orm == null || orm.isEstimate) "~" else ""
-                    LoadText(prefix + LoadCalculator.format(loadFor(l.id, ex), state.unit), ex.cables, color = l.color)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { onNudgeLoad(l.id, ex, -1) }) { Text("−", color = CleanColors.Ink) }
+                        LoadText(prefix + LoadCalculator.format(loadFor(l.id, ex), state.unit), ex.cables, color = l.color)
+                        TextButton(onClick = { onNudgeLoad(l.id, ex, 1) }) { Text("+", color = CleanColors.Ink) }
+                    }
                 }
             }
         }

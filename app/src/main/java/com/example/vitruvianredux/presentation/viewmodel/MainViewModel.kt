@@ -1353,6 +1353,36 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Changes the load per cable before or at the start of a set. Before the set starts it is
+     * simply used when the set starts. During the warm-up reps the trainer gets the set again
+     * with the new load, so the warm-up starts over.
+     */
+    fun adjustWeightLive(weightPerCableKg: Float) {
+        val params = _workoutParameters.value.copy(weightPerCableKg = weightPerCableKg.coerceIn(0.5f, 100f))
+        _workoutParameters.value = params
+        val warmingUp = _workoutState.value is WorkoutState.Active && params.warmupReps > 0 &&
+            !params.isJustLift && !_isCurrentExerciseBodyweight.value && !repCounter.getRepCount().isWarmupComplete
+        if (!warmingUp) return
+        viewModelScope.launch {
+            repCounter.reset()
+            repCounter.configure(
+                warmupTarget = params.warmupReps,
+                workingTarget = params.reps,
+                isJustLift = false,
+                stopAtTop = params.stopAtTop,
+                isAMRAP = params.isAMRAP
+            )
+            _currentMetric.value?.let { metric ->
+                repCounter.setInitialBaseline(metric.positionA, metric.positionB)
+                _repRanges.value = repCounter.getRepRanges()
+            }
+            _repCount.value = repCounter.getRepCount()
+            val result = bleRepository.startWorkout(params)
+            if (result.isFailure) Timber.w("adjustWeightLive: resending the set failed: ${result.exceptionOrNull()?.message}")
+        }
+    }
+
     fun enableHandleDetection() {
         Timber.d("MainViewModel: Enabling handle detection for auto-start")
         bleRepository.enableHandleDetection()
@@ -1416,7 +1446,7 @@ class MainViewModel @Inject constructor(
             // Issue #218: Don't modify warmupReps in persisted state for bodyweight exercises.
             // Bodyweight exercises are just timers - no BLE commands, no rep counting.
             // Modifying warmupReps here would incorrectly carry over to subsequent cable exercises.
-            val params = _workoutParameters.value.copy(
+            var params = _workoutParameters.value.copy(
                 isJustLift = isJustLiftMode,
                 useAutoStart = if (isJustLiftMode) true else _workoutParameters.value.useAutoStart
                 // warmupReps intentionally NOT modified - preserve for subsequent cable exercises
@@ -1465,6 +1495,8 @@ class MainViewModel @Inject constructor(
                     _workoutState.value = WorkoutState.Countdown(i)
                     delay(1000)
                 }
+                // The load may have been changed during the countdown (adjustWeightLive).
+                params = params.copy(weightPerCableKg = _workoutParameters.value.weightPerCableKg)
             } else {
                 Timber.d(" SKIPPING COUNTDOWN - ${if (params.isJustLift) "Just Lift mode" else "Auto-advancing"}")
             }

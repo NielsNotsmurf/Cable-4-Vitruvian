@@ -112,6 +112,11 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-16:** Settings has a "Training load · % of 1RM" slider (default 60%) that every exercise and
+  built workout starts at. Built workouts let you change sets, reps and each lifter's load before you
+  start. While the trainer gets ready, counts down or does the warm-up reps you can change the weight
+  (during warm-up the warm-up restarts). The exercise video now loads in the background, so it plays
+  by the time the countdown starts.
 - **2026-10-16:** sounds everywhere: taps, screen changes and dialogs bop (Settings › Menu
   sounds), and the live workout and 1RM test now beep for countdown, reps, set done, records and
   end of rest (Settings › Workout beeps).

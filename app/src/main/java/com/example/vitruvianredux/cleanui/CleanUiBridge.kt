@@ -173,6 +173,7 @@ class CleanUiBridge(
     }
 
     override fun skipRest() = vm.skipRest()
+    override fun adjustLiveWeight(perCableKg: Float) = vm.adjustWeightLive(perCableKg)
     override fun proceedFromSummary() = vm.proceedFromSummary()
     override fun stopWorkout() = vm.stopWorkout()
     override fun advanceToNextExercise() = vm.advanceToNextExercise()
@@ -443,16 +444,22 @@ class CleanUiBridge(
     }
 
     override val settings: Flow<CleanSettings> =
-        combine(vm.userPreferences, store.defaultSets) { p, sets ->
+        combine(vm.userPreferences, store.defaultSets, store.defaultPercent) { p, sets, pct ->
             currentSets = sets
-            p.toCleanSettings().copy(defaultSets = sets)
+            currentPercent = pct
+            p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct)
         }
 
     private var currentSets = 3
+    private var currentPercent = 60
 
     override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
-        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets)
+        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent)
         val new = transform(old)
+        if (new.defaultPercent != old.defaultPercent) {
+            currentPercent = new.defaultPercent.coerceIn(30, 100)
+            scope.launch { store.setDefaultPercent(currentPercent) }
+        }
         if (new.defaultSets != old.defaultSets) {
             currentSets = new.defaultSets.coerceIn(1, 10)
             scope.launch { store.setDefaultSets(currentSets) }
