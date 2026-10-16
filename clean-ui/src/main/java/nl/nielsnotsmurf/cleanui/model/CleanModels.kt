@@ -183,6 +183,8 @@ data class CleanSettings(
     val defaultReps: Int = 10,
     /** Sets per exercise. Every set gets [defaultReps]; only the pre-workout screen changes them. */
     val defaultSets: Int = 3,
+    /** Training load as % of 1RM that every exercise and workout starts at. */
+    val defaultPercent: Int = 60,
     val autoplay: Boolean = true,
     val stopAtTop: Boolean = false,
     val beeps: Boolean = true,

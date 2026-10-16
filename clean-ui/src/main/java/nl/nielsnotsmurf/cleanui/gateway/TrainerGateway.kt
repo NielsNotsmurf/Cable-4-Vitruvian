@@ -97,6 +97,8 @@ interface TrainerGateway {
 
     /** Controls for the set on the trainer, used by the Clean lifting screen. */
     fun skipRest() {}
+    /** Changes the load per cable while the set gets ready, counts down or does its warm-up reps. */
+    fun adjustLiveWeight(perCableKg: Float) {}
     fun proceedFromSummary() {}
     fun stopWorkout() {}
     fun advanceToNextExercise() {}

@@ -21,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -156,6 +159,23 @@ fun SettingsScreen(
                 onMinus = { onUpdate { it.copy(defaultReps = (it.defaultReps - 1).coerceAtLeast(1)) } },
                 onPlus = { onUpdate { it.copy(defaultReps = (it.defaultReps + 1).coerceAtMost(50)) } },
                 modifier = Modifier.padding(vertical = 10.dp)
+            )
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
+                Text("Training load · % of 1RM", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text("${settings.defaultPercent}%", style = MaterialTheme.typography.titleLarge)
+            }
+            Slider(
+                value = settings.defaultPercent.toFloat(),
+                onValueChange = { v -> onUpdate { it.copy(defaultPercent = (v / 5f).roundToInt() * 5) } },
+                valueRange = 30f..100f,
+                steps = 13,
+                colors = SliderDefaults.colors(
+                    thumbColor = CleanColors.Accent,
+                    activeTrackColor = CleanColors.Accent,
+                    inactiveTrackColor = CleanColors.Line,
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent
+                )
             )
             Toggle("Autoplay", "Start the next set by itself after rest", settings.autoplay) { v -> onUpdate { it.copy(autoplay = v) } }
             Toggle("Stop at top", "End sets at the top of the last rep instead of the bottom", settings.stopAtTop) { v -> onUpdate { it.copy(stopAtTop = v) } }

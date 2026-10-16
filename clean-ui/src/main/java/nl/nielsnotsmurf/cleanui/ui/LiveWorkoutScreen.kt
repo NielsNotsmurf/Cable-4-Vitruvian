@@ -1,5 +1,11 @@
 package nl.nielsnotsmurf.cleanui.ui
 
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.roundToInt
+import nl.nielsnotsmurf.cleanui.ui.components.Stepper
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -70,6 +76,10 @@ import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 
+/** Before the working reps: getting ready, counting down or doing the warm-up reps. */
+private fun LiveWorkout.isGettingReady(): Boolean =
+    phase == LivePhase.STARTING || phase == LivePhase.COUNTDOWN || (phase == LivePhase.LIFTING && !warmupDone)
+
 /** True when the Clean lifting screen can show [live]; anything else goes to the classic screen. */
 fun LiveWorkout?.isCleanReady(): Boolean = this != null && phase != LivePhase.OTHER && !bodyweight
 
@@ -94,7 +104,8 @@ fun LiveWorkoutScreen(
     onNextExercise: () -> Unit,
     onStop: () -> Unit,
     onDone: () -> Unit,
-    guide: ExerciseGuide? = null
+    guide: ExerciseGuide? = null,
+    onAdjustWeight: (Float) -> Unit = {}
 ) {
     val fmt = { kg: Float -> LoadCalculator.format(kg, unit) }
     var confirmStop by remember { mutableStateOf(false) }
@@ -147,12 +158,21 @@ fun LiveWorkoutScreen(
                     .clip(RoundedCornerShape(14.dp)).background(CleanColors.Accent).padding(12.dp)
             )
         }
-        // The exercise demo plays while the trainer gets ready, counts down and during warm-up reps.
+        // The exercise demo shows while the trainer gets ready, counts down and during warm-up reps.
+        // It stays composed (folded away) the rest of the time, so the clip is already loaded and
+        // playing when it's shown instead of starting to buffer when the countdown begins.
         val videoUrl = guide?.videoUrl
-        val showVideo = videoUrl != null && (live.phase == LivePhase.STARTING || live.phase == LivePhase.COUNTDOWN ||
-            (live.phase == LivePhase.LIFTING && !live.warmupDone))
-        AnimatedVisibility(visible = showVideo) {
-            if (videoUrl != null) DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp, vertical = 8.dp), guide?.thumbnailUrl)
+        if (videoUrl != null) {
+            val shown by animateFloatAsState(if (live.isGettingReady()) 1f else 0f, tween(250), label = "video")
+            Box(
+                Modifier.fillMaxWidth().clipToBounds().layout { measurable, constraints ->
+                    val p = measurable.measure(constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+                    val h = (p.height * shown).roundToInt()
+                    layout(p.width, h) { p.place(0, 0) }
+                }
+            ) {
+                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp, vertical = 8.dp), guide?.thumbnailUrl)
+            }
         }
         AnimatedContent(
             targetState = live.phase,
@@ -185,6 +205,16 @@ fun LiveWorkoutScreen(
                 }
                 LivePhase.LIFTING, LivePhase.COUNTDOWN -> GhostButton("End set", onClick = { confirmStop = true })
                 else -> Unit
+            }
+            if (live.isGettingReady() && !attemptMode) {
+                // kg moves in 0.5 kg steps, lb in whole pounds.
+                val step = if (unit == WeightUnit.LB) 0.45359f else 0.5f
+                Stepper(
+                    if (live.phase == LivePhase.LIFTING) "Weight per cable · warm-up restarts" else "Weight per cable",
+                    fmt(live.loadKg),
+                    onMinus = { onAdjustWeight((live.loadKg - step).coerceAtLeast(0.5f)) },
+                    onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) }
+                )
             }
         }
     }

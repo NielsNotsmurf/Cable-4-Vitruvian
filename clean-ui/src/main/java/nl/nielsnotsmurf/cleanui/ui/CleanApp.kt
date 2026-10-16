@@ -411,8 +411,9 @@ private fun SignedInApp(
                             onSubstitute = vm::substituteInWorkout,
                             onRemove = vm::removeFromWorkout,
                             onBack = { nav.popBackStack() },
-                            sets = settings.defaultSets,
-                            reps = settings.defaultReps,
+                            onSets = vm::setWorkoutSets,
+                            onReps = vm::setWorkoutReps,
+                            onNudgeLoad = vm::nudgeWorkoutLoad,
                             onStart = {
                                 vm.startBuiltWorkout {
                                     nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }
@@ -480,6 +481,12 @@ private fun SignedInApp(
                         gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
                     }
                     val l = live
+                    // Load the demo as soon as the exercise is known, so it's ready by the countdown.
+                    val card = state.exercises.firstOrNull { it.name == l?.exerciseName }
+                    val guide by produceState<ExerciseGuide?>(null, card?.id, settings.videos) {
+                        value = if (card == null || !settings.videos) null
+                        else runCatching { gateway.exerciseGuide(card.id) }.getOrNull()
+                    }
                     // A 1RM attempt is running while the test is open underneath.
                     val attemptMode = test != null
                     // Leave only once: the screen stays composed while it animates out, and a
@@ -496,11 +503,6 @@ private fun SignedInApp(
                     } else if (l == null || !l.isCleanReady()) {
                         activeWorkoutContent(nav)
                     } else {
-                        val card = state.exercises.firstOrNull { it.name == l.exerciseName }
-                        val guide by produceState<ExerciseGuide?>(null, card?.id, settings.videos) {
-                            value = if (card == null || !settings.videos) null
-                            else runCatching { gateway.exerciseGuide(card.id) }.getOrNull()
-                        }
                         LiveWorkoutScreen(
                             live = l,
                             unit = state.unit,
@@ -515,7 +517,8 @@ private fun SignedInApp(
                             onNextExercise = gateway::advanceToNextExercise,
                             onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
                             onDone = done,
-                            guide = guide
+                            guide = guide,
+                            onAdjustWeight = gateway::adjustLiveWeight
                         )
                     }
                 }

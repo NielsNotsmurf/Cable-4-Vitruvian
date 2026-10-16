@@ -100,7 +100,11 @@ data class BuiltWorkout(
     val groups: List<String>,
     val minutes: Int,
     val exercises: List<ExerciseCard>,
-    val percent: Int = 75,
+    val percent: Int = 60,
+    val sets: Int = 3,
+    val reps: Int = 10,
+    /** "lifterId::exerciseId" -> load set by hand on the plan screen. */
+    val overridesKg: Map<String, Float> = emptyMap(),
     /** "lifterId::exerciseId" -> load used last time, for exercises without a 1RM. */
     val lastUsedKg: Map<String, Float> = emptyMap(),
     val isStarting: Boolean = false,
@@ -234,6 +238,7 @@ class CleanViewModel(
 
     private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
     private val defaultSets: Int get() = settings.value.defaultSets.coerceIn(1, 10)
+    private val defaultPercent: Int get() = settings.value.defaultPercent.coerceIn(30, 100)
 
     /** Sets and reps always come from Settings, never from what was done last time. */
     private fun defaultSetList(rest: Int = 90) = List(defaultSets) { SetSpec(reps = defaultReps, restSeconds = rest) }
@@ -284,6 +289,7 @@ class CleanViewModel(
         _setup.value = SetupState(
             exercise = exercise,
             sets = defaultSetList(),
+            percent = defaultPercent,
             durationSeconds = if (exercise.isBodyweight) 30 else null
         )
         viewModelScope.launch {
@@ -305,10 +311,6 @@ class CleanViewModel(
         viewModelScope.launch {
             val guide = runCatching { gateway.exerciseGuide(exercise.id) }.getOrNull()?.respectVideoSetting() ?: return@launch
             _setup.update { if (it?.exercise?.id == exercise.id) it.copy(guide = guide) else it }
-        }
-        viewModelScope.launch {
-            val pct = store.lastPercent(exercise.id).first()
-            if (pct != null) _setup.update { it?.copy(percent = pct) }
         }
         viewModelScope.launch {
             val last = state.value.activeLifters.mapNotNull { l ->
@@ -403,7 +405,7 @@ class CleanViewModel(
         val s = state.value
         val count = WorkoutBuilder.exerciseCount(minutes, s.activeLifters.size, groups.size, defaultSets)
         val exercises = WorkoutBuilder.build(s.exercises, groups, count, ::builderScore)
-        _workout.value = BuiltWorkout(groups, minutes, exercises)
+        _workout.value = BuiltWorkout(groups, minutes, exercises, percent = defaultPercent, sets = defaultSets, reps = defaultReps)
         exercises.forEach(::prepareWorkoutExercise)
     }
 
@@ -422,7 +424,20 @@ class CleanViewModel(
     fun removeFromWorkout(exercise: ExerciseCard) =
         _workout.update { w -> w?.copy(exercises = w.exercises.filterNot { it.id == exercise.id }, error = null) }
 
-    fun setWorkoutPercent(percent: Int) = _workout.update { it?.copy(percent = percent.coerceIn(30, 100)) }
+    /** A new % replaces loads set by hand, as on the single-exercise screen. */
+    fun setWorkoutPercent(percent: Int) = _workout.update { it?.copy(percent = percent.coerceIn(30, 100), overridesKg = emptyMap()) }
+
+    fun setWorkoutSets(sets: Int) = _workout.update { it?.copy(sets = sets.coerceIn(1, 10)) }
+
+    fun setWorkoutReps(reps: Int) = _workout.update { it?.copy(reps = reps.coerceIn(1, 50)) }
+
+    /** Moves one lifter's load for one exercise by [steps] of [LoadCalculator.STEP_KG]. */
+    fun nudgeWorkoutLoad(lifterId: String, exercise: ExerciseCard, steps: Int) = _workout.update { w ->
+        w ?: return@update null
+        val kg = (workoutLoad(lifterId, exercise, w) + steps * LoadCalculator.STEP_KG)
+            .coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG)
+        w.copy(overridesKg = w.overridesKg + (relatedKey(lifterId, exercise.id) to kg))
+    }
 
     private fun prepareWorkoutExercise(exercise: ExerciseCard) {
         requestEstimates(exercise)
@@ -436,6 +451,7 @@ class CleanViewModel(
 
     /** A lifter's load in the workout: % of their 1RM, else what they used last time. */
     fun workoutLoad(lifterId: String, exercise: ExerciseCard, w: BuiltWorkout): Float {
+        w.overridesKg[relatedKey(lifterId, exercise.id)]?.let { return it }
         val orm = state.value.oneRepMax(lifterId, exercise.id)
         return if (orm != null) LoadCalculator.loadForPercent(orm.kg, w.percent)
         else w.lastUsedKg[relatedKey(lifterId, exercise.id)] ?: DEFAULT_LOAD_KG
@@ -448,7 +464,7 @@ class CleanViewModel(
             _workout.update { it?.copy(error = if (lifters.isEmpty()) "Choose who's training first." else "Add an exercise first.") }
             return
         }
-        val sets = defaultSetList(WorkoutBuilder.REST_SECONDS)
+        val sets = List(w.sets) { SetSpec(reps = w.reps, restSeconds = WorkoutBuilder.REST_SECONDS) }
         val plans = w.exercises.map { ex ->
             SetPlan(
                 exercise = ex,

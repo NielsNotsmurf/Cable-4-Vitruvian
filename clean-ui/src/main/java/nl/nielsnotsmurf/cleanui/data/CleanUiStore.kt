@@ -94,6 +94,13 @@ class CleanUiStore private constructor(private val context: Context) {
         context.cleanUiDataStore.edit { it[DEFAULT_SETS] = sets.coerceIn(1, 10) }
     }
 
+    /** Training % of 1RM from Settings; 60 until changed. */
+    val defaultPercent: Flow<Int> = context.cleanUiDataStore.data.map { it[DEFAULT_PERCENT] ?: 60 }
+
+    suspend fun setDefaultPercent(percent: Int) {
+        context.cleanUiDataStore.edit { it[DEFAULT_PERCENT] = percent.coerceIn(30, 100) }
+    }
+
     /** Index into the gateway's LED schemes, or null when none was picked yet. */
     val ledScheme: Flow<Int?> = context.cleanUiDataStore.data.map { it[LED_SCHEME] }
 
@@ -160,6 +167,7 @@ class CleanUiStore private constructor(private val context: Context) {
         private val LED_SCHEME = intPreferencesKey("led_scheme")
         private val UI_SOUNDS = booleanPreferencesKey("ui_sounds")
         private val DEFAULT_SETS = intPreferencesKey("default_sets")
+        private val DEFAULT_PERCENT = intPreferencesKey("default_percent")
         private val ONBOARDED = booleanPreferencesKey("onboarded")
         private val LAST_ACCOUNT = stringPreferencesKey("last_account")
         private const val PIN_PREFIX = "pin|"
