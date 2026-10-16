@@ -109,6 +109,9 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-16:** new Train home: one dark "Build a workout" card as the main action, then One
+  exercise / Just Lift, "Do again" chips and one 1RM card (test + re-tests). The separate muscle
+  groups screen and duplicate buttons are gone.
 - **2026-10-16:** workout builder by muscle group and time, with equipment-aware swaps. Reps per
   set come from Settings, and only the 1RM test changes a tested 1RM (normal sets no longer do).
   The body map shows chest and back 1RMs as total load (both cables).

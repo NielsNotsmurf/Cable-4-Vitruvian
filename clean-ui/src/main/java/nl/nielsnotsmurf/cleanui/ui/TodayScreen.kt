@@ -3,6 +3,8 @@ package nl.nielsnotsmurf.cleanui.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -48,11 +49,10 @@ import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
+import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.ConnectionPill
 import nl.nielsnotsmurf.cleanui.ui.components.Dot
-import nl.nielsnotsmurf.cleanui.ui.components.ExerciseRow
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
-import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import nl.nielsnotsmurf.cleanui.ui.components.Tile
 import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
@@ -65,8 +65,8 @@ private const val DAY_MS = 24 * 60 * MINUTE_MS
 
 /**
  * The home screen: who's training, the training going on now (everything done with less than
- * five hours between exercises), live heart rate, the 1RMs most due for a re-test, and recent
- * exercises.
+ * five hours between exercises), live heart rate, then one main action (build a workout from
+ * muscle groups), one exercise or Just Lift, recent exercises to do again, and the 1RMs.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -78,7 +78,7 @@ fun TodayScreen(
     onPickExercise: () -> Unit,
     onJustLift: () -> Unit,
     onOpenExercise: (ExerciseCard) -> Unit,
-    onMuscleGroups: () -> Unit,
+    onBuild: (groups: List<String>, minutes: Int) -> Unit,
     onAssessment: () -> Unit,
     onManageProfiles: () -> Unit,
     onRetest: (lifterId: String, exerciseId: String) -> Unit,
@@ -167,31 +167,42 @@ fun TodayScreen(
         }
 
         item {
-            PrimaryButton(
-                if (session.isEmpty()) "Pick an exercise" else "Add an exercise",
-                onClick = onPickExercise,
-                accent = true,
-                modifier = Modifier.tourTarget(TourTargets.PICK_EXERCISE)
-            )
+            WorkoutBuilderCard(state, onBuild, Modifier.tourTarget(TourTargets.PICK_EXERCISE))
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.weight(2f).tourTarget(TourTargets.TILES), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
-                    Tile("Muscle groups", "Browse by area", onMuscleGroups, Modifier.weight(1f))
-                }
-                Tile("1RM test", "Find your max", onAssessment, Modifier.weight(1f).tourTarget(TourTargets.ONE_RM_TEST))
+            Row(Modifier.tourTarget(TourTargets.TILES), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Tile("One exercise", "Search the library", onPickExercise, Modifier.weight(1f))
+                Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
             }
         }
 
-        if (standing.isNotEmpty()) {
-            item { SectionLabel("Due for a re-test", Modifier.padding(top = 8.dp)) }
+        if (state.recentExercises.isNotEmpty()) {
             item {
-                Card {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("Do again")
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.recentExercises.forEach { ex ->
+                            LaunchedEffect(ex.id, active) { onRowShown(ex) }
+                            CleanFilterChip(ex.name, selected = false, onClick = { onOpenExercise(ex) })
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(Modifier.tourTarget(TourTargets.ONE_RM_TEST)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Your 1RMs", Modifier.weight(1f))
+                    SmallButton("1RM test", filled = true, onClick = onAssessment)
+                }
+                if (standing.isEmpty()) {
                     Text(
-                        "Your oldest 1RMs. Run them again to see if they still stand.",
+                        "No tested 1RMs yet. The test sets each lifter's max, and every load follows from it.",
                         style = MaterialTheme.typography.bodySmall
                     )
+                } else {
+                    Text("Due for a re-test: your oldest 1RMs.", style = MaterialTheme.typography.bodySmall)
                     standing.forEach { r ->
                         val exercise = exercisesById[r.exerciseId] ?: return@forEach
                         val lifter = liftersById[r.lifterId]
@@ -206,21 +217,6 @@ fun TodayScreen(
                         )
                     }
                 }
-            }
-        }
-
-        if (state.recentExercises.isNotEmpty()) {
-            item { SectionLabel("Recent", Modifier.padding(top = 8.dp)) }
-            items(state.recentExercises, key = { it.id }) { ex ->
-                LaunchedEffect(ex.id, active) { onRowShown(ex) }
-                ExerciseRow(
-                    exercise = ex,
-                    subtitle = listOf(ex.equipment, ex.muscleGroup).filter { it.isNotBlank() }.joinToString(" · "),
-                    lifters = state.activeLifters,
-                    oneRepMaxFor = { id -> state.oneRepMax(id, ex.id) },
-                    unit = state.unit,
-                    onClick = { onOpenExercise(ex) }
-                )
             }
         }
         item { Spacer(Modifier.height(32.dp)) }
