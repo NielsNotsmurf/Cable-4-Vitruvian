@@ -28,7 +28,7 @@ Android status:
 | Heart rate in history (avg / max per set) | History cards | History rows and workout detail | Clean |
 | Per-lifter 1RM next to exercises | — (new) | Exercise rows, recent list | Clean |
 | Single exercise with full config | Single Exercise | Train → Pick an exercise → Set setup | Clean |
-| Train by muscle group | Muscle Group Training | Train → Muscle groups | Clean |
+| Train by muscle group | Muscle Group Training | Train → Muscle groups (build a workout from groups + time, or pick one exercise) | Clean |
 | Exercise search, muscle/equipment filters | Exercise picker | Exercises tab (also Train → Pick an exercise) | Clean |
 | Favourites + "favourites only" | Exercise picker | ★ on rows, Favourites chip | Clean |
 | Exercise video demos | Exercise picker / config | ▶ on rows and in Set setup | Clean (▶ in Set setup and the 1RM test, played in the app) |

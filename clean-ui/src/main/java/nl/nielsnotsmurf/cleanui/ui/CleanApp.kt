@@ -90,6 +90,7 @@ object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
     const val MUSCLE_GROUPS = "clean_muscle_groups"
+    const val WORKOUT_PLAN = "clean_workout_plan"
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
     const val SETTINGS = "clean_settings"
@@ -241,6 +242,7 @@ private fun SignedInApp(
     val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
     val test by vm.test.collectAsStateWithLifecycle()
+    val builtWorkout by vm.workout.collectAsStateWithLifecycle()
     val history by vm.visibleHistory.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
@@ -384,8 +386,33 @@ private fun SignedInApp(
                         state = state,
                         onBack = { nav.popBackStack() },
                         onRegion = { nav.navigate("${CleanRoutes.EXERCISES}?region=${Uri.encode(it)}") },
+                        onBuild = { groups, minutes ->
+                            vm.buildWorkout(groups, minutes)
+                            nav.navigate(CleanRoutes.WORKOUT_PLAN)
+                        },
                         onTestOneRepMax = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) }
                     )
+                }
+                composable(CleanRoutes.WORKOUT_PLAN) {
+                    val w = builtWorkout
+                    if (w == null) {
+                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.WORKOUT_PLAN, inclusive = true) }
+                    } else {
+                        WorkoutPlanScreen(
+                            state = state,
+                            workout = w,
+                            loadFor = { id, ex -> vm.workoutLoad(id, ex, w) },
+                            onPercent = vm::setWorkoutPercent,
+                            onSubstitute = vm::substituteInWorkout,
+                            onRemove = vm::removeFromWorkout,
+                            onBack = { nav.popBackStack() },
+                            onStart = {
+                                vm.startBuiltWorkout {
+                                    nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }
+                                }
+                            }
+                        )
+                    }
                 }
                 composable(CleanRoutes.SETUP) {
                     val s = setup

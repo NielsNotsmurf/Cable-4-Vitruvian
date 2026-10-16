@@ -2399,8 +2399,10 @@ class MainViewModel @Inject constructor(
             saveSingleExerciseDefaultsFromWorkout(effectiveProfileId)
         }
 
-        // For multi-participant single exercise mode: auto-load next performer's defaults
-        if (participants.size > 1 && isSingleExerciseMode() && !params.isJustLift) {
+        // For multi-participant single exercise mode (and Clean UI workouts): auto-load next performer's defaults
+        val usesPerLifterDefaults = isSingleExerciseMode() ||
+            _loadedRoutine.value?.id?.startsWith(CLEAN_WORKOUT_PREFIX) == true
+        if (participants.size > 1 && usesPerLifterDefaults && !params.isJustLift) {
             val nextIndex = _currentParticipantIndex.value
             val nextPerformer = participants[nextIndex % participants.size]
             val exerciseId = params.selectedExerciseId
@@ -2688,6 +2690,8 @@ class MainViewModel @Inject constructor(
 
         // Only save for temp single exercise routines, not for regular routines
         if (!routine.id.startsWith(TEMP_SINGLE_EXERCISE_PREFIX)) return
+        // A 1RM attempt (3 reps) must not become the exercise's normal set setup.
+        if (routine.id.startsWith(ONE_REP_MAX_ATTEMPT_PREFIX)) return
 
         val currentExercise = routine.exercises.getOrNull(_currentExerciseIndex.value) ?: return
         val exerciseId = currentExercise.exercise.id ?: return
@@ -3217,6 +3221,10 @@ class MainViewModel @Inject constructor(
 
         /** Prefix for temporary routines created in Single Exercise mode */
         const val TEMP_SINGLE_EXERCISE_PREFIX = "temp_single_exercise_"
+        /** Workouts built in the Clean UI: several exercises, loads per lifter from their defaults. */
+        const val CLEAN_WORKOUT_PREFIX = "clean_workout_"
+        /** A Clean UI 1RM attempt; still single-exercise mode, but saves no exercise defaults. */
+        const val ONE_REP_MAX_ATTEMPT_PREFIX = "${TEMP_SINGLE_EXERCISE_PREFIX}1rm_"
     }
 }
 

@@ -66,6 +66,9 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
   until you test it. The ratios are in `clean-ui/src/main/assets/one_rep_max_map.json`.
 - **All trainer modes:** Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo, with
   per-set reps, weights, rest, AMRAP and timed sets.
+- **Workout builder:** pick one or more muscle groups and a time, and the app builds the
+  workout with each lifter's % of 1RM. Swap any exercise for one on other equipment; exercises
+  on the same equipment sit next to each other so you switch as little as possible.
 - **Exercise library:** search, muscle and equipment filters, favourites and video demos.
 - **Live heart rate:** pair a Garmin watch broadcast or a chest strap per lifter. HR shows
   during a set and in history.
@@ -106,6 +109,9 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-16:** workout builder by muscle group and time, with equipment-aware swaps. Reps per
+  set come from Settings, and only the 1RM test changes a tested 1RM (normal sets no longer do).
+  The body map shows chest and back 1RMs as total load (both cables).
 - **2026-10-14:** the body map shows each region's best 1RM as total load (both cables), and the
   1RM list shows totals with the per-cable load next to them.
 - **2026-10-14:** estimated 1RMs for 362 exercises, scaled from your tested lifts.
