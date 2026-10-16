@@ -65,7 +65,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
-import android.net.Uri
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
@@ -89,7 +88,6 @@ import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
-    const val MUSCLE_GROUPS = "clean_muscle_groups"
     const val WORKOUT_PLAN = "clean_workout_plan"
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
@@ -313,7 +311,10 @@ private fun SignedInApp(
                         onPickExercise = { openTab(CleanRoutes.EXERCISES) },
                         onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
                         onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                        onMuscleGroups = { nav.navigate(CleanRoutes.MUSCLE_GROUPS) },
+                        onBuild = { groups, minutes ->
+                            vm.buildWorkout(groups, minutes)
+                            nav.navigate(CleanRoutes.WORKOUT_PLAN)
+                        },
                         onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
                         onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
                         onRetest = { lifterId, exerciseId ->
@@ -379,18 +380,6 @@ private fun SignedInApp(
                         onAdd = vm::addLifter,
                         onDelete = { id -> withPin(id, "To delete this profile", true) { vm.deleteLifter(id) } },
                         onHeartRate = onHeartRate?.let { open -> { id: String -> withPin(id, "To pair a heart rate sensor", false) { open(id) } } }
-                    )
-                }
-                composable(CleanRoutes.MUSCLE_GROUPS) {
-                    MuscleGroupsScreen(
-                        state = state,
-                        onBack = { nav.popBackStack() },
-                        onRegion = { nav.navigate("${CleanRoutes.EXERCISES}?region=${Uri.encode(it)}") },
-                        onBuild = { groups, minutes ->
-                            vm.buildWorkout(groups, minutes)
-                            nav.navigate(CleanRoutes.WORKOUT_PLAN)
-                        },
-                        onTestOneRepMax = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) }
                     )
                 }
                 composable(CleanRoutes.WORKOUT_PLAN) {

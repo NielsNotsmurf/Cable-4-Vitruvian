@@ -51,15 +51,15 @@ object AppTour {
         ),
         TourStep(
             CleanRoutes.TRAIN, TourTargets.PICK_EXERCISE,
-            "Start a set",
-            "Pick an exercise to open Set setup. Choose a mode, sets and reps; the load starts at a " +
-                "% of each lifter's 1RM, shown next to every exercise."
+            "Build a workout",
+            "Pick one or more muscle groups and how long you have. The app picks the exercises, keeps " +
+                "the same equipment together and loads each lifter at a % of their 1RM. Swap any exercise."
         ),
         TourStep(
             CleanRoutes.TRAIN, TourTargets.TILES,
-            "Just Lift and muscle groups",
-            "Just Lift starts the trainer straight away with no plan. Muscle groups lists exercises " +
-                "by body area."
+            "One exercise or Just Lift",
+            "One exercise opens the library and Set setup for a single lift. Just Lift starts the " +
+                "trainer straight away with no plan."
         ),
         TourStep(
             CleanRoutes.TRAIN, TourTargets.ONE_RM_TEST,
