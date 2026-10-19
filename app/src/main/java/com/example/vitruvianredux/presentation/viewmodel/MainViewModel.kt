@@ -146,7 +146,7 @@ class MainViewModel @Inject constructor(
     val workoutHistory: StateFlow<List<WorkoutSession>> = _workoutHistory.asStateFlow()
 
     // Top Bar Title State
-    private val _topBarTitle = MutableStateFlow("vitruvian-")
+    private val _topBarTitle = MutableStateFlow("Cable")
     val topBarTitle: StateFlow<String> = _topBarTitle.asStateFlow()
 
     fun updateTopBarTitle(title: String) {

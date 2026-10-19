@@ -145,9 +145,9 @@ fun EnhancedMainScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            // Subtitle - always show "vitruvian-"
+                            // Subtitle - always show "Cable"
                             Text(
-                                text = "vitruvian-",
+                                text = "Cable",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     brush = Brush.linearGradient(
                                         colors = listOf(

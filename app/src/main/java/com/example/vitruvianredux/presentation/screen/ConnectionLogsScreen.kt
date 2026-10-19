@@ -236,9 +236,9 @@ fun ConnectionLogsScreen(
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_SUBJECT, "vitruvian- connection logs")
+                                putExtra(Intent.EXTRA_SUBJECT, "Cable connection logs")
                                 putExtra(Intent.EXTRA_TEXT,
-                                    "Attached are my vitruvian- connection logs.\n\n" +
+                                    "Attached are my Cable connection logs.\n\n" +
                                     "Device Model: ${android.os.Build.MODEL}\n" +
                                     "Android Version: ${android.os.Build.VERSION.RELEASE}\n\n" +
                                     "Description of issue:\n" +

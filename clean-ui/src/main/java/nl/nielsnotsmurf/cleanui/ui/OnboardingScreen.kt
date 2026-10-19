@@ -1,6 +1,7 @@
 package nl.nielsnotsmurf.cleanui.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +39,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -141,9 +146,9 @@ private fun Headline(title: String, body: String) {
 
 @Composable
 private fun Welcome() {
-    Text("V-", fontSize = 56.sp, fontWeight = FontWeight.Black, color = CleanColors.Ink)
+    CableMark(Modifier.size(72.dp))
     Spacer(Modifier.height(12.dp))
-    Headline("Welcome to vitruvian-", "Train on your Vitruvian Trainer, straight from your phone.")
+    Headline("Welcome to Cable", "Train on your Vitruvian V-Form or Trainer+, straight from your phone.")
     Point("Up to 4 people", "Train together. Sets rotate between you.")
     Point("Loads from your 1RM", "Every exercise starts at a % of your own max.")
     Point("Live heart rate", "From your Garmin watch or a chest strap.")
@@ -293,7 +298,7 @@ internal fun HeartRateSteps() {
         "On your Garmin, open the controls menu (hold the top button) and tap Broadcast Heart Rate. " +
             "On older watches: Settings → Sensors and Accessories → Wrist Heart Rate → Broadcast Heart Rate.",
         "Keep the watch close to the phone. It keeps broadcasting until you stop it.",
-        "In vitruvian-, go to Settings → Profiles and heart rate, tap ♥ on your profile and pick your watch.",
+        "In Cable, go to Settings → Profiles and heart rate, tap ♥ on your profile and pick your watch.",
         "A chest strap (Polar, Wahoo, Garmin HRM) works the same: put it on and pick it from the list."
     )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -371,3 +376,19 @@ fun LockScreen(
     }
 }
 
+
+/** The Cable mark: a cable wrapped round a pulley, pulled taut to a red handle (same shape as the launcher icon). */
+@Composable
+private fun CableMark(modifier: Modifier = Modifier) {
+    val ink = CleanColors.Ink
+    val accent = CleanColors.Accent
+    Canvas(modifier) {
+        val u = size.width / 108f
+        val stroke = Stroke(width = 7f * u, cap = StrokeCap.Round)
+        drawArc(ink, startAngle = 90f, sweepAngle = 225f, useCenter = false,
+            topLeft = Offset(30f * u, 34f * u), size = Size(32f * u, 32f * u), style = stroke)
+        drawLine(ink, Offset(46f * u, 66f * u), Offset(76f * u, 66f * u), 7f * u, StrokeCap.Round)
+        drawCircle(ink, radius = 3.5f * u, center = Offset(46f * u, 50f * u))
+        drawLine(accent, Offset(82f * u, 56f * u), Offset(82f * u, 76f * u), 7f * u, StrokeCap.Round)
+    }
+}

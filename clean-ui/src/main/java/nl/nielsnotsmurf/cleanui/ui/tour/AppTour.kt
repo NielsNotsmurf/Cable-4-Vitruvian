@@ -33,7 +33,7 @@ object AppTour {
     val steps: List<TourStep> = listOf(
         TourStep(
             CleanRoutes.TRAIN, null,
-            "Welcome to vitruvian-",
+            "Welcome to Cable",
             "A quick look around. Tap Next to go on, or Skip tour to start straight away. " +
                 "You can watch it again from Settings."
         ),

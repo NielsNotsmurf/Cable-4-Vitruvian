@@ -96,5 +96,5 @@ jobs:
         run: |
           gh release create "v${APP_VERSION_NAME}" dist/*.apk \
             --target "$GITHUB_SHA" \
-            --title "vitruvian- ${APP_VERSION_NAME}" \
+            --title "Cable ${APP_VERSION_NAME}" \
             --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"

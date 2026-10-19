@@ -942,7 +942,7 @@ fun SettingsTab(
             }
             Spacer(modifier = Modifier.height(Spacing.small))
             Text(
-                "vitruvian- is a personal build based on the open-source, MIT-licensed Vitruvian Project Phoenix Android app.",
+                "Cable is an unofficial app, not affiliated with Vitruvian. It is based on the open-source, MIT-licensed Vitruvian Project Phoenix Android app.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1669,7 +1669,7 @@ fun SettingsTab(
                 Text("Build: ${com.example.vitruvianredux.BuildConfig.BUILD_TYPE_LABEL}", color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(Spacing.small))
                 Text(
-                    "vitruvian-: a minimal, personal app for training on a Vitruvian Trainer, fully offline.",
+                    "Cable: a minimal, unofficial app for training on a Vitruvian V-Form or Trainer+, fully offline. Not affiliated with Vitruvian.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

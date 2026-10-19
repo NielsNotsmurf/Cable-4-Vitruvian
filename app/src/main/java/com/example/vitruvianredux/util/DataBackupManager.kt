@@ -151,7 +151,7 @@ class DataBackupManager @Inject constructor(
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                     put(MediaStore.Downloads.MIME_TYPE, "application/json")
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/vitruvian-")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/Cable")
                 }
                 val resolver = context.contentResolver
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -162,7 +162,7 @@ class DataBackupManager @Inject constructor(
                 @Suppress("DEPRECATION")
                 val downloadsDir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "vitruvian-"
+                    "Cable"
                 )
                 downloadsDir.mkdirs()
                 val file = File(downloadsDir, fileName)
