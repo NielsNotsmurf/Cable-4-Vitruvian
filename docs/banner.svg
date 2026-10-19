@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
   <rect width="1200" height="360" rx="24" fill="#000"/>
-  <g fill="none" stroke="#fff" stroke-width="22" stroke-linecap="square">
-    <path d="M150,110 L200,216 L250,110" stroke-linejoin="miter"/>
-    <path d="M276,184 L306,184"/>
+  <g transform="translate(96,70) scale(2.3)" fill="none" stroke-width="7" stroke-linecap="round">
+    <path d="M57.31,38.69 A16,16 0 1,0 46,66 L76,66" stroke="#fff"/>
+    <circle cx="46" cy="50" r="3.5" fill="#fff" stroke="none"/>
+    <path d="M82,56 L82,76" stroke="#E5252A"/>
   </g>
-  <text x="380" y="190" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="-2">vitruvian-</text>
-  <text x="384" y="248" fill="#bbb" font-family="Helvetica, Arial, sans-serif" font-size="30">Free, offline Android app for the Vitruvian Trainer</text>
+  <text x="380" y="190" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="-2">Cable</text>
+  <text x="384" y="248" fill="#bbb" font-family="Helvetica, Arial, sans-serif" font-size="30">For Vitruvian V-Form &amp; Trainer+ · unofficial, free, offline</text>
 </svg>

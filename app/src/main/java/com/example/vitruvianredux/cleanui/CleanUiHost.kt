@@ -156,7 +156,7 @@ private fun BluetoothPermissionPrompt(onAllow: () -> Unit) {
     ) {
         Text("Connect your trainer", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F1217))
         Text(
-            "vitruvian- needs Bluetooth access to find and control your trainer. Nothing leaves your phone.",
+            "Cable needs Bluetooth access to find and control your trainer. Nothing leaves your phone.",
             fontSize = 16.sp,
             color = Color(0xFF6B7280)
         )

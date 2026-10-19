@@ -277,7 +277,7 @@ fun TrainByMuscleGroupCard(onClick: () -> Unit) {
                         color = Color.White
                     )
                     Text(
-                        text = "Browse exercises — vitruvian- suggests weights",
+                        text = "Browse exercises — Cable suggests weights",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.85f)
                     )

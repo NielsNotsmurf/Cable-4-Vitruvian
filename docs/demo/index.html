@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>vitruvian- Preview</title>
+<title>Cable Preview</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 /* The page around the phone follows the viewer's theme. The app inside follows its own Theme setting (Light by default). */
@@ -10,8 +10,8 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#0E1116;--page-ink:#EEF1F5;--page-muted:#9AA3B0;color-scheme:dark}}
 :root[data-theme="dark"]{--page:#0E1116;--page-ink:#EEF1F5;--page-muted:#9AA3B0;color-scheme:dark}
-.device{--bg:#FFFFFF;--soft:#F3F4F6;--card:#FFFFFF;--ink:#0F1217;--on-ink:#FFFFFF;--muted:#6B7280;--line:#E7E9ED;--accent:#FF5A1F;--accent-soft:#FFE9E0;--accent-ink:#C2410C;--ok:#12805C;--ok-soft:#E3F4EC;--danger:#DC2626;--danger-soft:#FDECEC;color-scheme:light}
-.device.dark{--bg:#0F1217;--soft:#1A1F27;--card:#242B36;--ink:#F3F4F6;--on-ink:#0F1217;--muted:#9AA3B0;--line:#2A303A;--accent-soft:#3A2116;--accent-ink:#FF9A6B;--ok:#34C38F;--ok-soft:#14302A;--danger:#F87171;--danger-soft:#3A1A1A;color-scheme:dark}
+.device{--bg:#FFFFFF;--soft:#F3F4F6;--card:#FFFFFF;--ink:#0F1217;--on-ink:#FFFFFF;--muted:#6B7280;--line:#E7E9ED;--accent:#E5252A;--accent-soft:#FDE7E8;--accent-ink:#B91C1C;--ok:#12805C;--ok-soft:#E3F4EC;--danger:#DC2626;--danger-soft:#FDECEC;color-scheme:light}
+.device.dark{--bg:#0F1217;--soft:#1A1F27;--card:#242B36;--ink:#F3F4F6;--on-ink:#0F1217;--muted:#9AA3B0;--line:#2A303A;--accent-soft:#3A1618;--accent-ink:#FF8A8A;--ok:#34C38F;--ok-soft:#14302A;--danger:#F87171;--danger-soft:#3A1A1A;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{background:var(--page);color:var(--page-ink);font-family:var(--f-body);margin:0;padding-inline:16px;padding-block:24px;display:flex;gap:40px;justify-content:center;align-items:flex-start}
@@ -184,7 +184,7 @@ table.sets th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color
 </style>
 
 <aside class="note">
-  <h1>vitruvian- preview</h1>
+  <h1>Cable preview <small style="font-weight:400;opacity:.6">for Vitruvian V-Form &amp; Trainer+ · unofficial</small></h1>
   <p>A clickable web version of the new layout with a simulated trainer, so you can try every flow without installing the app. Open the link on your phone for the real feel.</p>
   <p>New: the first launch shows onboarding (account, optional PIN, Garmin heart rate) and an app tour with arrows. Settings → Account sets a PIN or switches account; Settings → Help replays the tour. Reset demo data to see the first launch again.</p>
   <p>Train is now a home screen: the training you're doing (anything within 5 hours of the last exercise), live heart rate, and your oldest 1RMs to re-test. Pick an LED colour in Settings and the whole app follows it.</p>
@@ -211,7 +211,7 @@ const JL_MODES=['Old School','Pump','Echo'];
 const ECHO_LEVELS=['Hard','Harder','Hardest','Epic'];
 // First colour of each trainer LED scheme (ColorSchemes.kt). The app's accent follows the one picked.
 const LED=[['Blue','#00A8DD'],['Green','#7DC147'],['Teal','#3E9AB7'],['Yellow','#FF9051'],['Pink','#FF004C'],['Red','#FF0000'],['Purple','#8800FF']];
-const DEFAULT_ACCENT='#FF5A1F', SESSION_GAP=5*3600000;
+const DEFAULT_ACCENT='#E5252A', SESSION_GAP=5*3600000;
 const EQUIP=['Handles','Long Bar','Short Bar','Rope','Belt','Ankle Strap','Bench','Bodyweight'];
 const GROUPS=['Chest','Back','Legs','Glutes','Shoulders','Arms','Core'];
 const EXERCISES=[
@@ -334,7 +334,7 @@ function longestStanding(limit){
 const setAgo=t=>{const d=Math.floor((Date.now()-t)/86400000);return d<=0?'set today':d===1?'set yesterday':d<14?'set '+d+' days ago':d<60?'set '+Math.floor(d/7)+' weeks ago':'set '+Math.floor(d/30)+' months ago'};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function log(level,msg){R.logs.push({t:new Date(),level,msg});if(R.logs.length>300)R.logs.shift()}
-['vitruvian- started','BLE adapter ready','Loaded 31 exercises','Profiles: 2'].forEach(m=>log('INFO',m));
+['Cable started','BLE adapter ready','Loaded 31 exercises','Profiles: 2'].forEach(m=>log('INFO',m));
 
 // ===================== icons =====================
 const I={
@@ -606,7 +606,7 @@ const views={
   const p=V.ob||0, chosen=lifter(V.obId), prog=`<div class="obprog">${[0,1,2,3,4].map(i=>`<i class="${i<=p?'d':''}"></i>`).join('')}</div>`;
   const pt=(t,b)=>`<div class="row" style="align-items:flex-start;gap:12px"><span class="dot" style="background:var(--accent);width:10px;height:10px;margin-top:6px"></span><span><b>${t}</b><br><span class="small" style="font-size:14px">${b}</span></span></div>`;
   let body='',bar='';
-  if(p===0){body=`<div style="font-family:var(--f-num);font-weight:800;font-size:56px">V-</div><h2 style="font-family:var(--f-num);font-size:32px;margin:0">Welcome to vitruvian-</h2><span class="small" style="font-size:15px">Train on your Vitruvian Trainer, straight from your phone.</span>
+  if(p===0){body=`<svg viewBox="0 0 108 108" width="72" height="72" fill="none" stroke-width="7" stroke-linecap="round" aria-label="Cable logo"><path d="M57.31,38.69 A16,16 0 1,0 46,66 L76,66" stroke="var(--ink)"/><circle cx="46" cy="50" r="3.5" fill="var(--ink)" stroke="none"/><path d="M82,56 L82,76" stroke="var(--accent)"/></svg><h2 style="font-family:var(--f-num);font-size:32px;margin:0">Welcome to Cable</h2><span class="small" style="font-size:15px">Train on your Vitruvian V-Form or Trainer+, straight from your phone.</span>
     ${pt('Up to 4 people','Train together. Sets rotate between you.')}${pt('Loads from your 1RM','Every exercise starts at a % of your own max.')}${pt('Live heart rate','From your Garmin watch or a chest strap.')}${pt('Private and offline','No cloud account. Everything stays on this phone.')}`;
     bar=`<button class="btn accent" data-ob="1">Get started</button>`}
   if(p===1){body=`<h2 style="font-family:var(--f-num);font-size:32px;margin:0">Who are you?</h2><span class="small" style="font-size:15px">Your account keeps your workouts, 1RMs and heart rate apart from the others on this phone.</span>
@@ -756,7 +756,7 @@ const views={
     <button class="navrow" data-classic><span class="grow">Switch to the classic layout</span>${I.chev}</button>
     <button class="navrow" data-lost><span class="grow">Simulate connection lost</span><span class="v">Preview only</span></button>
     <button class="navrow" data-support><span class="grow">Credits and the original project</span>${I.chev}</button>
-    <div class="navrow" style="cursor:default"><span class="grow">vitruvian-</span><span class="v">Preview · build 2026.10</span></div></div>`:''}
+    <div class="navrow" style="cursor:default"><span class="grow">Cable</span><span class="v">Preview · build 2026.10</span></div></div>`:''}
   </div>${tabs('settings')}</div>`;
  },
  profiles(){
@@ -976,7 +976,7 @@ function newPinSheet(id){
     draw(el)},{center:true});
   draw(sh);
 }
-function hrSteps(){return `<div class="steps">${["On your Garmin, open the controls menu (hold the top button) and tap Broadcast Heart Rate. On older watches: Settings → Sensors and Accessories → Wrist Heart Rate → Broadcast Heart Rate.","Keep the watch close to the phone. It keeps broadcasting until you stop it.","In vitruvian-, go to Settings → Profiles and heart rate, tap ♥ on your profile and pick your watch.","A chest strap (Polar, Wahoo, Garmin HRM) works the same: put it on and pick it from the list."].map((t,i)=>`<div><b class="n">${i+1}</b><span>${t}</span></div>`).join('')}</div>`}
+function hrSteps(){return `<div class="steps">${["On your Garmin, open the controls menu (hold the top button) and tap Broadcast Heart Rate. On older watches: Settings → Sensors and Accessories → Wrist Heart Rate → Broadcast Heart Rate.","Keep the watch close to the phone. It keeps broadcasting until you stop it.","In Cable, go to Settings → Profiles and heart rate, tap ♥ on your profile and pick your watch.","A chest strap (Polar, Wahoo, Garmin HRM) works the same: put it on and pick it from the list."].map((t,i)=>`<div><b class="n">${i+1}</b><span>${t}</span></div>`).join('')}</div>`}
 function hrSheet(id){
   const l=lifter(id);
   const sh=sheet(`<h3>Heart rate · ${esc(l.name)}</h3>${l.hr?`<span class="small" style="font-size:14px">Paired with ${esc(l.hr)}.</span><button class="ghost danger" data-unpair style="flex:none">Unpair</button>`:`<span class="small" style="font-size:14px">Scanning for heart rate broadcasts…</span><div id="hrlist"></div>`}<button class="ghost" data-x style="flex:none">Close</button>`,(d,close)=>{
@@ -988,7 +988,7 @@ function hrSheet(id){
 
 // ===================== app tour =====================
 const TOUR=[
- ['train',null,'Welcome to vitruvian-','A quick look around. Tap Next to go on, or Skip tour to start straight away. You can watch it again from Settings.'],
+ ['train',null,'Welcome to Cable','A quick look around. Tap Next to go on, or Skip tour to start straight away. You can watch it again from Settings.'],
  ['train','who',"Who's training",'Tap names to train together, up to 4 people. Sets rotate between them in this order. A profile with a PIN asks for it before it joins.'],
  ['train','conn','Your trainer','Shows whether the trainer is connected. Tap it to connect over Bluetooth.'],
  ['train','pick','Start a set',"Pick an exercise to open Set setup. Choose a mode, sets and reps; the load starts at a % of each lifter's 1RM, shown next to every exercise."],
@@ -1055,7 +1055,7 @@ function connSheet(){
   if(R.conn==='scanning'||R.conn==='connecting')return;
   if(R.conn==='on'){confirmSheet('Disconnect trainer?','You can reconnect from the Train screen at any time.','Disconnect',()=>{R.conn='off';log('INFO','Disconnected from '+S.device);toast('Disconnected');render()});return}
   if(!R.perm){
-    sheet(`<h3>Allow Bluetooth</h3><span class="small" style="font-size:14px">vitruvian- needs Bluetooth and nearby-devices permission to find your trainer.</span><button class="btn" data-ok>Allow</button><button class="ghost" data-x>Not now</button>`,(d,close)=>{close();if(d.ok!=null){R.perm=true;log('INFO','Bluetooth permissions granted');connSheet()}else pendingStart=null});return;
+    sheet(`<h3>Allow Bluetooth</h3><span class="small" style="font-size:14px">Cable needs Bluetooth and nearby-devices permission to find your trainer.</span><button class="btn" data-ok>Allow</button><button class="ghost" data-x>Not now</button>`,(d,close)=>{close();if(d.ok!=null){R.perm=true;log('INFO','Bluetooth permissions granted');connSheet()}else pendingStart=null});return;
   }
   R.conn='scanning';log('INFO','Scanning for Vitruvian devices');render();
   const sh=sheet(`<h3>Select your trainer</h3><div id="devlist"><span class="small">Scanning…</span></div><div class="row"><button class="ghost" data-x>Cancel</button><button class="ghost" data-rescan>Rescan</button></div>`,(d,close,el)=>{

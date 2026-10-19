@@ -229,7 +229,7 @@ fun SettingsScreen(
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
         Group {
-            LinkRow("Backup and restore", "Save everything to Download/vitruvian-, restore it, or delete all workouts", onBackup)
+            LinkRow("Backup and restore", "Save everything to Download/Cable, restore it, or delete all workouts", onBackup)
         }
 
         Row(

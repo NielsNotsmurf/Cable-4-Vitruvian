@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
  * under gym lighting. Black is the primary action colour, one accent marks load and
  * the main Start action, and each lifter brings their own colour.
  *
- * The accent follows the trainer LED colour picked in Settings (orange until one is picked).
+ * The accent follows the trainer LED colour picked in Settings (red until one is picked).
  * Reads are snapshot state, so screens recolour as soon as it changes.
  */
 object CleanColors {
@@ -35,7 +35,7 @@ object CleanColors {
     val Success = Color(0xFF12805C)
     val Danger = Color(0xFFDC2626)
 
-    val DefaultAccent = Color(0xFFFF5A1F)
+    val DefaultAccent = Color(0xFFE5252A)
 
     private var led by mutableStateOf(DefaultAccent)
 

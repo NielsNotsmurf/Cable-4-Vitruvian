@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vitruvianredux.R
 
-/** Black splash with the white "V-" mark settling into place and a quiet wordmark. */
+/** Black splash with the Cable mark settling into place and a quiet wordmark. */
 @Composable
 fun LargeSplashScreen(visible: Boolean) {
     val config = LocalConfiguration.current
@@ -56,18 +56,24 @@ fun LargeSplashScreen(visible: Boolean) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = "vitruvian- logo",
+                    contentDescription = "Cable logo",
                     modifier = Modifier
                         .size(logoSize)
                         .scale(0.92f + 0.08f * progress.value)
                         .alpha(progress.value)
                 )
                 Text(
-                    text = "vitruvian-",
+                    text = "Cable",
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Light,
                     letterSpacing = 4.sp,
+                    modifier = Modifier.alpha(progress.value)
+                )
+                Text(
+                    text = "for Vitruvian V-Form & Trainer+",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp,
                     modifier = Modifier.alpha(progress.value)
                 )
             }

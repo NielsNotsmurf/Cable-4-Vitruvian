@@ -2,7 +2,7 @@ package com.example.vitruvianredux.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// vitruvian- monochrome palette: the legacy names below are kept so callers stay unchanged.
+// Cable monochrome palette: the legacy names below are kept so callers stay unchanged.
 // Background Colors
 val BackgroundBlack = Color(0xFF000000)          // Pure black background
 val BackgroundDarkGrey = Color(0xFF121212)       // Dark grey surface

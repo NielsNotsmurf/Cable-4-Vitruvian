@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.svg" alt="vitruvian-" width="100%">
+  <img src="docs/banner.svg" alt="Cable" width="100%">
 </p>
 
 <p align="center">
@@ -12,17 +12,19 @@
 </p>
 
 <p align="center">
-  <b>Train on your Vitruvian Trainer without a subscription.</b><br>
+  <b>Cable: an unofficial app for the Vitruvian V-Form &amp; Trainer+.</b><br>
+  Train without a subscription. Not affiliated with Vitruvian.<br>
   Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
   <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/vitruvian-app/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
 </p>
 
 > [!NOTE]
-> vitruvian- is an independent community project. It is not made, endorsed or supported by
-> Vitruvian. "Vitruvian" and "Vitruvian Trainer" are trademarks of their owner and are only
+> Cable is an unofficial, independent community project for the Vitruvian V-Form and Trainer+.
+> It is not affiliated with, made, endorsed or supported by Vitruvian. "Vitruvian", "V-Form" and
+> "Trainer+" are trademarks of their owner and are only
 > used here to say which hardware the app works with. Use it at your own risk.
 
-## Why vitruvian-
+## Why Cable
 
 | | |
 |---|---|
@@ -79,7 +81,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 - **Sounds:** short synthesized bops and boops for every tap, screen change and dialog, plus
   workout sounds for the countdown, each rep, warm-up done, set done, records, the end of rest and
   1RM attempts. "Menu sounds" and "Workout beeps" each have a switch in Settings; music keeps playing.
-- **Backup and restore:** a full JSON backup saved to `Download/vitruvian-`.
+- **Backup and restore:** a full JSON backup saved to `Download/Cable`.
 - **Theme:** black and white, with light and dark modes.
 - **Settings:** grouped as Account, People, Training, Sound and video, Trainer LED colour,
   Help, Data, and Advanced (connection logs, protocol tester, classic layout) folded away.
@@ -92,7 +94,7 @@ Android only (Android 8 or newer) and free.
    It installs apps straight from GitHub and keeps them updated.
 2. In Obtainium, tap **Add app**, paste `https://github.com/NielsNotsmurf/vitruvian-app` and
    tap **Add**, then **Install**. Allow Obtainium to install apps when Android asks.
-3. Open vitruvian-, follow the welcome steps and connect to your trainer over Bluetooth.
+3. Open Cable, follow the welcome steps and connect to your trainer over Bluetooth.
 
 Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/vitruvian-app/releases)
 on your phone and tap the `.apk` of the latest version. You then have to repeat this for
@@ -112,6 +114,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-19:** rebranded to **Cable**, an unofficial app for the Vitruvian V-Form and Trainer+. New
+  cable-and-pulley icon, splash and banner, and a red accent by default. Updates keep working.
 - **2026-10-16:** Settings has a "Training load · % of 1RM" slider (default 60%) that every exercise and
   built workout starts at. Built workouts let you change sets, reps and each lifter's load before you
   start. While the trainer gets ready, counts down or does the warm-up reps you can change the weight
@@ -144,13 +148,13 @@ no imports from `:app`).
 
 ## Support
 
-vitruvian- is free and stays free. If it saves you a subscription and you want to say thanks,
+Cable is free and stays free. If it saves you a subscription and you want to say thanks,
 you can [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). Stars, bug reports
 and sharing the app with other Vitruvian owners help just as much.
 
 ## Credits
 
-vitruvian- started as a fork of the MIT-licensed
+Cable started as a fork of the MIT-licensed
 [Vitruvian Project Phoenix](https://github.com/9thLevelSoftware/VitruvianProjectPhoenix)
 Android app, and thanks everyone who reverse-engineered the trainer's BLE protocol. The
 original licence notice is kept in [LICENSE](LICENSE).
