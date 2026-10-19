@@ -1,0 +1,9 @@
+<p><b>Cable</b> is a free, open-source alternative app for the <b>Vitruvian V-Form and Trainer+</b> home gym. It talks to the trainer directly over Bluetooth: no subscription, no ads, no tracking, no cloud account.</p>
+<ul>
+<li>Up to 4 lifters per session, sets rotate, each with their own 1RM and PIN</li>
+<li>Loads as a % of your 1RM, with estimated 1RMs for 362 exercises</li>
+<li>Analytics with a muscle body map</li>
+<li>Offline first: everything stays on your phone, back up to one JSON file</li>
+<li>Live Bluetooth heart rate</li>
+</ul>
+<p>Cable is an unofficial, independent community project. It is not affiliated with, made, endorsed or supported by Vitruvian. "Vitruvian", "V-Form" and "Trainer+" are trademarks of their owner and are only used to say which hardware the app works with.</p>

@@ -103,6 +103,27 @@ every update.
 Every merge to `master` builds a signed APK and publishes it as a release. How the signing
 works is in [docs/RELEASES.md](docs/RELEASES.md).
 
+## FAQ
+
+**Is there a free alternative to the official Vitruvian app?**
+Yes, Cable. It is a free, open-source Android app for the Vitruvian V-Form and Trainer+ that
+connects to the trainer directly over Bluetooth, without a subscription or cloud account.
+
+**Does it work with my V-Form or Trainer+?**
+Cable is made for both and talks to them over the trainer's Bluetooth LE protocol. If something
+does not work on your unit, please
+[open an issue](https://github.com/NielsNotsmurf/vitruvian-app/issues).
+
+**Is it official?**
+No. Cable is an independent community project, not affiliated with or endorsed by Vitruvian.
+
+**iPhone?**
+Not yet. Cable is Android only (Android 8 or newer).
+
+**Will I lose my data from the official app?**
+Cable does not touch your Vitruvian account. Your Cable workouts stay on your phone and can be
+backed up to a single JSON file.
+
 ## Build
 
 ```sh
@@ -114,6 +135,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-19:** FAQ for people looking for an alternative Vitruvian app, and store listing
+  text (fastlane) for F-Droid repos such as IzzyOnDroid.
 - **2026-10-19:** rebranded to **Cable**, an unofficial app for the Vitruvian V-Form and Trainer+. New
   cable-and-pulley icon, splash and banner, and a red accent by default. Updates keep working.
 - **2026-10-16:** Settings has a "Training load · % of 1RM" slider (default 60%) that every exercise and
