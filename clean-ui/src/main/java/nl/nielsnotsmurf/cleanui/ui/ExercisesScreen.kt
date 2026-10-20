@@ -37,6 +37,7 @@ import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.ExerciseRow
+import nl.nielsnotsmurf.cleanui.logic.ExerciseSearch
 import nl.nielsnotsmurf.cleanui.ui.tour.TourTargets
 import nl.nielsnotsmurf.cleanui.ui.tour.tourTarget
 
@@ -61,12 +62,14 @@ fun ExercisesScreen(
     val pool = remember(state.exercises, region) {
         if (region == null) state.exercises else state.exercises.filter { it.region == region }
     }
+    // Body regions first, then every muscle in the library (Forearms, Glutes, …).
     val groups = remember(pool) {
-        val counted = pool.groupingBy { it.muscleGroup }.eachCount()
-            .filterKeys { it.isNotBlank() }
+        val regions = BODY_REGIONS.filter { r -> pool.any { it.region == r } }
+        val muscles = pool.flatMap { it.muscles }.groupingBy { it }.eachCount()
+            .filterKeys { it.isNotBlank() && it !in regions }
             .entries.sortedByDescending { it.value }
             .map { it.key }
-        listOf(ALL, FAVOURITES) + counted
+        listOf(ALL, FAVOURITES) + regions + muscles
     }
     // Equipment names can be lists ("Bar, Handles"); each part is its own filter.
     val equipmentOptions = remember(pool) {
@@ -79,9 +82,9 @@ fun ExercisesScreen(
         val q = query.trim().lowercase()
         pool
             .asSequence()
-            .filter { group == ALL || (group == FAVOURITES && it.isFavorite) || it.muscleGroup == group }
+            .filter { group == ALL || (group == FAVOURITES && it.isFavorite) || it.region == group || group in it.muscles }
             .filter { equipment == ALL || equipment in equipmentParts(it.equipment) }
-            .filter { q.isEmpty() || it.name.lowercase().contains(q) }
+            .filter { q.isEmpty() || ExerciseSearch.matches(it, q) }
             // Things you've done (or have a 1RM for) first, then favourites, then popularity.
             .sortedWith(
                 compareByDescending<ExerciseCard> { ex -> active.count { state.oneRepMax(it, ex.id)?.isEstimate == false } }
@@ -106,7 +109,7 @@ fun ExercisesScreen(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).tourTarget(TourTargets.SEARCH),
-            placeholder = { Text("Search ${pool.size} exercises") },
+            placeholder = { Text("Search ${pool.size} exercises, e.g. forearms") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -151,6 +154,7 @@ fun ExercisesScreen(
                         when {
                             group == FAVOURITES && query.isBlank() -> "No favourites yet. Tap the star on an exercise to add it."
                             query.isBlank() -> "No exercises for this filter."
+                            group != ALL || equipment != ALL -> "No exercises match \"$query\" here. Try All or Any equipment."
                             else -> "No exercises match \"$query\"."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -163,7 +167,7 @@ fun ExercisesScreen(
                 LaunchedEffect(ex.id, active) { onRowShown(ex) }
                 ExerciseRow(
                     exercise = ex,
-                    subtitle = listOf(ex.equipment, ex.muscleGroup).filter { it.isNotBlank() }.joinToString(" · "),
+                    subtitle = ex.description.ifBlank { listOf(ex.equipment, ex.muscleGroup).filter { it.isNotBlank() }.joinToString(" · ") },
                     lifters = state.activeLifters,
                     oneRepMaxFor = { id -> state.oneRepMax(id, ex.id) },
                     unit = state.unit,

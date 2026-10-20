@@ -103,6 +103,14 @@ interface TrainerGateway {
     fun stopWorkout() {}
     fun advanceToNextExercise() {}
     fun resetForNewWorkout() {}
+    /** Ends the set being lifted now with the reps done so far and moves on as usual. */
+    fun finishSetEarly() {}
+    /** During rest: the coming set moves [delta] sets forward (skip) or back (redo), across exercises. */
+    fun moveSet(delta: Int) {}
+    /** During rest: the coming set becomes the first set of the next (1) or previous (-1) exercise. */
+    fun moveExercise(delta: Int) {}
+    /** Loads per cable for the coming sets of [exerciseId], per lifter id, in set order. */
+    fun setUpcomingLoads(exerciseId: String, loadsByLifter: Map<String, List<Float>>) {}
 
     /** Exercises of the 1RM test, in order: the main lift for each muscle group. */
     val oneRepMaxTestExercises: List<TestAnchor>

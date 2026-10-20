@@ -8,7 +8,6 @@ import nl.nielsnotsmurf.cleanui.ui.components.Stepper
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -35,11 +34,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,7 +97,6 @@ fun LiveWorkoutScreen(
     unit: WeightUnit,
     heartRate: Int?,
     history: List<HistoryEntry>,
-    personalRecord: String?,
     connection: TrainerConnection,
     cables: Int,
     attemptMode: Boolean,
@@ -105,12 +106,22 @@ fun LiveWorkoutScreen(
     onStop: () -> Unit,
     onDone: () -> Unit,
     guide: ExerciseGuide? = null,
-    onAdjustWeight: (Float) -> Unit = {}
+    onAdjustWeight: (Float) -> Unit = {},
+    /** % of 1RM for the coming sets; null hides the slider. */
+    percent: Int? = null,
+    onPercent: (Int) -> Unit = {},
+    onFinishSet: () -> Unit = {},
+    onMoveSet: (Int) -> Unit = {},
+    onMoveExercise: (Int) -> Unit = {},
+    /** Back to the app while the workout keeps going; it's picked up again from the bar at the bottom. */
+    onLeave: () -> Unit = onDone
 ) {
     val fmt = { kg: Float -> LoadCalculator.format(kg, unit) }
     var confirmStop by remember { mutableStateOf(false) }
-    val busy = live.phase in setOf(LivePhase.STARTING, LivePhase.COUNTDOWN, LivePhase.LIFTING, LivePhase.RESTING)
-    BackHandler { if (busy) confirmStop = true else onDone() }
+    val busy = live.phase in setOf(LivePhase.STARTING, LivePhase.COUNTDOWN, LivePhase.LIFTING, LivePhase.RESTING) ||
+        (live.phase == LivePhase.SET_DONE && !attemptMode)
+    // Back leaves the workout running (pick it up from home); ✕ asks whether to end it.
+    BackHandler { if (!busy) onDone() else if (attemptMode) confirmStop = true else onLeave() }
 
     // A 3RM attempt is one short set: as soon as it's done, go straight back to the test to record
     // how it went. Waiting for the trainer's own "finished" state left a blank screen.
@@ -144,20 +155,9 @@ fun LiveWorkoutScreen(
     LaunchedEffect(live.phase, live.restSeconds) {
         if (live.phase == LivePhase.RESTING && live.restSeconds in 1..3) CleanSounds.play(Sfx.TICK)
     }
-    LaunchedEffect(personalRecord) { if (personalRecord != null) CleanSounds.play(Sfx.SUCCESS) }
 
     Column(Modifier.fillMaxSize().background(CleanColors.Background)) {
         TopBar(live, heartRate, onClose = { if (busy) confirmStop = true else onDone() })
-        AnimatedVisibility(visible = personalRecord != null) {
-            Text(
-                "New record · ${personalRecord.orEmpty()}",
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(14.dp)).background(CleanColors.Accent).padding(12.dp)
-            )
-        }
         // The exercise demo shows while the trainer gets ready, counts down and during warm-up reps.
         // It stays composed (folded away) the rest of the time, so the clip is already loaded and
         // playing when it's shown instead of starting to buffer when the countdown begins.
@@ -197,14 +197,29 @@ fun LiveWorkoutScreen(
         }
         Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (live.phase) {
-                LivePhase.RESTING -> PrimaryButton("Skip rest", onClick = onSkipRest)
+                LivePhase.RESTING -> {
+                    if (!attemptMode) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GhostButton("‹ Back a set", onClick = { onMoveSet(-1) }, modifier = Modifier.weight(1f))
+                            GhostButton("Skip a set ›", onClick = { onMoveSet(1) }, modifier = Modifier.weight(1f))
+                        }
+                        if (!live.isLastExercise) GhostButton("Skip to next exercise", onClick = { onMoveExercise(1) })
+                    }
+                    PrimaryButton("Start now", onClick = onSkipRest)
+                }
                 LivePhase.SET_DONE -> if (!attemptMode) PrimaryButton("Continue", onClick = onContinue, accent = true)
                 LivePhase.FINISHED -> if (!attemptMode) {
                     if (!live.isLastExercise) GhostButton("Next exercise", onClick = onNextExercise)
                     PrimaryButton("Done", onClick = onDone, accent = true)
                 }
-                LivePhase.LIFTING, LivePhase.COUNTDOWN -> GhostButton("End set", onClick = { confirmStop = true })
+                // Stopping short (6 of 8 reps) still counts the set and moves on to the next one.
+                LivePhase.LIFTING -> if (attemptMode) GhostButton("End set", onClick = { confirmStop = true })
+                    else GhostButton("End set here", onClick = onFinishSet)
+                LivePhase.COUNTDOWN -> GhostButton("End set", onClick = { confirmStop = true })
                 else -> Unit
+            }
+            if (percent != null && !attemptMode && live.phase != LivePhase.FINISHED) {
+                PercentSlider(percent, onPercent)
             }
             if (live.isGettingReady() && !attemptMode) {
                 // kg moves in 0.5 kg steps, lb in whole pounds.
@@ -224,10 +239,39 @@ fun LiveWorkoutScreen(
             onDismissRequest = { confirmStop = false },
             modifier = Modifier.clickSounds(),
             title = { Text("End this workout?") },
-            text = { Text("Sets you've finished are saved.") },
+            text = {
+                Text(
+                    if (attemptMode) "Sets you've finished are saved."
+                    else "Sets you've finished are saved. Or leave it running and pick it up again from home."
+                )
+            },
             confirmButton = { TextButton(onClick = { confirmStop = false; onStop() }) { Text("End", color = CleanColors.Danger) } },
-            dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Keep going", color = CleanColors.Ink) } }
+            dismissButton = {
+                Row {
+                    if (!attemptMode) TextButton(onClick = { confirmStop = false; onLeave() }) { Text("Leave for now", color = CleanColors.Ink) }
+                    TextButton(onClick = { confirmStop = false }) { Text("Keep going", color = CleanColors.Ink) }
+                }
+            }
         )
+    }
+}
+
+/** % of 1RM for the coming sets, always at hand. Applies when let go, to every lifter. */
+@Composable
+private fun PercentSlider(percent: Int, onPercent: (Int) -> Unit) {
+    var value by remember(percent) { mutableFloatStateOf(percent.toFloat()) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("% of 1RM", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
+        Slider(
+            value = value,
+            onValueChange = { value = it },
+            onValueChangeFinished = { onPercent(value.roundToInt()) },
+            valueRange = 30f..100f,
+            steps = 13,
+            colors = SliderDefaults.colors(thumbColor = CleanColors.Accent, activeTrackColor = CleanColors.Accent),
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+        )
+        Text("${value.roundToInt()}%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 

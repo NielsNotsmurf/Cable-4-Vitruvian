@@ -71,7 +71,11 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 - **Workout builder:** pick one or more muscle groups and a time, and the app builds the
   workout with each lifter's % of 1RM. Swap any exercise for one on other equipment; exercises
   on the same equipment sit next to each other so you switch as little as possible.
-- **Exercise library:** search, muscle and equipment filters, favourites and video demos.
+- **Exercise library:** a short description per exercise, search by name, muscle (forearms, glutes,
+  …) or equipment, body-region and muscle filters, favourites and video demos.
+- **Moving through a workout:** end a set early, skip or redo a set, jump to the next exercise, change
+  the % of 1RM for the coming sets, and leave the workout running to pick it up again from home.
+- **1RMs you control:** only the 1RM test or your own entry sets a 1RM; tap one in Analytics to correct it.
 - **Live heart rate:** pair a Garmin watch broadcast or a chest strap per lifter. HR shows
   during a set and in history.
 - **History and analytics:** workouts, personal records and volume over time. Analytics opens
@@ -135,6 +139,13 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-20:** move through a workout: end a set early (6 of 8 reps still counts) and go on,
+  skip or redo a set, or jump to the next exercise during rest. Back leaves the workout running so
+  you can check Analytics, and a "Workout running" bar picks it up again. The % of 1RM slider stays
+  on the lifting screen and changes every lifter's coming sets. Home groups the current training per
+  exercise. Just Lift is gone from home. Every exercise has a short description, and search and
+  filters find muscles such as forearms. A 1RM only changes through the 1RM test or by hand: tap a
+  1RM in Analytics to correct it.
 - **2026-10-19:** FAQ for people looking for an alternative Vitruvian app, and store listing
   text (fastlane) for F-Droid repos such as IzzyOnDroid.
 - **2026-10-19:** rebranded to **Cable**, an unofficial app for the Vitruvian V-Form and Trainer+. New

@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,7 +67,7 @@ private const val DAY_MS = 24 * 60 * MINUTE_MS
 /**
  * The home screen: who's training, the training going on now (everything done with less than
  * five hours between exercises), live heart rate, then one main action (build a workout from
- * muscle groups), one exercise or Just Lift, recent exercises to do again, and the 1RMs.
+ * muscle groups), one exercise, recent exercises to do again, and the 1RMs.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -76,7 +77,6 @@ fun TodayScreen(
     heartRate: Int?,
     onToggleLifter: (String) -> Unit,
     onPickExercise: () -> Unit,
-    onJustLift: () -> Unit,
     onOpenExercise: (ExerciseCard) -> Unit,
     onBuild: (groups: List<String>, minutes: Int) -> Unit,
     onAssessment: () -> Unit,
@@ -171,8 +171,7 @@ fun TodayScreen(
         }
         item {
             Row(Modifier.tourTarget(TourTargets.TILES), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Tile("One exercise", "Search the library", onPickExercise, Modifier.weight(1f))
-                Tile("Just Lift", "Start lifting now", onJustLift, Modifier.weight(1f))
+                Tile("One exercise", "Search the library by name, muscle or equipment", onPickExercise, Modifier.weight(1f))
             }
         }
 
@@ -287,31 +286,39 @@ private fun CurrentTraining(
                 Modifier.weight(1f)
             )
         }
+        // One line per exercise (newest first), however many sets and lifters it had, so the
+        // card stays short when several people train together.
+        val byExercise = remember(session) { session.reversed().groupBy { it.exerciseName } }
+        var showAll by remember { mutableStateOf(false) }
         Column {
-            session.reversed().forEach { e ->
-                val lifter = lifterFor(e.lifterId)
+            byExercise.entries.toList().let { if (showAll) it else it.take(4) }.forEach { (name, entries) ->
+                val lifters = entries.map { it.lifterId }.distinct().mapNotNull(lifterFor)
+                val top = entries.mapNotNull { it.topKgPerCable }.maxOrNull()
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Dot(lifter?.color ?: CleanColors.Muted)
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        lifters.ifEmpty { listOf(null) }.take(4).forEach { Dot(it?.color ?: CleanColors.Muted) }
+                    }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(e.exerciseName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             listOfNotNull(
-                                lifter?.name,
-                                "${e.sets} × ${if (e.sets > 0) e.reps / e.sets else e.reps}",
-                                e.mode,
-                                e.avgHeartRate?.let { "♥ $it" }
+                                "${entries.sumOf { it.sets }} sets",
+                                lifters.joinToString(", ") { it.name }.ifBlank { null }
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    e.topKgPerCable?.let {
-                        LoadText(LoadCalculator.format(it, unit), cablesFor(e.exerciseId), color = lifter?.color ?: CleanColors.Ink)
-                    }
+                    top?.let { LoadText(LoadCalculator.format(it, unit), cablesFor(entries.first().exerciseId)) }
                     Spacer(Modifier.width(8.dp))
-                    Text(timeFormat.format(e.timestamp), style = MaterialTheme.typography.bodySmall)
+                    Text(timeFormat.format(entries.first().timestamp), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (byExercise.size > 4) {
+                TextButton(onClick = { showAll = !showAll }) {
+                    Text(if (showAll) "Show less" else "Show all ${byExercise.size} exercises", color = CleanColors.Ink)
                 }
             }
         }

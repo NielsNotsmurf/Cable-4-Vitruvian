@@ -151,20 +151,19 @@ class CleanViewModel(
     private val resolvedOneRepMaxes = combine(
         gateway.lifters,
         store.storedOneRepMaxes,
-        gateway.bestSetsByLifter,
         relatedCache,
         gateway.exercises
-    ) { lifters, stored, bestSets, related, exercises ->
+    ) { lifters, stored, related, exercises ->
         lifters.associate { lifter ->
             val storedForLifter = stored[lifter.id].orEmpty()
-            val historyByExercise: Map<String, List<LiftRecord>> =
-                bestSets[lifter.id].orEmpty().groupBy { it.exerciseId }
-            val exerciseIds = storedForLifter.keys + historyByExercise.keys +
+            // A 1RM is only ever set by the 1RM test or by hand: normal sets never make or
+            // overwrite one (one cable on a two-cable lift would look like a huge record).
+            val exerciseIds = storedForLifter.keys +
                 related.keys.filter { it.startsWith(lifter.id + KEY_SEP) }.map { it.substringAfter(KEY_SEP) }
             val resolved = exerciseIds.mapNotNull { exId ->
                 LoadCalculator.resolveOneRepMax(
                     stored = storedForLifter[exId],
-                    history = historyByExercise[exId].orEmpty(),
+                    history = emptyList(),
                     relatedKg = related[relatedKey(lifter.id, exId)]
                 )?.let { exId to it }
             }.toMap()
@@ -382,6 +381,7 @@ class CleanViewModel(
             plan,
             onStarted = {
                 _setup.update { it?.copy(isStarting = false) }
+                startedLive(listOf(plan))
                 onStarted()
             },
             onFailed = { msg -> _setup.update { it?.copy(isStarting = false, error = msg) } }
@@ -481,6 +481,7 @@ class CleanViewModel(
             plans = plans,
             onStarted = {
                 _workout.update { it?.copy(isStarting = false) }
+                startedLive(plans)
                 onStarted()
             },
             onFailed = { msg -> _workout.update { it?.copy(isStarting = false, error = msg) } }
@@ -561,6 +562,7 @@ class CleanViewModel(
             t.lifterId, exercise, t.kg,
             onStarted = {
                 updateTest { it.copy(isStarting = false) }
+                startedLive(emptyList())
                 onStarted()
             },
             onFailed = { msg -> updateTest { it.copy(isStarting = false, error = msg) } }
@@ -611,6 +613,49 @@ class CleanViewModel(
     private fun restEnd() = System.currentTimeMillis() + OneRepMaxTest.REST_SECONDS * 1000L
 
     fun switchToClassic() = gateway.switchToClassicUi()
+
+    /** Sets [lifterId]'s 1RM for [exerciseId] by hand (kg per cable); null or 0 clears it. */
+    fun setManualOneRepMax(lifterId: String, exerciseId: String, kg: Float?) {
+        viewModelScope.launch {
+            if (kg == null || kg <= 0f) store.clearOneRepMax(lifterId, exerciseId)
+            else store.saveOneRepMax(
+                lifterId, exerciseId,
+                OneRepMax(LoadCalculator.roundToStep(kg).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG), OneRepMaxSource.MANUAL, System.currentTimeMillis())
+            )
+        }
+    }
+
+    // ---- Training % during the workout ----
+
+    private var livePlans: List<SetPlan> = emptyList()
+    private val _livePercent = MutableStateFlow<Int?>(null)
+    /** % of 1RM of the running workout; null when none was started from here (or for a 1RM attempt). */
+    val livePercent: StateFlow<Int?> = _livePercent.asStateFlow()
+
+    private fun startedLive(plans: List<SetPlan>) {
+        livePlans = plans
+        _livePercent.value = plans.firstOrNull()?.percentOfOneRepMax
+    }
+
+    /**
+     * Changes the training % for the rest of the workout: every lifter's coming sets get that
+     * % of their 1RM. Lifters without a 1RM keep their load scaled by the same ratio.
+     */
+    fun setLivePercent(percent: Int) {
+        val p = percent.coerceIn(30, 100)
+        if (livePlans.isEmpty()) return
+        _livePercent.value = p
+        livePlans.forEach { plan ->
+            val loads = plan.loads.associate { load ->
+                val orm = state.value.oneRepMax(load.lifterId, plan.exercise.id)
+                val kg = if (orm != null) LoadCalculator.loadForPercent(orm.kg, p)
+                else LoadCalculator.roundToStep(load.weightPerCableKg * p / plan.percentOfOneRepMax.coerceAtLeast(1))
+                    .coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG)
+                load.lifterId to List(plan.sets.size) { kg }
+            }
+            gateway.setUpcomingLoads(plan.exercise.id, loads)
+        }
+    }
 
     // ---- Accounts ----
 

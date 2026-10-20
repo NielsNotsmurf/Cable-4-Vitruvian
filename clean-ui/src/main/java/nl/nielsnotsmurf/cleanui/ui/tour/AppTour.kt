@@ -57,9 +57,8 @@ object AppTour {
         ),
         TourStep(
             CleanRoutes.TRAIN, TourTargets.TILES,
-            "One exercise or Just Lift",
-            "One exercise opens the library and Set setup for a single lift. Just Lift starts the " +
-                "trainer straight away with no plan."
+            "One exercise",
+            "Opens the library and Set setup for a single lift."
         ),
         TourStep(
             CleanRoutes.TRAIN, TourTargets.ONE_RM_TEST,
