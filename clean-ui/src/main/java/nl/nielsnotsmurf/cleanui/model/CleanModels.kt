@@ -27,7 +27,11 @@ data class ExerciseCard(
     val lastPerformedAt: Long? = null,
     val popularity: Float = 0f,
     /** Body region for the muscle-group picker ("Chest", "Back", "Shoulders", "Arms", "Legs", "Core"). */
-    val region: String = ""
+    val region: String = "",
+    /** Muscles it works, as shown and searched ("Forearms", "Upper back"). */
+    val muscles: List<String> = emptyList(),
+    /** One or two lines on what it is, shown in the library and searched. */
+    val description: String = ""
 ) {
     /** No cable load: the classic app runs these as timed sets only. */
     val isBodyweight: Boolean get() = equipment.isBlank() || equipment.equals("bodyweight", ignoreCase = true)
@@ -173,7 +177,7 @@ data class HistoryEntry(
     val maxHeartRate: Int? = null,
     /** Sets done back to back in one workout share this (rotations, routines). */
     val groupId: String,
-    /** Exercise library id; empty for Just Lift. */
+    /** Exercise library id; empty when unknown. */
     val exerciseId: String = ""
 )
 

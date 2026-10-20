@@ -31,7 +31,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import nl.nielsnotsmurf.cleanui.model.ExerciseCard
+import nl.nielsnotsmurf.cleanui.model.OneRepMax
+import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -91,7 +99,9 @@ import kotlin.math.roundToInt
 fun AnalyticsScreen(
     state: CleanUiState,
     history: List<HistoryEntry>,
-    onMoreAnalytics: () -> Unit
+    onMoreAnalytics: () -> Unit,
+    /** Sets a 1RM by hand (kg per cable); null removes it. */
+    onSetOneRepMax: (lifterId: String, exerciseId: String, kg: Float?) -> Unit = { _, _, _ -> }
 ) {
     var picked by rememberSaveable { mutableStateOf<String?>(null) }
     var measure by rememberSaveable { mutableStateOf(Measure.REPS) }
@@ -333,7 +343,7 @@ fun AnalyticsScreen(
             }
         }
 
-        OneRepMaxCard(state, lifter, region, accent)
+        OneRepMaxCard(state, lifter, region, accent, onSetOneRepMax)
 
         if (records.isNotEmpty()) {
             Card {
@@ -495,37 +505,104 @@ private fun KpiTile(kpi: Kpi, accent: Color) {
 }
 
 @Composable
-private fun OneRepMaxCard(state: CleanUiState, lifter: UiLifter?, region: String?, accent: Color) {
+private fun OneRepMaxCard(
+    state: CleanUiState,
+    lifter: UiLifter?,
+    region: String?,
+    accent: Color,
+    onSet: (lifterId: String, exerciseId: String, kg: Float?) -> Unit
+) {
     val exercises = state.exercises.filter { region == null || it.region == region }.associateBy { it.id }
+    // With a region tapped, its estimated 1RMs show too, so any of them can be set by hand.
     val maxes = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
-        .filterValues { !it.isEstimate }
-        .mapNotNull { (id, orm) -> exercises[id]?.let { Triple(it.name, orm, it.cables) } }
-        .sortedByDescending { it.second.kg }
+        .filterValues { region != null || !it.isEstimate }
+        .mapNotNull { (id, orm) -> exercises[id]?.let { it to orm } }
+        .sortedWith(compareBy<Pair<ExerciseCard, OneRepMax>> { it.second.isEstimate }.thenByDescending { it.second.kg })
+    var editing by remember { mutableStateOf<Pair<ExerciseCard, OneRepMax>?>(null) }
+    var showAll by remember(region) { mutableStateOf(false) }
     Card {
         SectionLabel("1RMs${region?.let { " · $it" } ?: ""}")
-        if (maxes.isEmpty()) {
-            Text(
-                "No 1RMs yet. Run the 1RM test from Train, or train an exercise and one is worked out from your sets.",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-        maxes.take(8).forEach { (name, orm, cables) ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (maxes.isEmpty()) "No 1RMs yet. Run the 1RM test from Train. Tap a region on the body to set one by hand."
+            else "Only the 1RM test or you change these. Tap one to correct it.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        maxes.let { if (showAll) it else it.take(8) }.forEach { (ex, orm) ->
+            val cables = ex.cables
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(enabled = lifter != null) { editing = ex to orm }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                    Text(ex.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                     Text(
                         when (orm.source) {
                             OneRepMaxSource.BENCHMARK -> "Tested"
                             OneRepMaxSource.MANUAL -> "Entered by hand"
+                            OneRepMaxSource.RELATED -> "Estimated · tap to set"
                             else -> "Worked out from your sets"
                         } + if (cables == 2) " · per cable, ${LoadCalculator.format(orm.kg * 2, state.unit)} total" else " · one cable",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                LoadText(LoadCalculator.format(orm.kg, state.unit), cables, color = accent)
+                LoadText(
+                    (if (orm.isEstimate) "~" else "") + LoadCalculator.format(orm.kg, state.unit),
+                    cables,
+                    color = if (orm.isEstimate) CleanColors.Muted else accent
+                )
             }
         }
-        if (maxes.size > 8) Text("and ${maxes.size - 8} more", style = MaterialTheme.typography.bodySmall)
+        if (maxes.size > 8) {
+            TextButton(onClick = { showAll = !showAll }) {
+                Text(if (showAll) "Show less" else "Show all ${maxes.size}", color = CleanColors.Ink)
+            }
+        }
+    }
+    val e = editing
+    if (e != null && lifter != null) {
+        val (ex, orm) = e
+        var text by remember(e) {
+            mutableStateOf(if (orm.isEstimate) "" else LoadCalculator.format(orm.kg, state.unit, withUnit = false))
+        }
+        val unitName = if (state.unit == WeightUnit.LB) "lb" else "kg"
+        val entered = text.replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            modifier = Modifier.clickSounds(),
+            containerColor = CleanColors.Background,
+            title = { Text(ex.name) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${lifter.name}'s 1RM in $unitName" + if (ex.cables == 2) " per cable." else ".", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it.filter { c -> c.isDigit() || c == '.' || c == ',' }.take(6) },
+                        singleLine = true,
+                        suffix = { Text(unitName) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = entered != null,
+                    onClick = {
+                        val kg = entered!!.let { if (state.unit == WeightUnit.LB) it / 2.20462f else it }
+                        onSet(lifter.id, ex.id, kg)
+                        editing = null
+                    }
+                ) { Text("Save", color = CleanColors.Ink) }
+            },
+            dismissButton = {
+                Row {
+                    if (!orm.isEstimate) {
+                        TextButton(onClick = { onSet(lifter.id, ex.id, null); editing = null }) { Text("Remove", color = CleanColors.Danger) }
+                    }
+                    TextButton(onClick = { editing = null }) { Text("Cancel", color = CleanColors.Ink) }
+                }
+            }
+        )
     }
 }
 

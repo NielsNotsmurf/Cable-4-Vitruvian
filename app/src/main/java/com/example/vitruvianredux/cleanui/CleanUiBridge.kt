@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
+import nl.nielsnotsmurf.cleanui.logic.ExerciseSearch
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
@@ -178,6 +179,11 @@ class CleanUiBridge(
     override fun stopWorkout() = vm.stopWorkout()
     override fun advanceToNextExercise() = vm.advanceToNextExercise()
     override fun resetForNewWorkout() = vm.resetForNewWorkout()
+    override fun finishSetEarly() = vm.finishSetEarly()
+    override fun moveSet(delta: Int) = vm.moveUpcomingSet(delta)
+    override fun moveExercise(delta: Int) = vm.moveUpcomingExercise(delta)
+    override fun setUpcomingLoads(exerciseId: String, loadsByLifter: Map<String, List<Float>>) =
+        vm.setUpcomingLoads(exerciseId, loadsByLifter)
 
     override val liveHeartRate: Flow<Int?> = vm.currentHeartRate
 
@@ -281,6 +287,10 @@ class CleanUiBridge(
                         exercises = exercises
                     )
                 )
+                // Every lifter's own loads, so the rotation never falls back to the first lifter's.
+                plans.forEach { plan ->
+                    vm.setUpcomingLoads(plan.exercise.id, plan.loads.associate { it.lifterId to it.setWeightsKg })
+                }
                 vm.ensureConnection(
                     onConnected = {
                         vm.startWorkout()
@@ -512,7 +522,15 @@ class CleanUiBridge(
         isFavorite = isFavorite,
         lastPerformedAt = lastPerformed,
         popularity = popularity,
-        region = ExerciseBucket.from(muscles.csv(), movement, muscleGroups.csv())?.region() ?: ""
+        region = ExerciseBucket.from(muscles.csv(), movement, muscleGroups.csv())?.region() ?: "",
+        muscles = muscles.csv().map(ExerciseSearch::muscleLabel),
+        // A one-line summary for every exercise; the library's long how-to stays in the guide.
+        description = ExerciseSearch.describe(
+            name,
+            muscles.csv().map(ExerciseSearch::muscleLabel),
+            equipment.csv().map(ExerciseSearch::equipmentLabel),
+            ExerciseBucket.from(muscles.csv(), movement, muscleGroups.csv())?.region() ?: ""
+        ) + aliases.csv().takeIf { it.isNotEmpty() }?.joinToString(", ", prefix = " Also called ", postfix = ".").orEmpty()
     )
 
     private fun ExerciseCard.toExercise() = Exercise(

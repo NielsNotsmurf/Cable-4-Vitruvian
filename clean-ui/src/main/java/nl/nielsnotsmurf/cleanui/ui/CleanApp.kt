@@ -52,6 +52,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import nl.nielsnotsmurf.cleanui.model.LivePhase
+import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -251,6 +253,8 @@ private fun SignedInApp(
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
     val uiSounds by vm.uiSounds.collectAsStateWithLifecycle()
+    val livePercent by vm.livePercent.collectAsStateWithLifecycle()
+    val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     // Exercises takes an optional region; without one it is the Exercises tab.
@@ -323,7 +327,6 @@ private fun SignedInApp(
                         heartRate = heartRate,
                         onToggleLifter = ::toggleLifter,
                         onPickExercise = { openTab(CleanRoutes.EXERCISES) },
-                        onJustLift = { nav.navigate(CleanRoutes.JUST_LIFT) },
                         onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
                         onBuild = { groups, minutes ->
                             vm.buildWorkout(groups, minutes)
@@ -359,7 +362,8 @@ private fun SignedInApp(
                     AnalyticsScreen(
                         state = state,
                         history = history,
-                        onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) }
+                        onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) },
+                        onSetOneRepMax = vm::setManualOneRepMax
                     )
                 }
                 composable(CleanRoutes.SETTINGS) {
@@ -475,11 +479,6 @@ private fun SignedInApp(
                     }
                 }
                 composable(CleanRoutes.ACTIVE_WORKOUT) {
-                    val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
-                    var record by remember { mutableStateOf<String?>(null) }
-                    LaunchedEffect(Unit) {
-                        gateway.personalRecords.collectLatest { record = it; delay(4000); record = null }
-                    }
                     val l = live
                     // Load the demo as soon as the exercise is known, so it's ready by the countdown.
                     val card = state.exercises.firstOrNull { it.name == l?.exerciseName }
@@ -508,7 +507,6 @@ private fun SignedInApp(
                             unit = state.unit,
                             heartRate = heartRate,
                             history = history,
-                            personalRecord = record,
                             connection = state.connection,
                             cables = card?.cables ?: 2,
                             attemptMode = attemptMode,
@@ -518,7 +516,13 @@ private fun SignedInApp(
                             onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
                             onDone = done,
                             guide = guide,
-                            onAdjustWeight = gateway::adjustLiveWeight
+                            onAdjustWeight = gateway::adjustLiveWeight,
+                            percent = livePercent,
+                            onPercent = vm::setLivePercent,
+                            onFinishSet = gateway::finishSetEarly,
+                            onMoveSet = gateway::moveSet,
+                            onMoveExercise = gateway::moveExercise,
+                            onLeave = { if (!left) { left = true; nav.popBackStack() } }
                         )
                     }
                 }
@@ -534,6 +538,11 @@ private fun SignedInApp(
                     }
                 }
             }
+            // A workout left running (Back from the lifting screen) is picked up from here.
+            val running = live
+            if (isTab && test == null && running.isCleanReady() && running?.phase != LivePhase.FINISHED) {
+                ResumeBar(running!!) { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { launchSingleTop = true } }
+            }
             if (isTab) {
                 TabBar(currentRoute, onSelect = ::openTab)
             }
@@ -541,6 +550,34 @@ private fun SignedInApp(
         if (tour.isRunning) {
             TourOverlay(tour) { completed -> vm.setTourStatus(me, completed) }
         }
+    }
+}
+
+@Composable
+private fun ResumeBar(live: LiveWorkout, onResume: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(CleanColors.Ink)
+            .clickable(onClick = onResume)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Workout running", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+            Text(
+                listOfNotNull(
+                    live.exerciseName.ifBlank { null },
+                    if (live.phase == LivePhase.RESTING) "rest %d:%02d".format(live.restSeconds / 60, live.restSeconds % 60) else null
+                ).joinToString(" · ").ifBlank { "Workout" },
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                maxLines = 1
+            )
+        }
+        Text("Resume", style = MaterialTheme.typography.labelLarge, color = CleanColors.Accent, fontWeight = FontWeight.SemiBold)
     }
 }
 

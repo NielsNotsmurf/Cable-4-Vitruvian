@@ -1446,7 +1446,11 @@ class MainViewModel @Inject constructor(
             // Issue #218: Don't modify warmupReps in persisted state for bodyweight exercises.
             // Bodyweight exercises are just timers - no BLE commands, no rep counting.
             // Modifying warmupReps here would incorrectly carry over to subsequent cable exercises.
+            val turnLoad = if (isJustLiftMode) null else currentExercise?.exercise?.id?.let { exId ->
+                turnLoads[exId to turnProfileId()]?.let { it.getOrNull(_currentSetIndex.value) ?: it.lastOrNull() }
+            }
             var params = _workoutParameters.value.copy(
+                weightPerCableKg = turnLoad ?: _workoutParameters.value.weightPerCableKg,
                 isJustLift = isJustLiftMode,
                 useAutoStart = if (isJustLiftMode) true else _workoutParameters.value.useAutoStart
                 // warmupReps intentionally NOT modified - preserve for subsequent cable exercises
@@ -1965,7 +1969,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun startRestTimer() {
+    private fun startRestTimer(durationOverride: Int? = null) {
         restTimerJob?.cancel()
 
         restTimerJob = viewModelScope.launch {
@@ -1974,7 +1978,8 @@ class MainViewModel @Inject constructor(
             val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
 
             val completedSetIndex = _currentSetIndex.value
-            val restDuration = currentExercise?.getRestForSet(completedSetIndex)?.takeIf { it > 0 } ?: 90
+            val restDuration = durationOverride?.coerceAtLeast(1)
+                ?: currentExercise?.getRestForSet(completedSetIndex)?.takeIf { it > 0 } ?: 90
             val autoplay = userPreferences.value.autoplayEnabled
 
             val isSingleExercise = isSingleExerciseMode()
@@ -2201,6 +2206,86 @@ class MainViewModel @Inject constructor(
                 Timber.d("Routine completed successfully")
             }
         }
+    }
+
+    /**
+     * Per-lifter loads for the sets of an exercise, keyed by (exercise id, profile id). When a
+     * set starts, the performer's entry wins over the routine's loads, so every lifter in the
+     * rotation lifts their own load and a mid-workout % change reaches the following sets.
+     */
+    private var turnLoads: Map<Pair<String, String>, List<Float>> = emptyMap()
+
+    /** Who lifts the next set: the rotation's performer, else the active profile. */
+    private fun turnProfileId(): String {
+        val participants = _workoutParticipants.value
+        return if (participants.isEmpty()) activeProfileId.value
+        else participants[_currentParticipantIndex.value % participants.size].id
+    }
+
+    /** Sets the loads of the coming sets of [exerciseId], per profile id, in set order. */
+    fun setUpcomingLoads(exerciseId: String, loadsByProfile: Map<String, List<Float>>) {
+        turnLoads = turnLoads + loadsByProfile.mapKeys { (profileId, _) -> exerciseId to profileId }
+    }
+
+    /** Ends the set being lifted now with the reps done so far, as if its target was reached. */
+    fun finishSetEarly() {
+        if (_workoutState.value is WorkoutState.Active) handleSetCompletion()
+    }
+
+    /**
+     * During rest, moves the coming set [delta] sets forward (skip) or back (redo) in the
+     * rotation, crossing into the next or previous exercise at its ends. Past the last set the
+     * rest leads to the end of the workout. The rest timer keeps its remaining time.
+     */
+    fun moveUpcomingSet(delta: Int) {
+        val resting = _workoutState.value as? WorkoutState.Resting ?: return
+        val routine = _loadedRoutine.value ?: return
+        val n = _workoutParticipants.value.size.coerceAtLeast(1)
+        var exerciseIdx = _currentExerciseIndex.value
+        var turn = _exerciseTurnCount.value + delta
+        while (turn < 0 && exerciseIdx > 0) {
+            exerciseIdx--
+            turn += (routine.exercises[exerciseIdx].setReps.size * n)
+        }
+        while (exerciseIdx < routine.exercises.size - 1 && turn >= routine.exercises[exerciseIdx].setReps.size * n) {
+            turn -= routine.exercises[exerciseIdx].setReps.size * n
+            exerciseIdx++
+        }
+        jumpToTurn(exerciseIdx, turn.coerceIn(0, routine.exercises[exerciseIdx].setReps.size * n), resting.restSecondsRemaining)
+    }
+
+    /** During rest, jumps to the first set of the next ([delta] 1) or previous (-1) exercise. */
+    fun moveUpcomingExercise(delta: Int) {
+        val resting = _workoutState.value as? WorkoutState.Resting ?: return
+        val routine = _loadedRoutine.value ?: return
+        val target = (_currentExerciseIndex.value + delta).coerceIn(0, routine.exercises.size - 1)
+        jumpToTurn(target, 0, resting.restSecondsRemaining)
+    }
+
+    private fun jumpToTurn(exerciseIdx: Int, turn: Int, restSeconds: Int) {
+        val routine = _loadedRoutine.value ?: return
+        val exercise = routine.exercises[exerciseIdx]
+        val participants = _workoutParticipants.value
+        val n = participants.size.coerceAtLeast(1)
+        _currentExerciseIndex.value = exerciseIdx
+        _exerciseTurnCount.value = turn
+        if (participants.isNotEmpty()) _currentParticipantIndex.value = turn % n
+        val setIdx = (turn / n).coerceAtMost(exercise.setReps.size - 1).coerceAtLeast(0)
+        _currentSetIndex.value = setIdx
+        val reps = exercise.setReps.getOrNull(setIdx)
+        val weight = exercise.exercise.id?.let { turnLoads[it to turnProfileId()] }?.let { it.getOrNull(setIdx) ?: it.lastOrNull() }
+            ?: exercise.setWeightsPerCableKg.getOrNull(setIdx) ?: exercise.weightPerCableKg
+        _workoutParameters.value = _workoutParameters.value.copy(
+            weightPerCableKg = weight,
+            reps = reps ?: 0,
+            workoutType = exercise.workoutType,
+            progressionRegressionKg = exercise.progressionKg,
+            selectedExerciseId = exercise.exercise.id,
+            isAMRAP = reps == null
+        )
+        // Keep these parameters when the next set starts.
+        _parametersModifiedDuringRest.value = true
+        startRestTimer(restSeconds.coerceAtLeast(1))
     }
 
     fun skipRest() {
@@ -2873,6 +2958,7 @@ class MainViewModel @Inject constructor(
      * Load a routine for workout - sets parameters from first exercise
      */
     fun loadRoutine(routine: Routine) {
+        turnLoads = emptyMap()
         if (routine.exercises.isEmpty()) {
             Timber.w("Cannot load routine with no exercises")
             return

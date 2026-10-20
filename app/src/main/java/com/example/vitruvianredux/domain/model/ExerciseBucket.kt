@@ -65,6 +65,8 @@ enum class ExerciseBucket(val displayName: String, val muscleGroupLabel: String)
                 "quads" in m -> QUADS
                 "core" in m || "obliques" in m -> CORE
                 "abductors" in m -> HAMSTRINGS_GLUTES
+                "forearms" in m -> BICEPS
+                "traps" in m -> BACK
 
                 // muscleGroups fallback for exercises with no muscle data
                 else -> {
