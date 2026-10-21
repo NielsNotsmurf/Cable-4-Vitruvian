@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/NielsNotsmurf/vitruvian-app?style=flat-square&color=000000&label=release"></a>
-  <a href="https://github.com/NielsNotsmurf/vitruvian-app/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/vitruvian-app/total?style=flat-square&color=000000"></a>
+  <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/NielsNotsmurf/Cable-4-Vitruvian?style=flat-square&color=000000&label=release"></a>
+  <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/Cable-4-Vitruvian/total?style=flat-square&color=000000"></a>
   <img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-000000?style=flat-square&logo=android&logoColor=white">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-000000?style=flat-square"></a>
   <a href="https://github.com/sponsors/NielsNotsmurf"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-%E2%99%A5-000000?style=flat-square&logo=githubsponsors&logoColor=white"></a>
@@ -15,7 +15,7 @@
   <b>Cable: an unofficial app for the Vitruvian V-Form &amp; Trainer+.</b><br>
   Train without a subscription. Not affiliated with Vitruvian.<br>
   Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
-  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/vitruvian-app/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
+  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/Cable-4-Vitruvian/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
 </p>
 
 > [!NOTE]
@@ -45,7 +45,7 @@
   <img src="docs/screenshots/analytics.png" width="23%" alt="Analytics body map">
 </p>
 
-**Try it in your browser:** the [live demo](https://nielsnotsmurf.github.io/vitruvian-app/demo/) is a
+**Try it in your browser:** the [live demo](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/demo/) is a
 clickable web version with a simulated trainer and example lifters. Nothing to install.
 
 ## Features
@@ -96,11 +96,11 @@ Android only (Android 8 or newer) and free.
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium/releases) on your phone or tablet.
    It installs apps straight from GitHub and keeps them updated.
-2. In Obtainium, tap **Add app**, paste `https://github.com/NielsNotsmurf/vitruvian-app` and
+2. In Obtainium, tap **Add app**, paste `https://github.com/NielsNotsmurf/Cable-4-Vitruvian` and
    tap **Add**, then **Install**. Allow Obtainium to install apps when Android asks.
 3. Open Cable, follow the welcome steps and connect to your trainer over Bluetooth.
 
-Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/vitruvian-app/releases)
+Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/Cable-4-Vitruvian/releases)
 on your phone and tap the `.apk` of the latest version. You then have to repeat this for
 every update.
 
@@ -116,7 +116,7 @@ connects to the trainer directly over Bluetooth, without a subscription or cloud
 **Does it work with my V-Form or Trainer+?**
 Cable is made for both and talks to them over the trainer's Bluetooth LE protocol. If something
 does not work on your unit, please
-[open an issue](https://github.com/NielsNotsmurf/vitruvian-app/issues).
+[open an issue](https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues).
 
 **Is it official?**
 No. Cable is an independent community project, not affiliated with or endorsed by Vitruvian.
