@@ -53,7 +53,7 @@ to move to a new key.
 **Obtainium (auto-updates).** No account or token is needed:
 
 1. Install Obtainium from https://github.com/ImranR98/Obtainium/releases.
-2. Tap Add app, paste `https://github.com/NielsNotsmurf/vitruvian-app` and tap Add.
+2. Tap Add app, paste `https://github.com/NielsNotsmurf/Cable-4-Vitruvian` and tap Add.
 3. Tap Install. Obtainium checks for new releases on its own.
 
 **Without Obtainium.** Open the repo's Releases page in the phone's browser and
