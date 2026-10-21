@@ -139,6 +139,7 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-21:** new screenshots in the Cable look.
 - **2026-10-20:** move through a workout: end a set early (6 of 8 reps still counts) and go on,
   skip or redo a set, or jump to the next exercise during rest. Back leaves the workout running so
   you can check Analytics, and a "Workout running" bar picks it up again. The % of 1RM slider stays
