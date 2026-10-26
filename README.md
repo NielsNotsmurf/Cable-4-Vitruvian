@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.svg" alt="Cable" width="100%">
+  <img src="docs/banner.svg" alt="Cable, a free unofficial app for the Vitruvian Trainer+ and V-Form" width="100%">
 </p>
 
 <p align="center">
@@ -10,6 +10,8 @@
   <a href="https://github.com/sponsors/NielsNotsmurf"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-%E2%99%A5-000000?style=flat-square&logo=githubsponsors&logoColor=white"></a>
   <a href="https://github.com/ImranR98/Obtainium"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/get%20it%20on-Obtainium-000000?style=flat-square"></a>
 </p>
+
+<h1 align="center">Cable: free app for the Vitruvian Trainer+ &amp; V-Form</h1>
 
 <p align="center">
   <b>Cable: an unofficial app for the Vitruvian V-Form &amp; Trainer+.</b><br>
@@ -39,10 +41,10 @@
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/welcome.png" width="23%" alt="Welcome">
-  <img src="docs/screenshots/train.png" width="23%" alt="Training">
-  <img src="docs/screenshots/exercises.png" width="23%" alt="Exercises">
-  <img src="docs/screenshots/analytics.png" width="23%" alt="Analytics body map">
+  <img src="docs/screenshots/welcome.png" width="23%" alt="Cable welcome screen">
+  <img src="docs/screenshots/train.png" width="23%" alt="Training with a Vitruvian Trainer+ in Cable">
+  <img src="docs/screenshots/exercises.png" width="23%" alt="Exercise list with loads per cable">
+  <img src="docs/screenshots/analytics.png" width="23%" alt="Analytics body map with 1RM per muscle group">
 </p>
 
 **Try it in your browser:** the [live demo](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/demo/) is a
@@ -139,6 +141,7 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-26:** a small landing page on GitHub Pages and better image descriptions, so search engines find Cable.
 - **2026-10-21:** new screenshots in the Cable look.
 - **2026-10-20:** move through a workout: end a set early (6 of 8 reps still counts) and go on,
   skip or redo a set, or jump to the next exercise during rest. Back leaves the workout running so
