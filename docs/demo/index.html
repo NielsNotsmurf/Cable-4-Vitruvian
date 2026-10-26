@@ -150,6 +150,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .swatch.on{border-color:var(--ink);box-shadow:inset 0 0 0 3px var(--bg)}
 .log{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;padding:8px 0;border-bottom:1px solid var(--line);word-break:break-word}
 .log b{font-weight:700}
+.dv{position:relative;overflow:hidden;gap:6px;align-content:center}.dv i{display:block;width:6px;height:46px;border-radius:3px;background:var(--accent);animation:dv 1.6s ease-in-out infinite}.dv span{font-size:13px;opacity:.85}@keyframes dv{50%{transform:translateY(-14px) scaleY(.7)}}
 .video{aspect-ratio:16/9;border-radius:16px;background:linear-gradient(135deg,#1F2937,#374151);display:grid;place-items:center;color:#fff}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 svg.chart{width:100%;height:auto;display:block;overflow:visible}
@@ -238,6 +239,8 @@ const SYN={Core:['abs','abdominals','stomach'],Obliques:['abs','waist'],Shoulder
  Hamstrings:['hamstring','legs'],Calves:['calf','legs'],Abductors:['hips','outer thigh'],Chest:['pecs','pectorals']};
 EXERCISES.forEach(e=>{e.muscles=(MUSCLES[e.id]||'').split(',').filter(Boolean);const m=e.muscles.map(x=>x.toLowerCase());
  e.desc=(m.length>1?'Works the '+m.slice(0,-1).join(', ')+' and '+m[m.length-1]:m.length?'Works the '+m[0]:'A '+e.group.toLowerCase()+' exercise')+'. Uses '+e.equip.toLowerCase()+'.'});
+// Exercise demo, shown on set-up and while the trainer counts down and during warm-up, as in the app (the real app plays the clip).
+const demoVid=(e,id)=>S.settings.videos&&e?`<div class="video dv"${id?` id="${id}"`:''} role="img" aria-label="Demo video of ${esc(e.name)}"><i></i><span>${esc(e.name)} · demo video</span></div>`:'';
 const exMatches=(e,q)=>{const words=q.toLowerCase().split(/[ ,]+/).filter(Boolean);if(!words.length)return true;
  const text=[e.name,e.group,e.equip,e.desc,...e.muscles.flatMap(m=>[m,...(SYN[m]||[])])].join(' ').toLowerCase();return words.every(w=>text.includes(w))};
 const ANCHOR={Chest:'bench',Back:'row',Legs:'squat',Glutes:'rdl',Shoulders:'ohp',Arms:'curl',Core:null};
@@ -484,8 +487,9 @@ const views={
     <div class="row"><button class="ghost" data-dupset="${i}" style="min-height:44px">Copy set</button><button class="ghost danger" data-delset="${i}" style="min-height:44px" ${setup.sets.length<2?'disabled':''}>Delete set</button></div></div>`;
   }).join('');
   const sum=setup.sets.every(s=>s.type===setup.sets[0].type&&s.reps===setup.sets[0].reps)?`${setup.sets.length} × ${setup.sets[0].type==='amrap'?'AMRAP':setup.sets[0].type==='time'?setup.sets[0].secs+'s':setup.sets[0].reps}`:`${setup.sets.length} sets`;
-  return `<div class="screen">${top(e.name,'exercises',S.settings.videos?`<button class="icon" data-video="${e.id}" aria-label="Watch demo">${I.play}</button>`:'')}
+  return `<div class="screen">${top(e.name,'exercises',S.settings.videos?`<button class="icon" data-togglevid aria-pressed="${UI.vid!==false}" aria-label="${UI.vid===false?'Show':'Hide'} demo video">${I.play}</button>`:'')}
   <div class="scroll"><span class="small" style="margin-top:-10px">${esc(e.equip)} · ${esc(e.group)}${bw?'':' · weight per cable'}</span>
+   ${UI.vid===false?'':demoVid(e)}
    ${bw?'':`<div class="hscroll">${MODES.map(([m])=>`<button class="chip ${m===setup.mode?'on':''}" data-mode="${m}">${m}</button>`).join('')}</div><span class="small" style="margin-top:-6px">${modeDesc}</span>`}
    ${echo?`<span class="label">Echo level</span><div class="presets">${ECHO_LEVELS.map(p=>`<button class="preset ${setup.echoLevel===p?'on':''}" data-echo="${p}">${p}</button>`).join('')}</div>
     <div class="row"><span class="label grow">Eccentric load</span><b style="font-family:var(--f-num);font-size:20px">${setup.ecc}%</b></div><input type="range" id="ecc" min="0" max="150" step="5" value="${setup.ecc}" aria-label="Eccentric load percent">
@@ -540,7 +544,7 @@ const views={
   const l=lifter(curLid());
   return `<div class="screen"><div class="scroll" style="justify-content:center;align-items:center;gap:12px">
    <div class="band" style="background:${color(l)};width:100%"><span>${esc(l.name)}</span><span>${run.justLift?'Just Lift':'Set '+(curSet()+1)+' of '+run.plan.length}</span></div>
-   <span class="label" style="margin-top:30px">Get ready</span><div class="huge" style="font-size:160px">${V.n}</div>
+   ${demoVid(EX(run.ex))}<span class="label" style="margin-top:12px">Get ready</span><div class="huge" style="font-size:160px">${V.n}</div>
    <span class="small">${esc(run.exName)} · ${run.bw?planTxt(run.plan[curSet()]):run.mode==='Echo'?'Echo '+run.echoLevel:W(curLoad())+' per cable'}</span>
   </div><div class="bar"><div class="row"><button class="ghost" data-endall>End workout</button><button class="ghost" data-skipcount>Start now</button></div></div></div>`;
  },
@@ -552,7 +556,7 @@ const views={
    ${run.justLift?'':`<div class="row" style="margin-bottom:-8px"><button class="back" data-leave aria-label="Leave it running">${I.back}</button><span class="small grow">Back leaves the workout running</span></div>`}
    <div class="band" style="background:${color(l)}"><span>${esc(l.name)}${run.order.length>1?` <span style="opacity:.8;font-weight:600">· ${run.order.indexOf(lid)+1} of ${run.order.length}</span>`:''}</span><span id="bandload">${run.bw?'Bodyweight':run.mode==='Echo'?'Echo '+run.echoLevel:W(liveLoad())+CM(run.cable==='Single'?1:2)}</span></div>
    ${run.justLift?'':`<div class="prog">${run.plan.map((_,i)=>`<i class="${i<si?'d':i===si?'w':''}"></i>`).join('')}</div><span class="small" style="text-align:center;margin-top:-6px">Set ${si+1} of ${run.plan.length} · ${esc(run.exName)} · ${run.mode}${R.conn==='on'||HR.bpm?' · <span style="color:var(--danger)">♥</span> <span id="hrnow">'+HR.bpm+'</span>':''}</span>`}
-   <div><div class="label" id="phase" style="text-align:center">${phaseLabel()}</div><div class="huge" id="reps">${plan.type==='time'?run.left:run.rep}${plan.type==='time'?'<span>s</span>':target}</div></div>
+   ${run.warmLeft>0?demoVid(EX(run.ex),'livevid'):''}<div><div class="label" id="phase" style="text-align:center">${phaseLabel()}</div><div class="huge" id="reps">${plan.type==='time'?run.left:run.rep}${plan.type==='time'?'<span>s</span>':target}</div></div>
    ${run.bw?'':`<div class="cables"><div class="cable ${run.cable==='Single'?'off':''}"><span>L</span><i id="cl" style="height:0%"></i></div><div class="cable"><span>R</span><i id="cr" style="height:0%"></i></div></div>`}
    ${run.bw?'':`<div class="stats"><div><span class="label">Load</span><b>${num(curLoad())}${CM(run.cable==='Single'?1:2)}</b><span class="small">${U()} per cable</span></div><div><span class="label">Now</span><b id="sload">${num(liveLoad())}</b><span class="small">${U()} per cable</span></div></div>${run.ex?averages(lid,run.ex,run.cable==='Single'?1:2):''}`}
    ${run.justLift?`<div class="card" style="text-align:center"><span class="small" id="autostop">${run.downLeft!=null?'<b style="color:var(--accent-ink)">Stopping in '+run.downLeft+'…</b>':'Put the handles down for 5 seconds to stop'}</span></div>`:''}
@@ -1151,6 +1155,7 @@ function onRep(plan){
   const r=app.querySelector('#reps'),ph=app.querySelector('#phase');
   if(r)r.innerHTML=run.rep+(plan.type==='reps'?`<span>/${plan.reps}</span>`:'');
   if(ph)ph.textContent=phaseLabel();
+  if(!run.warmLeft)app.querySelector('#livevid')?.remove();
   const v=app.querySelector('#svel'),p=app.querySelector('#spow'),sl=app.querySelector('#sload'),bl=app.querySelector('#bandload');
   if(v)v.textContent=run.vel.toFixed(2);if(p)p.textContent=Math.round(liveLoad()*2*9.81*run.vel);
   if(sl)sl.textContent=num(liveLoad());if(bl&&run.mode!=='Echo')bl.innerHTML=W(liveLoad())+CM(run.cable==='Single'?1:2);
@@ -1391,6 +1396,7 @@ app.addEventListener('click',ev=>{
   // history
   if(d.hf){UI.hFilter=d.hf;render();return}
   if(d.session){go('session',{id:d.session});return}
+  if(d.togglevid!=null){UI.vid=UI.vid===false;render();return}
   if(d.nowall!=null){UI.nowAll=!UI.nowAll;render();return}
   if(d.ormall!=null){UI.ormAll=!UI.ormAll;render();return}
   if(d.ormedit){const id=d.ormedit,lid=UI.aLifter,o=oneRM(lid,id),e=EX(id),manual=o&&o.src!=='RELATED';
