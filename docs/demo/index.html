@@ -136,6 +136,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .sw.on{background:var(--accent)}.sw.on::after{left:21px}
 .navrow{display:flex;align-items:center;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--line);background:transparent;width:100%;text-align:left;cursor:pointer;color:var(--ink);font-size:15px;min-height:56px}
 .navrow:last-child{border-bottom:0}
+.resume{display:flex;align-items:center;gap:12px;margin:6px 12px;padding:12px 16px;border:0;border-radius:16px;background:var(--ink);color:var(--bg);text-align:left;cursor:pointer;font:inherit}.resume .small{color:inherit;opacity:.7}.resume .go{color:var(--accent)}
 .navrow .v{color:var(--muted);font-size:14px}
 .group{background:var(--soft);border-radius:20px;padding:4px 16px}
 .cables{display:flex;gap:18px;justify-content:center;align-items:flex-end;height:120px}
@@ -149,6 +150,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .swatch.on{border-color:var(--ink);box-shadow:inset 0 0 0 3px var(--bg)}
 .log{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;padding:8px 0;border-bottom:1px solid var(--line);word-break:break-word}
 .log b{font-weight:700}
+.dv{position:relative;overflow:hidden;gap:6px;align-content:center}.dv i{display:block;width:6px;height:46px;border-radius:3px;background:var(--accent);animation:dv 1.6s ease-in-out infinite}.dv span{font-size:13px;opacity:.85}@keyframes dv{50%{transform:translateY(-14px) scaleY(.7)}}
 .video{aspect-ratio:16/9;border-radius:16px;background:linear-gradient(135deg,#1F2937,#374151);display:grid;place-items:center;color:#fff}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 svg.chart{width:100%;height:auto;display:block;overflow:visible}
@@ -189,7 +191,9 @@ table.sets th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color
   <p>New: the first launch shows onboarding (account, optional PIN, Garmin heart rate) and an app tour with arrows. Settings → Account sets a PIN or switches account; Settings → Help replays the tour. Reset demo data to see the first launch again.</p>
   <p>Train is now a home screen: the training you're doing (anything within 5 hours of the last exercise), live heart rate, and your oldest 1RMs to re-test. Pick an LED colour in Settings and the whole app follows it.</p>
   <p>Analytics opens on a body map: each region is coloured by the measure and period you pick, with your best 1RM inside it per cable. Tap a region to narrow the screen to it.</p>
-  <p>Everything the classic app does has a place here: training, Just Lift, the 1RM test, history, analytics, profiles, trainer connection and all settings. Example lifters and workouts are pre-filled; your changes stay in this browser.</p>
+  <p>Everything the classic app does has a place here: training, the 1RM test, history, analytics, profiles, trainer connection and all settings. Example lifters and workouts are pre-filled; your changes stay in this browser.</p>
+  <p>Latest: during rest go back or skip a set, end a set early, and slide the % of 1RM for the coming sets. Back leaves a workout running; a bar at the bottom resumes it. Search exercises by muscle (try “forearms”). 1RMs come only from the 1RM test or by hand: tap one in Analytics to correct it.</p>
+  <p><a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml&amp;version=Web%20demo" target="_blank" rel="noopener">Send feedback</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian#install" target="_blank" rel="noopener">Install the app</a></p>
   <button type="button" id="reset">Reset demo data</button>
 </aside>
 <main class="device" id="app" aria-live="polite"></main>
@@ -224,6 +228,21 @@ const EXERCISES=[
  ['woodchop','Woodchopper','Core','Handles',0,1],['pallof','Pallof Press','Core','Handles',0,1],['plank','Plank','Core','Bodyweight',1]
 ].map(([id,name,group,equip,bw,single],i)=>({id,name,group,equip,bw:!!bw,single:!!single,pop:100-i}));
 const EX=id=>EXERCISES.find(e=>e.id===id);
+// Muscles each exercise works, other words people search with, and a short description (ExerciseSearch.kt).
+const MUSCLES={bench:'Chest,Triceps,Shoulders',incfly:'Chest,Shoulders',floorpress:'Chest,Triceps',cablefly:'Chest',pushup:'Chest,Triceps,Core',bwpush:'Chest,Triceps,Core',
+ row:'Upper back,Lats,Biceps',sarow:'Lats,Upper back,Biceps',pulldown:'Lats,Biceps',facepull:'Upper back,Shoulders,Traps',lbrow:'Upper back,Lats,Forearms',
+ squat:'Quads,Glutes',rdl:'Hamstrings,Glutes,Lower back',split:'Quads,Glutes',deadlift:'Hamstrings,Glutes,Lower back,Forearms',lunge:'Quads,Glutes,Hamstrings',
+ hipthrust:'Glutes,Hamstrings',bridge:'Glutes',kickback:'Glutes',ohp:'Shoulders,Triceps',lateral:'Shoulders',reardelt:'Shoulders,Upper back',uprow:'Shoulders,Traps',
+ curl:'Biceps,Forearms',hammer:'Biceps,Forearms',sbcurl:'Biceps',triceps:'Triceps',pushdown:'Triceps',woodchop:'Obliques,Core',pallof:'Core,Obliques',plank:'Core'};
+const SYN={Core:['abs','abdominals','stomach'],Obliques:['abs','waist'],Shoulders:['delts','deltoids'],Lats:['back','latissimus'],'Upper back':['back','rhomboids'],'Lower back':['back','erectors'],
+ Traps:['trapezius','neck'],Forearms:['forearm','grip','wrist'],Biceps:['arms','bicep'],Triceps:['arms','tricep'],Glutes:['butt','bum','hips'],Quads:['quadriceps','thighs','legs'],
+ Hamstrings:['hamstring','legs'],Calves:['calf','legs'],Abductors:['hips','outer thigh'],Chest:['pecs','pectorals']};
+EXERCISES.forEach(e=>{e.muscles=(MUSCLES[e.id]||'').split(',').filter(Boolean);const m=e.muscles.map(x=>x.toLowerCase());
+ e.desc=(m.length>1?'Works the '+m.slice(0,-1).join(', ')+' and '+m[m.length-1]:m.length?'Works the '+m[0]:'A '+e.group.toLowerCase()+' exercise')+'. Uses '+e.equip.toLowerCase()+'.'});
+// Exercise demo, shown on set-up and while the trainer counts down and during warm-up, as in the app (the real app plays the clip).
+const demoVid=(e,id)=>S.settings.videos&&e?`<div class="video dv"${id?` id="${id}"`:''} role="img" aria-label="Demo video of ${esc(e.name)}"><i></i><span>${esc(e.name)} · demo video</span></div>`:'';
+const exMatches=(e,q)=>{const words=q.toLowerCase().split(/[ ,]+/).filter(Boolean);if(!words.length)return true;
+ const text=[e.name,e.group,e.equip,e.desc,...e.muscles.flatMap(m=>[m,...(SYN[m]||[])])].join(' ').toLowerCase();return words.every(w=>text.includes(w))};
 const ANCHOR={Chest:'bench',Back:'row',Legs:'squat',Glutes:'rdl',Shoulders:'ohp',Arms:'curl',Core:null};
 const RATIO={incfly:.45,floorpress:.9,cablefly:.4,pushup:.7,sarow:.55,pulldown:.85,facepull:.35,lbrow:1,split:.5,deadlift:1.25,lunge:.5,hipthrust:1.2,bridge:1,kickback:.25,lateral:.35,reardelt:.3,uprow:.6,hammer:1,sbcurl:1,triceps:.8,pushdown:.9};
 // Strength assessment anchors (AnchorExerciseConfig.kt): 10 controlled reps, rated by feel.
@@ -245,13 +264,14 @@ function seedSessions(){
     out.push({id:'t'+k,t:now-min*60000,ex,mode:'Old School',lifters:['niels','anna'],sets,pr:{},safety:{}})});
   return out;
 }
+const seedOrm=m=>Object.fromEntries(Object.entries(m).map(([ex,kg],i)=>[ex,{kg,src:'BENCHMARK',t:Date.now()-[20,34,12,45,27][i]*86400000}]));
 function seed(){
   return {
     lifters:[{id:'niels',name:'Niels',c:0},{id:'anna',name:'Anna',c:1}],
     active:['niels','anna'], def:'niels',
-    stored:{niels:{bench:{kg:62,src:'BENCHMARK',t:Date.now()-20*86400000}},anna:{bench:{kg:34,src:'BENCHMARK',t:Date.now()-20*86400000}}},
+    stored:{niels:seedOrm({bench:62,squat:80,row:56,rdl:70,ohp:34}),anna:seedOrm({bench:34,squat:46,row:30,rdl:42,ohp:17})},
     sessions:seedSessions(), pct:{}, fav:{bench:1,squat:1}, defaults:{},
-    assess:{niels:{done:['bench']},anna:{done:['bench']}},
+    assess:{niels:{done:['bench','squat','row','rdl','ohp']},anna:{done:['bench','squat','row','rdl','ohp']}},
     device:null,
     settings:{unit:'kg',defaultReps:10,autoplay:true,stopAtTop:false,videos:true,beeps:true,haptics:true,led:null,theme:'Light',autoConnect:true,warmup:3},
     // Local accounts: the PIN is kept as a hash, as in the app (there PBKDF2; here SHA-256 is enough for a demo).
@@ -287,7 +307,6 @@ function hist(lid,ex){const out=[];S.sessions.forEach(s=>s.sets.forEach(x=>{if(x
 function oneRM(lid,ex,depth){
   const st=S.stored[lid]?.[ex];
   let best=st?{kg:st.kg,src:st.src}:null;
-  if(ex)hist(lid,ex).forEach(h=>{const e=epley(h.kg,h.reps);if(!best||e>best.kg)best={kg:e,src:'HISTORY'}});
   if(best)return best;
   const e=EX(ex); if(!e||depth)return null; const a=ANCHOR[e.group];
   if(a&&a!==ex&&RATIO[ex]){const ar=oneRM(lid,a,1);if(ar)return {kg:ar.kg*RATIO[ex],src:'RELATED'}}
@@ -321,13 +340,11 @@ function currentSession(){
   const list=S.sessions.slice().sort((a,b)=>b.t-a.t);if(!list.length||Date.now()-list[0].t>=SESSION_GAP)return [];
   const out=[list[0]];for(const s of list.slice(1)){if(out[out.length-1].t-s.t>=SESSION_GAP)break;out.push(s)}return out.reverse();
 }
-// Oldest dated 1RMs of the people training: stored ones, or the best set in history.
+// Oldest 1RMs of the people training. Only the 1RM test or a hand entry sets one.
 function longestStanding(limit){
   const out=[];
   activeL().forEach(l=>{const seen=new Set();
     Object.entries(S.stored[l.id]||{}).forEach(([ex,o])=>{const best=oneRM(l.id,ex);if(o.t&&best&&best.src!=='HISTORY'){out.push({lid:l.id,ex,kg:o.kg,t:o.t});seen.add(ex)}});
-    const best={};S.sessions.forEach(s=>s.sets.forEach(x=>{if(x.lid!==l.id||!s.ex||seen.has(s.ex)||EX(s.ex).bw)return;const e=epley(x.kg,x.reps);if(!best[s.ex]||e>best[s.ex].kg)best[s.ex]={kg:e,t:s.t}}));
-    Object.entries(best).forEach(([ex,b])=>out.push({lid:l.id,ex,kg:b.kg,t:b.t}));
   });
   return out.sort((a,b)=>a.t-b.t).slice(0,limit);
 }
@@ -369,7 +386,7 @@ function sheet(html,onClick,opts){
 function confirmSheet(title,body,okLabel,onOk,danger){
   sheet(`<h3>${esc(title)}</h3><span class="small" style="font-size:14px">${body}</span><div class="row"><button class="ghost" data-x>Cancel</button><button class="btn ${danger?'danger':''}" style="flex:2" data-ok>${esc(okLabel)}</button></div>`,(d,close)=>{if(d.x!=null)close();if(d.ok!=null){close();onOk()}},{center:true});
 }
-const tabs=cur=>`<nav class="tabs">${[['history','History'],['analytics','Analytics'],['train','Train'],['exercises','Exercises'],['settings','Settings']].map(([k,l])=>k==='train'
+const tabs=cur=>`${resumeBar()}<nav class="tabs">${[['history','History'],['analytics','Analytics'],['train','Train'],['exercises','Exercises'],['settings','Settings']].map(([k,l])=>k==='train'
   ?`<button class="tab center ${cur===k?'on':''}" data-go="${k}" aria-label="Train" aria-current="${cur===k?'page':'false'}"><span class="circ">${I[k]}</span></button>`
   :`<button class="tab ${cur===k?'on':''}" data-go="${k}" data-tour="tab-${k}" aria-current="${cur===k?'page':'false'}">${I[k]}${l}</button>`).join('')}</nav>`;
 const top=(title,back,right)=>`<div class="top">${back?`<button class="back" data-go="${back}" aria-label="Back">${I.back}</button>`:''}<h2>${esc(title)}</h2>${right||''}</div>`;
@@ -389,7 +406,7 @@ function ormColumn(ex){
   return `<div class="orm">${h}</div>`;
 }
 function exRow(e,sub,star){
-  return `<div class="row" style="gap:0"><button class="ex" data-ex="${e.id}"><span class="thumb">${e.name[0]}${S.settings.videos?'<i>▶</i>':''}</span><span class="grow"><span class="name">${esc(e.name)}</span><br><span class="small">${esc(sub||e.equip+' · '+e.group)}</span></span>${ormColumn(e.id)}</button>${star?`<button class="star ${S.fav[e.id]?'on':''}" data-fav="${e.id}" aria-label="Favourite ${esc(e.name)}" aria-pressed="${!!S.fav[e.id]}">★</button>`:''}</div>`;
+  return `<div class="row" style="gap:0"><button class="ex" data-ex="${e.id}"><span class="thumb">${e.name[0]}${S.settings.videos?'<i>▶</i>':''}</span><span class="grow"><span class="name">${esc(e.name)}</span><br><span class="small">${esc(sub||e.desc)}</span></span>${ormColumn(e.id)}</button>${star?`<button class="star ${S.fav[e.id]?'on':''}" data-fav="${e.id}" aria-label="Favourite ${esc(e.name)}" aria-pressed="${!!S.fav[e.id]}">★</button>`:''}</div>`;
 }
 
 // ===================== screens =====================
@@ -405,8 +422,11 @@ const views={
   if(sess.length){
    const start=sess[0].t, min=Math.max(0,Math.round((Date.now()-start)/60000));
    const all=sess.flatMap(s=>s.sets), hrs=all.map(x=>x.hr).filter(Boolean), avg=hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):null, mx=Math.max(0,...all.map(x=>x.hrMax||0))||null;
-   const rows=sess.slice().reverse().flatMap(s=>s.lifters.map(id=>{const l=lifter(id),ss=s.sets.filter(x=>x.lid===id);if(!l||!ss.length)return '';const e=EX(s.ex),top=Math.max(...ss.map(x=>x.kg)),h=ss.map(x=>x.hr).filter(Boolean);
-     return `<div class="row" style="padding:6px 0"><span class="dot" style="background:${color(l)}"></span><span class="grow"><b style="font-size:15px">${esc(e?e.name:'Just Lift')}</b><br><span class="small">${esc(l.name)} · ${ss.length} × ${Math.round(ss.reduce((a,x)=>a+x.reps,0)/ss.length)} · ${s.mode}${h.length?' · ♥ '+Math.round(h.reduce((a,b)=>a+b,0)/h.length):''}</span></span>${e&&!e.bw?`<b style="font-family:var(--f-num);font-size:17px;color:${color(l)}">${W(top)}</b>`:''}<span class="small">${hm(s.t)}</span></div>`})).join('');
+   // One line per exercise (newest first), however many sets and lifters it had.
+   const byEx=[];sess.slice().reverse().forEach(s=>{const k=s.ex||'_';let g=byEx.find(x=>x.k===k);if(!g)byEx.push(g={k,ex:s.ex,t:s.t,sets:[]});g.sets.push(...s.sets)});
+   const rows=byEx.slice(0,UI.nowAll?99:4).map(g=>{const e=EX(g.ex),ls=[...new Set(g.sets.map(x=>x.lid))].map(lifter).filter(Boolean),top=Math.max(...g.sets.map(x=>x.kg));
+     return `<div class="row" style="padding:6px 0"><span style="display:flex;gap:2px">${ls.slice(0,4).map(l=>`<span class="dot" style="background:${color(l)}"></span>`).join('')}</span><span class="grow"><b style="font-size:15px">${esc(e?e.name:'Workout')}</b><br><span class="small">${g.sets.length} sets${ls.length?' · '+esc(ls.map(l=>l.name).join(', ')):''}</span></span>${e&&!e.bw?`<b style="font-family:var(--f-num);font-size:17px">${WC(top,cabOf(g.ex))}</b>`:''}<span class="small">${hm(g.t)}</span></div>`}).join('')
+     +(byEx.length>4?`<button class="pill" data-nowall style="min-height:32px;padding:4px 10px">${UI.nowAll?'Show less':'Show all '+byEx.length+' exercises'}</button>`:'');
    now=`<div class="now"><div class="row"><span class="dot" style="background:var(--accent)"></span><span class="label grow" style="color:var(--accent-ink);white-space:nowrap">Current training</span><span class="small">Since ${hm(start)} · ${min<60?min+' min':Math.floor(min/60)+' h '+min%60+' min'}</span></div>
     <div class="row" style="gap:8px"><div class="mini"><b>${new Set(sess.map(s=>s.ex)).size}</b><span>exercises</span></div><div class="mini"><b>${all.length}</b><span>sets</span></div><div class="mini"><b>${all.reduce((a,x)=>a+x.reps,0)}</b><span>reps</span></div><div class="mini"><b>${live??avg??'–'}</b><span>${live?'bpm now':mx?'avg bpm':'bpm'}</span></div></div>
     <div>${rows}</div></div>`;
@@ -421,7 +441,7 @@ const views={
    ${now}
    <button class="btn accent" data-go="exercises" data-tour="pick">${sess.length?'Add an exercise':'Pick an exercise'}</button>
    <div class="tiles">
-    <button class="tile" data-go="justlift" data-tour="tiles"><em>⚡</em>Just Lift<span>Start lifting now</span></button>
+    <button class="tile" data-go="exercises" data-tour="tiles"><em>⌕</em>One exercise<span>Search by name, muscle or equipment</span></button>
     <button class="tile" data-go="groups"><em>◎</em>Muscle groups<span>Browse by area</span></button>
     <button class="tile" data-assess data-tour="orm"><em>✓</em>1RM test<span>${done}/9 done · ${esc(lead?.name||'')}</span></button>
    </div>
@@ -439,14 +459,14 @@ const views={
   </div></div>`;
  },
  exercises(){
-  const q=query.trim().toLowerCase(), groups=['All','Favourites',...GROUPS];
-  const list=EXERCISES.filter(e=>(group==='All'||(group==='Favourites'?S.fav[e.id]:e.group===group))&&(equip==='All'||e.equip===equip)&&(!q||e.name.toLowerCase().includes(q)))
+  const q=query.trim(), muscles=[...new Set(EXERCISES.flatMap(e=>e.muscles))].filter(m=>!GROUPS.includes(m)), groups=['All','Favourites',...GROUPS,...muscles];
+  const list=EXERCISES.filter(e=>(group==='All'||(group==='Favourites'?S.fav[e.id]:e.group===group||e.muscles.includes(group)))&&(equip==='All'||e.equip===equip)&&exMatches(e,q))
    .sort((a,b)=>{const k=x=>activeL().filter(l=>{const o=oneRM(l.id,x.id);return o&&o.src!=='RELATED'}).length;return k(b)-k(a)||lastDone(b.id)-lastDone(a.id)||b.pop-a.pop});
   return `<div class="screen">${top('Exercises',V.from||null)}
-  <div class="scroll"><input class="search" id="q" data-tour="search" type="search" placeholder="Search ${EXERCISES.length} exercises" value="${esc(query)}" aria-label="Search exercises">
+  <div class="scroll"><input class="search" id="q" data-tour="search" type="search" placeholder="Search ${EXERCISES.length} exercises, e.g. forearms" value="${esc(query)}" aria-label="Search exercises">
    <div class="hscroll">${groups.map(g=>`<button class="chip ${g===group?'on':''}" data-group="${g}"${g==='Favourites'?' data-tour="fav"':''}>${g==='Favourites'?'★ ':''}${g}</button>`).join('')}</div>
    <div class="hscroll">${['All',...EQUIP].map(g=>`<button class="chip ${g===equip?'on':''}" data-equip="${g}" style="min-height:36px;font-size:12.5px">${g==='All'?'Any equipment':g}</button>`).join('')}</div>
-   <div>${list.map(e=>exRow(e,null,true)).join('')||'<p class="small">No exercises match.</p>'}</div></div>${V.from?'':tabs('exercises')}</div>`;
+   <div>${list.map(e=>exRow(e,null,true)).join('')||`<p class="small">${group!=='All'||equip!=='All'?'No exercises match &quot;'+esc(query)+'&quot; here. Try All or Any equipment.':'No exercises match.'}</p>`}</div></div>${V.from?'':tabs('exercises')}</div>`;
  },
  setup(){
   const e=EX(setup.ex), echo=setup.mode==='Echo', ls=activeL(), bw=e.bw;
@@ -467,8 +487,9 @@ const views={
     <div class="row"><button class="ghost" data-dupset="${i}" style="min-height:44px">Copy set</button><button class="ghost danger" data-delset="${i}" style="min-height:44px" ${setup.sets.length<2?'disabled':''}>Delete set</button></div></div>`;
   }).join('');
   const sum=setup.sets.every(s=>s.type===setup.sets[0].type&&s.reps===setup.sets[0].reps)?`${setup.sets.length} × ${setup.sets[0].type==='amrap'?'AMRAP':setup.sets[0].type==='time'?setup.sets[0].secs+'s':setup.sets[0].reps}`:`${setup.sets.length} sets`;
-  return `<div class="screen">${top(e.name,'exercises',S.settings.videos?`<button class="icon" data-video="${e.id}" aria-label="Watch demo">${I.play}</button>`:'')}
+  return `<div class="screen">${top(e.name,'exercises',S.settings.videos?`<button class="icon" data-togglevid aria-pressed="${UI.vid!==false}" aria-label="${UI.vid===false?'Show':'Hide'} demo video">${I.play}</button>`:'')}
   <div class="scroll"><span class="small" style="margin-top:-10px">${esc(e.equip)} · ${esc(e.group)}${bw?'':' · weight per cable'}</span>
+   ${UI.vid===false?'':demoVid(e)}
    ${bw?'':`<div class="hscroll">${MODES.map(([m])=>`<button class="chip ${m===setup.mode?'on':''}" data-mode="${m}">${m}</button>`).join('')}</div><span class="small" style="margin-top:-6px">${modeDesc}</span>`}
    ${echo?`<span class="label">Echo level</span><div class="presets">${ECHO_LEVELS.map(p=>`<button class="preset ${setup.echoLevel===p?'on':''}" data-echo="${p}">${p}</button>`).join('')}</div>
     <div class="row"><span class="label grow">Eccentric load</span><b style="font-family:var(--f-num);font-size:20px">${setup.ecc}%</b></div><input type="range" id="ecc" min="0" max="150" step="5" value="${setup.ecc}" aria-label="Eccentric load percent">
@@ -523,7 +544,7 @@ const views={
   const l=lifter(curLid());
   return `<div class="screen"><div class="scroll" style="justify-content:center;align-items:center;gap:12px">
    <div class="band" style="background:${color(l)};width:100%"><span>${esc(l.name)}</span><span>${run.justLift?'Just Lift':'Set '+(curSet()+1)+' of '+run.plan.length}</span></div>
-   <span class="label" style="margin-top:30px">Get ready</span><div class="huge" style="font-size:160px">${V.n}</div>
+   ${demoVid(EX(run.ex))}<span class="label" style="margin-top:12px">Get ready</span><div class="huge" style="font-size:160px">${V.n}</div>
    <span class="small">${esc(run.exName)} · ${run.bw?planTxt(run.plan[curSet()]):run.mode==='Echo'?'Echo '+run.echoLevel:W(curLoad())+' per cable'}</span>
   </div><div class="bar"><div class="row"><button class="ghost" data-endall>End workout</button><button class="ghost" data-skipcount>Start now</button></div></div></div>`;
  },
@@ -532,29 +553,31 @@ const views={
   const nextTurn=run.turn+1<run.total?run.turn+1:null, next=nextTurn!=null?lifter(run.order[nextTurn%run.order.length]):null;
   const target=plan.type==='reps'?`<span>/${plan.reps}</span>`:'';
   return `<div class="screen"><div class="scroll" style="gap:14px">
+   ${run.justLift?'':`<div class="row" style="margin-bottom:-8px"><button class="back" data-leave aria-label="Leave it running">${I.back}</button><span class="small grow">Back leaves the workout running</span></div>`}
    <div class="band" style="background:${color(l)}"><span>${esc(l.name)}${run.order.length>1?` <span style="opacity:.8;font-weight:600">· ${run.order.indexOf(lid)+1} of ${run.order.length}</span>`:''}</span><span id="bandload">${run.bw?'Bodyweight':run.mode==='Echo'?'Echo '+run.echoLevel:W(liveLoad())+CM(run.cable==='Single'?1:2)}</span></div>
    ${run.justLift?'':`<div class="prog">${run.plan.map((_,i)=>`<i class="${i<si?'d':i===si?'w':''}"></i>`).join('')}</div><span class="small" style="text-align:center;margin-top:-6px">Set ${si+1} of ${run.plan.length} · ${esc(run.exName)} · ${run.mode}${R.conn==='on'||HR.bpm?' · <span style="color:var(--danger)">♥</span> <span id="hrnow">'+HR.bpm+'</span>':''}</span>`}
-   <div><div class="label" id="phase" style="text-align:center">${phaseLabel()}</div><div class="huge" id="reps">${plan.type==='time'?run.left:run.rep}${plan.type==='time'?'<span>s</span>':target}</div></div>
+   ${run.warmLeft>0?demoVid(EX(run.ex),'livevid'):''}<div><div class="label" id="phase" style="text-align:center">${phaseLabel()}</div><div class="huge" id="reps">${plan.type==='time'?run.left:run.rep}${plan.type==='time'?'<span>s</span>':target}</div></div>
    ${run.bw?'':`<div class="cables"><div class="cable ${run.cable==='Single'?'off':''}"><span>L</span><i id="cl" style="height:0%"></i></div><div class="cable"><span>R</span><i id="cr" style="height:0%"></i></div></div>`}
    ${run.bw?'':`<div class="stats"><div><span class="label">Load</span><b>${num(curLoad())}${CM(run.cable==='Single'?1:2)}</b><span class="small">${U()} per cable</span></div><div><span class="label">Now</span><b id="sload">${num(liveLoad())}</b><span class="small">${U()} per cable</span></div></div>${run.ex?averages(lid,run.ex,run.cable==='Single'?1:2):''}`}
    ${run.justLift?`<div class="card" style="text-align:center"><span class="small" id="autostop">${run.downLeft!=null?'<b style="color:var(--accent-ink)">Stopping in '+run.downLeft+'…</b>':'Put the handles down for 5 seconds to stop'}</span></div>`:''}
    ${next?`<div class="card" style="flex-direction:row;align-items:center"><span class="av" style="background:${color(next)}">${next.name[0]}</span><span><b>Up next: ${esc(next.name)}</b><br><span class="small">${run.bw?'':W(run.loads[next.id][Math.floor(nextTurn/run.order.length)])+' · '}${planTxt(run.plan[Math.floor(nextTurn/run.order.length)])}</span></span></div>`:''}
   </div>
-  <div class="bar">${run.justLift?`<button class="btn" data-down>${run.downLeft!=null?'Pick handles back up':'Simulate: put handles down'}</button>`:`<div class="row">${run.bw||run.mode==='Echo'?'':`<button class="ghost" data-adj="-1" aria-label="Less weight">−${num(nudgeKg())}</button>`}<button class="btn" style="flex:2" data-stop>Finish set</button>${run.bw||run.mode==='Echo'?'':`<button class="ghost" data-adj="1" aria-label="More weight">+${num(nudgeKg())}</button>`}</div>`}
+  <div class="bar">${run.justLift?'':pctSlider()}${run.justLift?`<button class="btn" data-down>${run.downLeft!=null?'Pick handles back up':'Simulate: put handles down'}</button>`:`<div class="row">${run.bw||run.mode==='Echo'?'':`<button class="ghost" data-adj="-1" aria-label="Less weight">−${num(nudgeKg())}</button>`}<button class="btn" style="flex:2" data-stop>End set here</button>${run.bw||run.mode==='Echo'?'':`<button class="ghost" data-adj="1" aria-label="More weight">+${num(nudgeKg())}</button>`}</div>`}
    ${run.justLift?'':'<button class="ghost danger" data-endall style="min-height:44px;flex:none">End workout</button>'}</div></div>`;
  },
  rest(){
   const last=run.log[run.log.length-1], done=last&&lifter(last.lid);
   const nlid=curLid(), next=lifter(nlid), si=curSet(), plan=run.plan[si];
   const frac=Math.max(0,run.left/run.restTotal), e=last?epley(last.kg,last.reps):0;
-  return `<div class="screen">${top('Rest',null,`<span class="small">${run.autoplay?'Continues by itself':'Waits for you'}</span>`)}
+  return `<div class="screen">${top('Rest',null,`<span class="small">${run.autoplay?'Continues by itself':'Waits for you'}</span>`).replace('<div class="top">','<div class="top"><button class="back" data-leave aria-label="Leave it running">'+I.back+'</button>')}
   <div class="scroll">
    <div class="ring" style="background:conic-gradient(var(--accent) 0 ${frac*100}%,var(--line) ${frac*100}% 100%)"><div><div><div class="big">${run.left>0?mmss(run.left):'Go'}</div><span class="small">of ${mmss(run.restTotal)}</span></div></div></div>
    ${last&&done?summaryCard(last,done,e):''}
    <div class="band" style="background:${color(next)}"><span>Up next: ${esc(next.name)}</span><span>${run.bw||run.mode==='Echo'?'':W(run.loads[nlid][si])+' × '}${planTxt(plan)}</span></div>
    ${run.bw||run.mode==='Echo'?'':`<div class="card"><span class="label">Adjust ${esc(next.name)}'s next set</span><div class="row" style="gap:8px">${stepper('Weight',W(run.loads[nlid][si]),'nkg')}${plan.type==='reps'?stepper('Target reps',plan.reps,'nreps'):''}</div></div>`}
   </div>
-  <div class="bar"><div class="row"><button class="ghost" data-endall>End workout</button><button class="btn" style="flex:2" data-ready>${run.left>0?'Skip rest':esc(next.name)+"'s ready"}</button></div></div></div>`;
+  <div class="bar">${pctSlider()}<div class="row"><button class="ghost" data-moveset="-1" ${run.turn<run.order.length?'disabled':''}>‹ Back a set</button><button class="ghost" data-moveset="1">Skip a set ›</button></div>
+   <div class="row"><button class="ghost" data-endall>End workout</button><button class="btn" style="flex:2" data-ready>${run.left>0?'Start now':esc(next.name)+"'s ready"}</button></div></div></div>`;
  },
  done(){
   const rows=run.order.map(id=>{const l=lifter(id),sets=run.log.filter(x=>x.lid===id);if(!sets.length)return '';
@@ -676,7 +699,8 @@ const views={
   const ins=insightsFor(all,m,w,r);if(UI.aIns>=ins.length)UI.aIns=0;
   const exs=Object.values(fw.reduce((a,e)=>{(a[e.ex]=a[e.ex]||[]).push(e);return a},{})).map(l=>{const days={};l.filter(e=>e.top!=null).forEach(e=>{const d=Math.floor(e.t/DAYMS);days[d]=Math.max(days[d]||0,e.top)});return {name:l[0].ex,region:l[0].region,v:mval(l,m),best:Math.max(0,...l.map(e=>e.top||0))||null,pts:Object.keys(days).sort((a,b)=>a-b).map(k=>days[k])}}).sort((a,b)=>b.v-a.v).slice(0,8);
   const exById={};EXERCISES.forEach(e=>exById[e.id]=e);
-  const maxes=Object.entries(S.stored[lid]||{}).concat(EXERCISES.filter(e=>!(S.stored[lid]||{})[e.id]).map(e=>[e.id,oneRM(lid,e.id)]).filter(([,o])=>o&&o.src==='HISTORY')).filter(([id])=>!reg||REGION_OF[exById[id].group]===reg).sort((a,b)=>b[1].kg-a[1].kg);
+  // With a region tapped its estimates show too, so any of them can be set by hand.
+  const maxes=EXERCISES.filter(e=>!e.bw).map(e=>[e.id,oneRM(lid,e.id)]).filter(([id,o])=>o&&(reg||o.src!=='RELATED')&&(!reg||REGION_OF[exById[id].group]===reg)).sort((a,b)=>(a[1].src==='RELATED')-(b[1].src==='RELATED')||b[1].kg-a[1].kg);
   return `<div class="screen">${top('Analytics',null,`<button class="icon" data-export aria-label="Export CSV">${I.down}</button>`)}
   <div class="scroll">${S.lifters.length>1?`<div class="hscroll">${lifterChips(lid,'alift')}</div>`:''}
    <div class="hscroll">${MEASURES.map(x=>`<button class="chip ${x===m?'on':''}" data-am="${x}">${x}</button>`).join('')}</div>
@@ -697,7 +721,7 @@ const views={
    <div class="outline"><span class="label">Balance · ${m.toLowerCase()} per region</span>${stats.slice().sort((a,b)=>b.value-a.value).map(s=>`<button data-areg="${s.region}" style="display:flex;align-items:center;gap:8px;border:0;background:none;padding:6px 0;cursor:pointer;color:var(--ink);font:inherit"><span style="width:76px;text-align:left;font-weight:${s.region===reg?700:500}">${s.region}</span><span style="flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden"><span style="display:block;height:10px;border-radius:5px;width:${max>0?s.value/max*100:0}%;background:var(--accent);opacity:${!reg||s.region===reg?1:.35}"></span></span><span class="small" style="width:56px;text-align:right">${fmtM(s.value,m,true)}</span></button>`).join('')}</div>
    <span class="label">Exercises${reg?' · '+reg:''}</span>
    ${exs.length?`<div class="hscroll">${exs.map(e=>`<div class="outline" style="width:168px;flex:none;gap:2px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</b><span class="small">${e.region||'Other'}</span><b class="big" style="font-size:26px;color:var(--accent);margin-top:6px">${fmtM(e.v,m)}</b><span class="small">${e.best?'Heaviest '+W(e.best):'No load'}</span><div style="margin-top:6px">${spark(e.pts)}</div></div>`).join('')}</div>`:`<span class="small">Nothing ${reg?'for '+reg.toLowerCase()+' ':''}in this period yet.</span>`}
-   <div class="outline"><span class="label">1RMs${reg?' · '+reg:''}</span>${maxes.slice(0,8).map(([id,o])=>`<div class="kv"><span>${esc(exById[id].name)}<br><span class="small">${o.src==='BENCHMARK'?'Tested':o.src==='MANUAL'?'Entered by hand':'Worked out from your sets'}${exById[id].single?' · one cable':' · per cable, '+W(o.kg*2)+' total'}</span></span><b style="color:var(--accent)">${WC(o.kg,exById[id].single?1:2)}</b></div>`).join('')||'<span class="small">No 1RMs yet. Run the 1RM test from Train, or train an exercise and one is worked out from your sets.</span>'}</div>
+   <div class="outline"><span class="label">1RMs${reg?' · '+reg:''}</span><span class="small">${maxes.length?'Only the 1RM test or you change these. Tap one to correct it.':'No 1RMs yet. Run the 1RM test from Train. Tap a region on the body to set one by hand.'}</span>${maxes.slice(0,UI.ormAll?99:8).map(([id,o])=>`<button class="kv" data-ormedit="${id}" style="border:0;background:none;width:100%;padding:4px 0;font:inherit;color:var(--ink);text-align:left;cursor:pointer"><span>${esc(exById[id].name)}<br><span class="small">${o.src==='BENCHMARK'?'Tested':o.src==='MANUAL'?'Entered by hand':'Estimated · tap to set'}${exById[id].single?' · one cable':' · per cable, '+W(o.kg*2)+' total'}</span></span><b style="color:${o.src==='RELATED'?'var(--muted)':'var(--accent)'}">${o.src==='RELATED'?'~':''}${WC(o.kg,exById[id].single?1:2)}</b></button>`).join('')}${maxes.length>8?`<button class="pill" data-ormall style="align-self:flex-start;min-height:32px;padding:4px 10px">${UI.ormAll?'Show less':'Show all '+maxes.length}</button>`:''}</div>
    ${recs.length?`<div class="outline"><span class="label">Records · measured · ${W_[0]}</span>${recs.slice(0,6).map(x=>`<div class="kv"><span>${esc(x.ex)}</span><span>${W(x.kg)} · ${df(x.t)}</span></div>`).join('')}</div>`:''}
    <button class="navrow" data-go="acharts" style="border:1.5px solid var(--line);border-radius:18px;padding:12px 16px"><span class="grow">More charts and CSV export<br><span class="small">PR charts, consistency, safety events and exports</span></span>${I.chev}</button>
   </div>${tabs('analytics')}</div>`;
@@ -743,7 +767,8 @@ const views={
    <span class="label">Appearance</span><div class="group"><div class="toggle" style="cursor:default"><span class="grow">Theme</span><div class="seg" style="width:210px">${['Light','Dark','System'].map(u=>`<button class="${st.theme===u?'on':''}" data-theme="${u}">${u}</button>`).join('')}</div></div></div>
    <span class="label">Help</span><div class="group" data-tour="help">
     ${act('starttour','App tour',t&&t.startsWith('done')?'Watched on '+new Date(+t.split(':')[1]).toLocaleDateString()+'. Watch it again':t?'Skipped. Arrows walk you through every screen':'Arrows walk you through every screen')}
-    ${act('hrguide','Heart rate setup','Broadcast from a Garmin watch, or use a chest strap')}</div>
+    ${act('hrguide','Heart rate setup','Broadcast from a Garmin watch, or use a chest strap')}
+    <a class="navrow" href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml&amp;version=Web%20demo" target="_blank" rel="noopener" style="text-decoration:none"><span class="grow">Send feedback<br><span class="small">Report a problem or share an idea on GitHub</span></span>${I.chev}</a></div>
    <span class="label">Data</span><div class="group">
     <button class="navrow" data-backup><span class="grow">Back up<br><span class="small">Save profiles, workouts and 1RMs to a file</span></span>${I.chev}</button>
     <button class="navrow" data-restore><span class="grow">Restore from backup</span>${I.chev}</button>
@@ -992,7 +1017,7 @@ const TOUR=[
  ['train','who',"Who's training",'Tap names to train together, up to 4 people. Sets rotate between them in this order. A profile with a PIN asks for it before it joins.'],
  ['train','conn','Your trainer','Shows whether the trainer is connected. Tap it to connect over Bluetooth.'],
  ['train','pick','Start a set',"Pick an exercise to open Set setup. Choose a mode, sets and reps; the load starts at a % of each lifter's 1RM, shown next to every exercise."],
- ['train','tiles','Just Lift and muscle groups','Just Lift starts the trainer straight away with no plan. Muscle groups lists exercises by body area.'],
+ ['train','tiles','One exercise and muscle groups','Search the library by name, muscle or equipment, or browse exercises by body area.'],
  ['train','orm','Find your 1RM','The 3RM test shows how each lift is done, then 3-rep sets go up until one is missed. Your 1RM is estimated from the heaviest set, and all loads follow from it.'],
  ['train','tab-history','History','Every workout with sets, loads and heart rate. Tap one for the details.'],
  ['train','tab-analytics','Analytics','Your week, streaks, 1RMs and records, with charts per exercise.'],
@@ -1091,7 +1116,7 @@ function startWorkout(){
   {const d=JSON.parse(JSON.stringify(setup));['ex','pct','over','open','adv'].forEach(k=>delete d[k]);S.defaults[setup.ex]=d}
   save();
   const loads={};ls.forEach(l=>loads[l.id]=setup.sets.map((_,i)=>e.bw?0:setLoad(l.id,i)));
-  run={ex:e.id,exName:e.name,mode:e.bw?'Bodyweight':setup.mode,bw:e.bw,echoLevel:setup.echoLevel,ecc:setup.ecc,cable:setup.cable,prog:setup.mode==='Echo'?0:setup.prog,warm:e.bw?0:S.settings.warmup,
+  run={ex:e.id,exName:e.name,pct:setup.pct,mode:e.bw?'Bodyweight':setup.mode,bw:e.bw,echoLevel:setup.echoLevel,ecc:setup.ecc,cable:setup.cable,prog:setup.mode==='Echo'?0:setup.prog,warm:e.bw?0:S.settings.warmup,
     plan:JSON.parse(JSON.stringify(setup.sets)),order:ls.map(l=>l.id),loads,turn:0,total:ls.length*setup.sets.length,log:[],pr:{},autoplay:S.settings.autoplay,justLift:false};
   ensureConnection(()=>countdown());
 }
@@ -1130,6 +1155,7 @@ function onRep(plan){
   const r=app.querySelector('#reps'),ph=app.querySelector('#phase');
   if(r)r.innerHTML=run.rep+(plan.type==='reps'?`<span>/${plan.reps}</span>`:'');
   if(ph)ph.textContent=phaseLabel();
+  if(!run.warmLeft)app.querySelector('#livevid')?.remove();
   const v=app.querySelector('#svel'),p=app.querySelector('#spow'),sl=app.querySelector('#sload'),bl=app.querySelector('#bandload');
   if(v)v.textContent=run.vel.toFixed(2);if(p)p.textContent=Math.round(liveLoad()*2*9.81*run.vel);
   if(sl)sl.textContent=num(liveLoad());if(bl&&run.mode!=='Echo')bl.innerHTML=W(liveLoad())+CM(run.cable==='Single'?1:2);
@@ -1159,12 +1185,27 @@ function finishSet(){
   if(run.turn>=run.total||run.justLift){endWorkout();return}
   const rest=plan.rest||0;
   run.left=rest;run.restTotal=Math.max(1,rest);
+  restScreen();
+}
+function restScreen(){
+  run.restEnds=Date.now()+run.left*1000;
   go('rest');
   timer=setInterval(()=>{if(run.left>0){run.left--;if(run.left===3||run.left===0)beep(run.left?660:990,.12);
-     if(run.left<=0&&run.autoplay){countdown();return}render()}},1000);
+     if(run.left<=0&&run.autoplay){countdown();return}if(!R.dragPct)render()}},1000);
 }
+// Back leaves the workout running; the bar above the tabs picks it up again (a set that was cut short starts again).
+function leaveWorkout(){run.away=V.screen==='rest'?'rest':'set';go('train');toast('Workout keeps running · resume it from the bar')}
+function resumeWorkout(){const w=run.away;run.away=null;
+  if(w==='rest'){run.left=Math.max(0,Math.round((run.restEnds-Date.now())/1000));if(run.left<=0&&run.autoplay){countdown();return}restScreen()}else countdown()}
+const resumeBar=()=>run&&run.away?`<button class="resume" data-resume><span class="grow"><span class="small">Workout running</span><br><b>${esc(run.exName)}${run.away==='rest'?' · rest '+mmss(Math.max(0,Math.round((run.restEnds-Date.now())/1000))):''}</b></span><b class="go">Resume</b></button>`:'';
+// % of 1RM for the coming sets, always at hand. Applies when let go, to every lifter with a 1RM.
+function pctSlider(){if(run.bw||run.mode==='Echo'||!run.ex||!run.order.some(id=>oneRM(id,run.ex)))return '';
+  return `<div class="row" style="gap:10px"><span class="small" style="white-space:nowrap">% of 1RM</span><input type="range" id="livepct" min="30" max="100" step="5" value="${run.pct}" style="flex:1;accent-color:var(--accent)" aria-label="Percent of 1RM for the coming sets"><b id="livepctv" style="min-width:44px;text-align:right">${run.pct}%</b></div>`}
+function setLivePct(p){run.pct=p;const n=run.order.length,started=V.screen==='lifting';
+  run.order.forEach((id,k)=>{const o=oneRM(id,run.ex);if(!o)return;for(let i=0;i<run.plan.length;i++){const t=i*n+k;if(t<run.turn||(t===run.turn&&started))continue;run.loads[id][i]=loadFor(o.kg,p)}});
+  toast(p+'% of 1RM for the coming sets')}
 function endWorkout(){
-  stopTimers();
+  stopTimers();run.away=null;
   if(run.log.length){
     const s={id:'s'+Date.now(),t:Date.now(),ex:run.ex,mode:run.mode,lifters:[...new Set(run.log.map(x=>x.lid))],sets:run.log.map(({trace,...x})=>x),pr:{},safety:{}};
     Object.keys(run.pr).forEach(k=>s.pr[k]=1);
@@ -1221,6 +1262,7 @@ function render(){
   V._same=true;
   const bindSearch=(id,set)=>{const q=document.getElementById(id);if(q)q.oninput=()=>{set(q.value);const pos=q.selectionStart;render();const n=document.getElementById(id);n.focus();n.setSelectionRange(pos,pos)}};
   bindSearch('q',v=>query=v);bindSearch('logq',v=>UI.logQ=v);
+  const lp=document.getElementById('livepct');if(lp){lp.onpointerdown=()=>R.dragPct=true;lp.oninput=()=>{document.getElementById('livepctv').textContent=lp.value+'%'};lp.onchange=()=>{R.dragPct=false;setLivePct(+lp.value);if(V.screen==='rest')render()}}
   const rng=(id,f)=>{const r=document.getElementById(id);if(r)r.oninput=()=>{f(+r.value);render()}};
   rng('pct',v=>{setup.pct=v;setup.over={}});rng('awin',v=>{UI.aW=v;UI.aBar=null});
   const insEl=document.getElementById('ins');if(insEl){insEl.onscroll=()=>{const i=Math.round(insEl.scrollLeft/(insEl.firstElementChild.offsetWidth+8));app.querySelectorAll('#insdots .dot').forEach((d,k)=>d.style.background=k===i?'var(--accent)':'var(--line)')}}rng('ecc',v=>setup.ecc=v);rng('jecc',v=>JL.ecc=v);
@@ -1331,7 +1373,10 @@ app.addEventListener('click',ev=>{
   if(d.stop!=null){finishSet();return}
   if(d.adj){const lid=curLid(),si=curSet();run.loads[lid][si]=clampKg(run.loads[lid][si]+ +d.adj*nudgeKg());const bl=app.querySelector('#bandload'),sl=app.querySelector('#sload');if(bl)bl.innerHTML=W(liveLoad())+CM(run.cable==='Single'?1:2);if(sl)sl.textContent=num(liveLoad());return}
   if(d.ready!=null){countdown();return}
-  if(d.endall!=null){confirmSheet('End workout?','Sets you already finished are saved to History.','End workout',()=>{if(V.screen==='lifting'&&run.rep>0){run.total=run.turn+1}endWorkoutNow()},true);return}
+  if(d.endall!=null){sheet(`<h3>End workout?</h3><span class="small" style="font-size:14px">Sets you've finished are saved. Or leave it running and pick it up again from home.</span><div class="row"><button class="ghost" data-leave2>Leave for now</button><button class="btn danger" style="flex:2" data-ok>End workout</button></div><button class="ghost" data-x>Keep going</button>`,(dd,close)=>{close();if(dd.ok!=null){if(V.screen==='lifting'&&run.rep>0){run.total=run.turn+1}endWorkoutNow()}else if(dd.leave2!=null)leaveWorkout()},{center:true});return}
+  if(d.leave!=null){leaveWorkout();return}
+  if(d.resume!=null){resumeWorkout();return}
+  if(d.moveset){const t=run.turn+ +d.moveset*run.order.length;if(t<0)return;if(t>=run.total){endWorkout();return}run.turn=t;render();return}
   // 1RM test
   if(d.tlid){V.t.list=V.t.list;testFor(d.tlid,V.t);clearInterval(timer);timer=null;render();return}
   if(d.tbegin!=null){V.t.phase='attempt';render();return}
@@ -1351,6 +1396,14 @@ app.addEventListener('click',ev=>{
   // history
   if(d.hf){UI.hFilter=d.hf;render();return}
   if(d.session){go('session',{id:d.session});return}
+  if(d.togglevid!=null){UI.vid=UI.vid===false;render();return}
+  if(d.nowall!=null){UI.nowAll=!UI.nowAll;render();return}
+  if(d.ormall!=null){UI.ormAll=!UI.ormAll;render();return}
+  if(d.ormedit){const id=d.ormedit,lid=UI.aLifter,o=oneRM(lid,id),e=EX(id),manual=o&&o.src!=='RELATED';
+    sheet(`<h3>${esc(e.name)}</h3><span class="small" style="font-size:14px">${esc(lifter(lid).name)}'s 1RM in ${U()}${e.single?'':' per cable'}.</span><input class="search" id="ormin" type="number" inputmode="decimal" min="0" step="0.5" value="${manual?num(o.kg):''}" aria-label="1RM"><div class="row">${manual?'<button class="ghost danger" data-rm>Remove</button>':''}<button class="ghost" data-x>Cancel</button><button class="btn" style="flex:2" data-save>Save</button></div>`,(dd,close)=>{
+      if(dd.x!=null){close();return}
+      if(dd.rm!=null){delete S.stored[lid][id];save();close();render();return}
+      if(dd.save!=null){const v=parseFloat((document.getElementById('ormin').value||'').replace(',','.'));if(!(v>0)){toast('Type a weight');return}(S.stored[lid]=S.stored[lid]||{})[id]={kg:U()==='lb'?v/LB:v,src:'MANUAL',t:Date.now()};save();close();render()}},{center:true});return}
   if(d.delsession){confirmSheet('Delete this workout?','Its sets are removed from History and Analytics. This can\'t be undone.','Delete',()=>{S.sessions=S.sessions.filter(s=>s.id!==d.delsession);save();go('history');toast('Workout deleted')},true);return}
   if(d.hmenu!=null){sheet(`<button class="navrow" data-export2><span class="grow">Export CSV</span>${I.down}</button><button class="navrow" data-del style="color:var(--danger)"><span class="grow">Delete all workouts</span></button><button class="ghost" data-x>Close</button>`,(dd,close)=>{close();if(dd.export2!=null)exportCsv();if(dd.del!=null)delAll()});return}
   // analytics

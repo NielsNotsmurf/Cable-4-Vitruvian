@@ -37,6 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import nl.nielsnotsmurf.cleanui.sound.clickSounds
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import android.net.Uri
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.Role
@@ -225,6 +229,11 @@ fun SettingsScreen(
                 onStartTour
             )
             LinkRow("Heart rate setup", "Broadcast from a Garmin watch, or use a chest strap", { showHeartRateGuide = true })
+            val context = LocalContext.current
+            val uriHandler = LocalUriHandler.current
+            LinkRow("Send feedback", "Report a problem or share an idea on GitHub", {
+                uriHandler.openUri(feedbackUrl(context))
+            })
         }
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
@@ -314,4 +323,14 @@ private fun LinkRow(title: String, subtitle: String, onClick: () -> Unit) {
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = CleanColors.Muted)
     }
+}
+
+/** GitHub feedback form with the app version and phone filled in, so testers only describe what happened. */
+private fun feedbackUrl(context: android.content.Context): String {
+    val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    return Uri.parse("https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new").buildUpon()
+        .appendQueryParameter("template", "feedback.yml")
+        .appendQueryParameter("version", version)
+        .appendQueryParameter("device", "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}")
+        .build().toString()
 }

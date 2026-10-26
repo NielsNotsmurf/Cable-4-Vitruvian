@@ -17,7 +17,7 @@
   <b>Cable: an unofficial app for the Vitruvian V-Form &amp; Trainer+.</b><br>
   Train without a subscription. Not affiliated with Vitruvian.<br>
   Black and white, offline, no cloud accounts. Talks to the trainer directly over Bluetooth.<br>
-  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/Cable-4-Vitruvian/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a>
+  <a href="#install">Install</a> · <a href="https://nielsnotsmurf.github.io/Cable-4-Vitruvian/demo/">Live demo</a> · <a href="#features">Features</a> · <a href="#changelog">Changelog</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml">Feedback</a>
 </p>
 
 > [!NOTE]
