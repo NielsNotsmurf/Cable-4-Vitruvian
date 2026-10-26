@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cable Stats</title>
+<style>
+:root{--bg:#fff;--ink:#11151C;--muted:#5E6673;--line:#E3E6EA;--accent:#E5252A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1116;--ink:#EEF1F5;--muted:#9AA3B0;--line:#262B33}}
+:root[data-theme="dark"]{--bg:#0E1116;--ink:#EEF1F5;--muted:#9AA3B0;--line:#262B33}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:24px 16px}
+h1{font-size:24px;margin:0 0 4px}.muted{color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0}
+.kpi{border:1.5px solid var(--line);border-radius:16px;padding:12px}.kpi b{display:block;font-size:28px}
+table{width:100%;border-collapse:collapse}td,th{padding:8px 0;border-bottom:1px solid var(--line);text-align:left}td:last-child,th:last-child{text-align:right}
+.bar{display:inline-block;height:8px;border-radius:4px;background:var(--accent);vertical-align:middle;margin-right:8px}
+a{color:inherit}
+</style></head><body><main>
+<h1>Cable in numbers</h1>
+<p class="muted">APK downloads per release, straight from GitHub. Obtainium downloads every update, so the latest release shows roughly how many phones keep the app up to date, and the total counts every install and update.</p>
+<div class="kpis"><div class="kpi"><b id="latest">–</b><span class="muted" id="latestName">latest release</span></div><div class="kpi"><b id="total">–</b><span class="muted">downloads in total</span></div><div class="kpi"><b id="count">–</b><span class="muted">releases</span></div></div>
+<table><thead><tr><th>Release</th><th>Date</th><th>Downloads</th></tr></thead><tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody></table>
+<p class="muted"><a href="../demo/">Live demo</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues">Feedback</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/graphs/traffic">Repo traffic</a> (owner only)</p>
+</main>
+<script>
+(async()=>{
+  const rows=document.getElementById('rows');
+  try{
+    let all=[];
+    for(let page=1;page<=5;page++){
+      const r=await fetch('https://api.github.com/repos/NielsNotsmurf/Cable-4-Vitruvian/releases?per_page=100&page='+page);
+      if(!r.ok)throw new Error('GitHub answered '+r.status);
+      const list=await r.json();all=all.concat(list);if(list.length<100)break;
+    }
+    const rel=all.filter(x=>!x.draft).map(x=>({name:x.tag_name,t:new Date(x.published_at),n:x.assets.filter(a=>a.name.endsWith('.apk')).reduce((s,a)=>s+a.download_count,0)}));
+    const total=rel.reduce((s,x)=>s+x.n,0),max=Math.max(1,...rel.map(x=>x.n));
+    document.getElementById('total').textContent=total;
+    document.getElementById('count').textContent=rel.length;
+    if(rel[0]){document.getElementById('latest').textContent=rel[0].n;document.getElementById('latestName').textContent='latest release ('+rel[0].name+')'}
+    rows.innerHTML=rel.map(x=>`<tr><td>${x.name}</td><td class="muted">${x.t.toLocaleDateString()}</td><td><span class="bar" style="width:${Math.round(x.n/max*80)}px"></span>${x.n}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">No releases yet.</td></tr>';
+  }catch(e){rows.innerHTML=`<tr><td colspan="3" class="muted">Couldn't load the numbers (${e.message}). Try again in a minute.</td></tr>`}
+})();
+</script>
+</body></html>

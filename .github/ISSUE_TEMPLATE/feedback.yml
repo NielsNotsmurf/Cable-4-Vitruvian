@@ -1,0 +1,42 @@
+name: Feedback
+description: Report a problem or share an idea for Cable
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for testing Cable! English or Dutch is fine.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is it about?
+      options:
+        - Something doesn't work
+        - An idea or wish
+        - Something is unclear
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, or what would you like?
+      description: For a problem, the steps that led to it help a lot. Screenshots are welcome.
+    validations:
+      required: true
+  - type: dropdown
+    id: trainer
+    attributes:
+      label: Trainer
+      options:
+        - V-Form Trainer
+        - Trainer+
+        - No trainer (demo or just looking)
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Filled in when you open this from Settings → Send feedback.
+  - type: input
+    id: device
+    attributes:
+      label: Phone
