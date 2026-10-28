@@ -94,7 +94,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${APP_VERSION_NAME}" dist/*.apk \
+          # A merge whose message contains [pre-release] (the web beta) is published as a
+          # pre-release. Obtainium skips those unless "Include prereleases" is on.
+          NOTES="Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"
+          EXTRA=()
+          if git log -1 --pretty=%B | grep -qi '\[pre-release\]'; then
+            EXTRA=(--prerelease)
+            NOTES="Beta / pre-release. Includes the Cable web app (beta): https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (iPhone and iPad: train through the Bluefy browser, see the README).
+
+          ${NOTES}"
+          fi
+          gh release create "v${APP_VERSION_NAME}" dist/*.apk "${EXTRA[@]}" \
             --target "$GITHUB_SHA" \
-            --title "Cable ${APP_VERSION_NAME}" \
-            --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"
+            --title "Cable ${APP_VERSION_NAME}${EXTRA:+ (beta)}" \
+            --notes "$NOTES"
