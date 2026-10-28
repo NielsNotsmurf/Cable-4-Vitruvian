@@ -46,6 +46,8 @@ jobs:
         run: |
           mkdir -p site
           cp -r site-src/docs/. site/
+          # Planning docs and dev-only images stay in the repo, not on the public site.
+          rm -f site/*.md site/body-map.svg
           mkdir -p site/app
           cp -r web/web-app/build/dist/wasmJs/productionExecutable/. site/app/
           rm -f site/app/*.map
