@@ -3,8 +3,8 @@ package nl.nielsnotsmurf.cleanui.logic
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.Test
 
 class TrainingStatsTest {
     private val day = 24 * 60 * 60 * 1000L

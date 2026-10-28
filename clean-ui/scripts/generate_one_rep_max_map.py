@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates clean-ui/src/main/assets/one_rep_max_map.json from the exercise library.
+"""Generates clean-ui/src/androidMain/assets/one_rep_max_map.json from the exercise library.
 
 Every loadable exercise is mapped to one of the ten 1RM-test anchors with a ratio:
 estimated 1RM = anchor 1RM x ratio, in kg per cable. Rules are matched top to bottom
@@ -16,8 +16,8 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SRC = ROOT / "app/src/main/assets/exercise_dump.json"
-OUT = ROOT / "clean-ui/src/main/assets/one_rep_max_map.json"
+SRC = ROOT / "app/src/androidMain/assets/exercise_dump.json"
+OUT = ROOT / "clean-ui/src/androidMain/assets/one_rep_max_map.json"
 
 ANCHORS = {
     "bench": ("ZZ92N8QsBdp6HCh3", "Bench Press (handles)"),

@@ -12,7 +12,8 @@ passes and Niels says go.
 
 - [x] Plan (this file)
 - [x] Decision: Apple + Bluetooth: option 1, full + Safari fallback (Niels, 2026-10-28)
-- [ ] Phase 1: shared code (clean-ui becomes multiplatform, app unchanged)
+- [ ] Phase 1a: clean-ui becomes multiplatform; models, gateway and core logic shared and tested on Android + web
+- [ ] Phase 1b: all screens and the rest of the logic move to shared code (app unchanged)
 - [ ] Phase 2: web app shell + trainer connection over Web Bluetooth
 - [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
 - [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
@@ -99,7 +100,8 @@ Parity rules (apply from phase 1 onward, for every thread):
 
 Each phase is sized for one thread and one PR, with its own test list.
 
-**Phase 1: shared code.** Convert `:clean-ui` to KMP with `androidTarget` and
+**Phase 1: shared code** (split in 1a: build setup, models, gateway, core logic; 1b: screens,
+ViewModel, storage, video, sound, dates/number formatting, the remaining logic). Convert `:clean-ui` to KMP with `androidTarget` and
 `wasmJs`, move code to `commonMain`, do the swaps above. Done when the APK behaves
 exactly as before (same screens, same stored data, existing unit tests pass in
 `commonTest` on JVM and wasm) and CI runs `:clean-ui:allTests` plus a wasm compile.

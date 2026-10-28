@@ -4,18 +4,11 @@ import nl.nielsnotsmurf.cleanui.model.LiftRecord
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Before
-import org.junit.Test
-import java.util.Locale
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.Test
 
 class LoadCalculatorTest {
-
-    @Before
-    fun fixLocale() {
-        Locale.setDefault(Locale.US)
-    }
 
     @Test
     fun `epley gives weight for a single rep`() {
@@ -110,10 +103,10 @@ class LoadCalculatorTest {
 
     @Test
     fun `format drops trailing zero and converts pounds`() {
-        assertEquals("46.5 kg", LoadCalculator.format(46.5f, WeightUnit.KG))
+        assertEquals("46${decimalSeparator()}5 kg", LoadCalculator.format(46.5f, WeightUnit.KG))
         assertEquals("60 kg", LoadCalculator.format(60f, WeightUnit.KG))
         // 20 kg = 44.09 lb -> 44
         assertEquals("44 lb", LoadCalculator.format(20f, WeightUnit.LB))
-        assertEquals("46.5", LoadCalculator.format(46.5f, WeightUnit.KG, withUnit = false))
+        assertEquals("46${decimalSeparator()}5", LoadCalculator.format(46.5f, WeightUnit.KG, withUnit = false))
     }
 }
