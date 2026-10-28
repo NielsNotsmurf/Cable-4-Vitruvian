@@ -105,5 +105,7 @@ The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMa
   (the app's version saves to Download/Cable). The intro's guide is repeated there.
 - Wide screens (600 dp and up, in the app too): the tabs become a rail on the left and screens
   stay at most 720 dp wide.
+- Web only: anonymous usage counts (GoatCounter, no cookies or IDs) on the hosted beta, with an
+  off switch in Settings, Backup and restore. The Android app keeps download counts only.
 - Symbols the web's default font lacks come from a small DejaVu subset (`web-app/.../fonts`).
 

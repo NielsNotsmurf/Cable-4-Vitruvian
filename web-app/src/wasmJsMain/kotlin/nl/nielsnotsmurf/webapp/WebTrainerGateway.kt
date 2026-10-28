@@ -98,9 +98,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             val link = TrainerLink.connect(onReps = { repCounters.value = it }, onGone = ::trainerGone)
             trainer = link
             connectionState.value = TrainerConnection.Connected(link?.name ?: SIMULATED)
+            WebStats.event(if (link != null) "trainer/connected" else "trainer/simulated")
             true
         } catch (e: Throwable) {
             connectionState.value = TrainerConnection.Failed(e.message ?: "Bluetooth error")
+            WebStats.event("trainer/failed")
             false
         }
     }
@@ -289,6 +291,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 if (p < plans.lastIndex) rest(live.value ?: return@forEachIndexed, plan.sets.last().restSeconds)
             }
             live.value = live.value?.copy(phase = LivePhase.FINISHED)
+            if (!attempt) WebStats.event("workout/finished")
         }
     }
 

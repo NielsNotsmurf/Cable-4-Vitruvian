@@ -37,6 +37,7 @@ fun main() {
         val library = ExerciseLibrary.parse(fetchText("exercise_dump.json") ?: "[]")
         val gateway = WebTrainerGateway(library)
         val symbols = fetchBytes("fonts/symbols.ttf")
+        WebStats.opened()
         hideLoadingText()
         ComposeViewport {
             // Symbols the default web font lacks (→ ✓ ‹ ›) come from a small fallback font.

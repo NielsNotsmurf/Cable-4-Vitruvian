@@ -21,7 +21,9 @@ passes and Niels says go.
   the lag notice and per-device install guide (Safari vs Bluefy), backup and restore, browser back
 - [x] Phase 4: responsive layout: bottom tabs on phones, a rail on the left from 600 dp wide
   (tablet, iPad, landscape, desktop) with screens kept to 720 dp; the same in the app
-- [ ] Phase 5: anonymous usage statistics + stats view
+- [x] Phase 5: anonymous usage counts (GoatCounter, cookieless, only on the hosted beta, off
+  switch in Settings) and a Web section on docs/stats. Niels: create the GoatCounter site
+  `vitruvian-web` and allow public counters (see "Setup by Niels" below)
 - [ ] Phase 6: security hardening
 - [ ] Phase 7: beta hosting on GitHub Pages
 - [ ] Phase 8: beta test round on real devices, then merge to master
@@ -183,3 +185,13 @@ then on every master release builds the APK and the web app together.
 - Start a phase by saying "start web phase N" in the project chat.
 - Master keeps getting normal app releases meanwhile; `web-beta` merges master in
   at the start of each phase.
+
+## Setup by Niels (once, before the beta round)
+
+1. **GoatCounter** (anonymous web counts): sign up free at goatcounter.com with site code
+   `vitruvian-web`. In its Settings, turn on "Allow adding visitor counts on your website"
+   so docs/stats can show the totals. Until then the web app's counts go nowhere and the
+   stats page shows "No web numbers yet".
+2. **GitHub Pages** (phase 7): repository Settings, Pages, Source: GitHub Actions.
+3. **Security** (phase 6): repository Settings, Code security: check that secret scanning and
+   push protection are on (default for public repositories) and that Dependabot alerts are on.

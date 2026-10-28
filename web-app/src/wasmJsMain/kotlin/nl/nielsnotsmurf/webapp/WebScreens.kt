@@ -2,6 +2,7 @@ package nl.nielsnotsmurf.webapp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -206,6 +211,25 @@ fun WebSettings() {
                 PrimaryButton("Cancel", onClick = { confirmRestore = null })
             }
             message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
+            SectionLabel("Usage counts", Modifier.padding(top = 8.dp))
+            var counting by remember { mutableStateOf(WebStats.enabled) }
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Switch) { counting = !counting; WebStats.enabled = counting },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Count anonymous app use: opening the app, device type, browser, finished workouts and whether " +
+                        "the trainer connected. No cookies, no IDs, nothing about you or your workouts. Helps the beta.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = counting,
+                    onCheckedChange = null,
+                    colors = SwitchDefaults.colors(checkedTrackColor = CleanColors.Accent, checkedThumbColor = Color.White)
+                )
+            }
             InstallGuide()
         }
     }

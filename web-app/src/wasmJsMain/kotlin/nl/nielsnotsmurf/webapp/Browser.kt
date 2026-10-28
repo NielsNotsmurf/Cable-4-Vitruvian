@@ -14,10 +14,13 @@ private fun jsGetItem(key: String): String? = js("{ try { return window.localSto
 
 private fun jsSetItem(key: String, value: String): Unit = js("{ try { window.localStorage.setItem(key, value); } catch (e) {} }")
 
+private fun jsRemoveItem(key: String): Unit = js("{ try { window.localStorage.removeItem(key); } catch (e) {} }")
+
 /** localStorage, quietly empty when the browser blocks it (private mode). */
 object LocalStorage {
     operator fun get(key: String): String? = jsGetItem(key)
     operator fun set(key: String, value: String) = jsSetItem(key, value)
+    fun remove(key: String) = jsRemoveItem(key)
 }
 
 fun hideLoadingText(): Unit = js("{ const e = document.getElementById('loading'); if (e) e.remove(); }")
