@@ -2,7 +2,7 @@
 // to talk to. Pages, scripts and data: network first, so updates arrive as soon as you are
 // online, with the cached copy when offline. Content-hashed files (.wasm) never change, so
 // they come from the cache first. Only this app's own origin is cached.
-const CACHE = 'vitruvian-web-v1';
+const CACHE = 'cable-web-v1';
 const SHELL = ['./', 'index.html', 'pwa.js', 'vitruvian.js', 'manifest.webmanifest',
   'exercise_dump.json', 'one_rep_max_map.json', 'fonts/symbols.ttf', 'icons/icon-192.png'];
 

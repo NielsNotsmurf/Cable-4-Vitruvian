@@ -42,7 +42,7 @@ a{color:inherit}
   }catch(e){rows.innerHTML=`<tr><td colspan="3" class="muted">Couldn't load the numbers (${e.message}). Try again in a minute.</td></tr>`}
 })();
 (async()=>{
-  const site='https://vitruvian-web.goatcounter.com';
+  const site='https://cable-web.goatcounter.com';
   const events=[['open/browser','Opened in a browser'],['open/installed','Opened from the home screen'],['device/phone','On a phone'],['device/tablet','On a tablet or iPad'],['device/desktop','On a computer'],['browser/chrome','Chrome'],['browser/safari','Safari'],['browser/edge','Edge'],['browser/bluefy','Bluefy'],['browser/firefox','Firefox'],['browser/samsung','Samsung Internet'],['workout/finished','Workouts finished'],['trainer/connected','Trainer connected'],['trainer/simulated','Simulated trainer used'],['trainer/failed','Trainer connection failed']];
   const web=document.getElementById('web');
   const counts=await Promise.all(events.map(([p])=>fetch(site+'/counter/'+encodeURIComponent('/web/'+p)+'.json').then(r=>r.ok?r.json():null).then(j=>j?Number(String(j.count).replace(/\D/g,''))||0:0).catch(()=>null)));

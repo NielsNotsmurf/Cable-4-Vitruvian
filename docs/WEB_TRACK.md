@@ -1,4 +1,4 @@
-# Web track: vitruvian- as an installable web app (beta)
+# Web track: Cable as an installable web app (beta)
 
 Goal: the real app (not the demo) running in the browser, installable to the home
 screen on iPhone, iPad and Android, looking and behaving exactly like the Android
@@ -23,7 +23,7 @@ passes and Niels says go.
   (tablet, iPad, landscape, desktop) with screens kept to 720 dp; the same in the app
 - [x] Phase 5: anonymous usage counts (GoatCounter, cookieless, only on the hosted beta, off
   switch in Settings) and a Web section on docs/stats. Niels: create the GoatCounter site
-  `vitruvian-web` and allow public counters (see "Setup by Niels" below)
+  `cable-web` and allow public counters (see "Setup by Niels" below)
 - [x] Phase 6: security: strict CSP (plus form-action, no-referrer), Dependabot, CodeQL,
   dependency review and the dependency graph (`.github/workflows/security.yml`), SECURITY.md
 - [x] Phase 7: beta hosting: `.github/workflows/pages.yml` publishes docs/ from master plus the
@@ -192,7 +192,7 @@ then on every master release builds the APK and the web app together.
 ## Setup by Niels (once, before the beta round)
 
 1. **GoatCounter** (anonymous web counts): sign up free at goatcounter.com with site code
-   `vitruvian-web`. In its Settings, turn on "Allow adding visitor counts on your website"
+   `cable-web`. In its Settings, turn on "Allow adding visitor counts on your website"
    so docs/stats can show the totals. Until then the web app's counts go nowhere and the
    stats page shows "No web numbers yet".
 2. **GitHub Pages** (phase 7): repository Settings, Pages, Source: GitHub Actions. Then

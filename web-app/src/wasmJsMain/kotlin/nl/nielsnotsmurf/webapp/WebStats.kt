@@ -9,7 +9,7 @@ package nl.nielsnotsmurf.webapp
  * The totals are on docs/stats.
  */
 object WebStats {
-    const val SITE = "https://vitruvian-web.goatcounter.com"
+    const val SITE = "https://cable-web.goatcounter.com"
     private const val HOST = "nielsnotsmurf.github.io"
     private const val OFF_KEY = "web_stats_off"
 

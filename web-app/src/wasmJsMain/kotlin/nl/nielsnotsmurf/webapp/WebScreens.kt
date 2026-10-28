@@ -63,7 +63,7 @@ fun WebIntro(onDone: () -> Unit) {
             Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("vitruvian- on the web", style = MaterialTheme.typography.headlineLarge)
+            Text("Cable on the web", style = MaterialTheme.typography.headlineLarge)
             Text(
                 "This is the full app, running in your browser: profiles, plans, 1RMs, history and live sets. " +
                     "It's a web page rather than an installed app, so it can feel a little slower than the Android app.",
@@ -103,19 +103,19 @@ fun InstallGuide() {
             "Open this page in Safari.",
             "Tap Share (the square with the arrow pointing up).",
             "Tap Add to Home Screen, then Add.",
-            "Open vitruvian- from its new icon."
+            "Open Cable from its new icon."
         )
         canPrompt -> PrimaryButton("Install app", accent = true, onClick = { promptInstall(); canPrompt = false })
         platform == WebPlatform.ANDROID -> Steps(
             "Open this page in Chrome.",
             "Tap the menu (three dots, top right).",
             "Tap Install app or Add to Home screen.",
-            "Open vitruvian- from its new icon."
+            "Open Cable from its new icon."
         )
         else -> Steps(
             "Open this page in Chrome or Edge.",
-            "Click the install icon at the right of the address bar, or open the menu and choose Install vitruvian-.",
-            "Open vitruvian- from your apps."
+            "Click the install icon at the right of the address bar, or open the menu and choose Install Cable.",
+            "Open Cable from your apps."
         )
     }
 
@@ -194,7 +194,7 @@ fun WebSettings() {
                 style = MaterialTheme.typography.bodyMedium
             )
             PrimaryButton("Save a backup", onClick = {
-                downloadText("vitruvian-backup-${formatDate(nowMillis(), "yyyy-MM-dd")}.json", WebBackup.export())
+                downloadText("cable-backup-${formatDate(nowMillis(), "yyyy-MM-dd")}.json", WebBackup.export())
                 message = "Backup saved to your downloads."
             })
             val pending = confirmRestore
@@ -202,7 +202,7 @@ fun WebSettings() {
                 PrimaryButton("Restore a backup", onClick = {
                     scope.launch {
                         val text = pickTextFile() ?: return@launch
-                        if (WebBackup.isValid(text)) { confirmRestore = text; message = null } else message = "That file isn't a vitruvian- web backup."
+                        if (WebBackup.isValid(text)) { confirmRestore = text; message = null } else message = "That file isn't a Cable web backup."
                     }
                 })
             } else {
@@ -237,7 +237,7 @@ fun WebSettings() {
 
 /** Everything the web app stores, as one JSON file. */
 object WebBackup {
-    private const val FORMAT = "vitruvian-web-backup"
+    private const val FORMAT = "cable-web-backup"
     private val KEYS = listOf("web_gateway", "clean_ui")
 
     fun export(): String = JsonObject(

@@ -1,6 +1,6 @@
 {
-  "name": "vitruvian- (web beta)",
-  "short_name": "vitruvian-",
+  "name": "Cable (web beta)",
+  "short_name": "Cable",
   "description": "Cable trainer companion: plans, 1RMs, history and live sets, in your browser.",
   "start_url": "./",
   "scope": "./",
