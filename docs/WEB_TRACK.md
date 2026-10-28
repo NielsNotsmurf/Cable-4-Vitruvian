@@ -199,5 +199,7 @@ then on every master release builds the APK and the web app together.
    Settings, Environments, github-pages, Deployment branches: add `web-beta` next to master.
    Re-run the Pages workflow (Actions tab) once; the demo and stats links keep working and the
    beta appears at /app/.
-3. **Security** (phase 6): repository Settings, Code security: check that secret scanning and
-   push protection are on (default for public repositories) and that Dependabot alerts are on.
+3. **Security** (phase 6): repository Settings, Code security: turn on Dependency graph and
+   Dependabot alerts (dependency review needs the graph), and check that secret scanning and push
+   protection are on (default for public repositories). Then remove `continue-on-error` from
+   the dependency-review step in `.github/workflows/security.yml` so it blocks again.
