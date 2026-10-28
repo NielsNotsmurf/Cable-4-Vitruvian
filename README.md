@@ -26,6 +26,12 @@
 > "Trainer+" are trademarks of their owner and are only
 > used here to say which hardware the app works with. Use it at your own risk.
 
+> [!TIP]
+> **Goal: Cable on TestFlight and the Play Store.** Once [sponsors](https://github.com/sponsors/NielsNotsmurf)
+> cover about €200 (Apple's developer account at $99 a year for two years, plus Google Play's
+> one-time $25), Cable moves to TestFlight for iPhone and iPad and to the Play Store.
+> [More in Support](#support).
+
 ## Why Cable
 
 | | |
@@ -116,7 +122,8 @@ every update.
 > **The web app is a beta (pre-release).** It has the same screens as the Android app, but it
 > is new and has not been tested on every trainer, phone and browser yet. Expect rough edges,
 > and please [report what you find](https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml).
-> The Android app stays the main, stable version.
+> It comes with Cable 2.0 (beta), a pre-release; the last 1.3 release stays the stable Android
+> version.
 
 Open [nielsnotsmurf.github.io/Cable-4-Vitruvian/app](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/).
 On first launch it explains itself and shows how to put it on your home screen.
@@ -168,7 +175,8 @@ No. Cable is an independent community project, not affiliated with or endorsed b
 
 **iPhone?**
 Yes, through the web app, which is still a beta (pre-release). Safari can only show a simulated
-trainer; to train with your trainer, open the web app in the free Bluefy browser. See
+trainer; to train with your trainer, open the web app in the free Bluefy browser. A real iPhone
+app through TestFlight comes once the [sponsor goal](#support) is reached. See
 [Web app](#web-app-beta-iphone-ipad-and-any-browser).
 
 **Will I lose my data from the official app?**
@@ -186,7 +194,8 @@ no imports from `:app`).
 
 ## Changelog
 
-- **Web app beta (pre-release):** Cable as an installable web app for iPhone, iPad, tablets and computers,
+- **Sponsor goal:** about €200 for TestFlight (iPhone, iPad) and the Play Store; see [Support](#support).
+- **2.0 (beta, pre-release), web app beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
   with the trainer and heart rate over Web Bluetooth, the same screens as the app, offline use
   and backups. On wide screens (also Android tablets) the tabs move to a rail on the left.
 - **2026-10-26:** a small landing page on GitHub Pages and better image descriptions, so search engines find Cable.
@@ -237,6 +246,17 @@ no imports from `:app`).
 Cable is free and stays free. If it saves you a subscription and you want to say thanks,
 you can [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). Stars, bug reports
 and sharing the app with other Vitruvian owners help just as much.
+
+**Goal: about €200 for real iPhone and Play Store apps.**
+
+| What | Cost |
+| --- | --- |
+| Apple Developer Program, two years | $99 a year, $198 |
+| Google Play developer account | $25, once |
+
+When sponsors reach it, Cable moves to TestFlight on iPhone and iPad (no Bluefy needed) and to
+the Play Store (updates without Obtainium). Until then the web app and the APK stay the way to
+get Cable. Every sponsor goes to these accounts first.
 
 ## Credits
 
