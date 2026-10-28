@@ -24,7 +24,8 @@ passes and Niels says go.
 - [x] Phase 5: anonymous usage counts (GoatCounter, cookieless, only on the hosted beta, off
   switch in Settings) and a Web section on docs/stats. Niels: create the GoatCounter site
   `vitruvian-web` and allow public counters (see "Setup by Niels" below)
-- [ ] Phase 6: security hardening
+- [x] Phase 6: security: strict CSP (plus form-action, no-referrer), Dependabot, CodeQL,
+  dependency review and the dependency graph (`.github/workflows/security.yml`), SECURITY.md
 - [ ] Phase 7: beta hosting on GitHub Pages
 - [ ] Phase 8: beta test round on real devices, then merge to master
 
