@@ -8,8 +8,19 @@ name: Release APK
 on:
   push:
     branches: [master]
-    # Text-only changes don't need a new APK.
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE', '.github/ISSUE_TEMPLATE/**']
+    # Only changes to what the app is built from need a new APK.
+    paths:
+      - 'app/**'
+      - 'clean-ui/**'
+      - 'web-app/**'
+      - 'gradle/**'
+      - 'kotlin-js-store/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradlew*'
+      - 'package.json'
+      - '.github/workflows/release.yml'
+      - '!**.md'
   workflow_dispatch:
 
 permissions:
