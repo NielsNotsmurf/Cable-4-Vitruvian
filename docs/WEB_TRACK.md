@@ -11,7 +11,7 @@ passes and Niels says go.
 ## Status
 
 - [x] Plan (this file)
-- [ ] **Decision: Apple + Bluetooth** (see "Feasibility" below)
+- [x] Decision: Apple + Bluetooth: option 1, full + Safari fallback (Niels, 2026-10-28)
 - [ ] Phase 1: shared code (clean-ui becomes multiplatform, app unchanged)
 - [ ] Phase 2: web app shell + trainer connection over Web Bluetooth
 - [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
@@ -35,7 +35,7 @@ the app then lives inside Bluefy, not as its own home-screen icon.
 
 Options:
 
-1. **Recommended: full web where the browser allows it, clear fallback elsewhere.**
+1. **Chosen (2026-10-28): full web where the browser allows it, clear fallback elsewhere.**
    Chrome/Edge (Android, desktop) and Bluefy (iOS) get everything. Safari / iOS
    home screen gets the whole app (profiles, plans, 1RMs, history, analytics,
    settings) plus a simulated trainer, with a clear notice: "To train with your
@@ -114,7 +114,12 @@ end to end in Chrome on Android against the real trainer.
 (app shell and data cached; it is an offline app, no server). First-launch intro on
 the web only: what the web version is, that it can lag compared to the app, and
 step-by-step "add to home screen" for iPhone/iPad (Share > Add to Home Screen) and
-Android (Chrome menu > Install app / native prompt). Data backup: export/import of
+Android (Chrome menu > Install app / native prompt). The install guide must make
+the Apple split unmistakable, both in the intro and in the README/project guide:
+"Want to train with your trainer on iPhone/iPad? Install Bluefy (free) and open the
+link there. Safari / home screen = everything except the trainer and heart-rate
+connection (simulated trainer)." The intro detects the browser and shows only the
+steps that apply, with a button that opens the same link in Bluefy. Data backup: export/import of
 the local data as a file, since browsers can clear storage.
 
 **Phase 4: responsive layout.** Window size classes in common code: phone (bottom
