@@ -114,6 +114,7 @@ fun LiveWorkoutScreen(
     percent: Int? = null,
     onPercent: (Int) -> Unit = {},
     onFinishSet: () -> Unit = {},
+    onRestartSet: () -> Unit = {},
     onMoveSet: (Int) -> Unit = {},
     onMoveExercise: (Int) -> Unit = {},
     /** Back to the app while the workout keeps going; it's picked up again from the bar at the bottom. */
@@ -217,7 +218,11 @@ fun LiveWorkoutScreen(
                 }
                 // Stopping short (6 of 8 reps) still counts the set and moves on to the next one.
                 LivePhase.LIFTING -> if (attemptMode) GhostButton("End set", onClick = { confirmStop = true })
-                    else GhostButton("End set here", onClick = onFinishSet)
+                    else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Range of motion set wrong: the set starts over with fresh warm-up reps.
+                        GhostButton("Reset ROM", onClick = onRestartSet, modifier = Modifier.weight(1f))
+                        GhostButton("End set here", onClick = onFinishSet, modifier = Modifier.weight(1f))
+                    }
                 LivePhase.COUNTDOWN -> GhostButton("End set", onClick = { confirmStop = true })
                 else -> Unit
             }

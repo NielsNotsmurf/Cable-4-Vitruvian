@@ -41,7 +41,7 @@ Android status:
 | Bodyweight exercises | Exercise config | Bodyweight exercises skip loads, timed sets | Clean |
 | Single / double cable | Exercise config | Set setup → More options → Cables | Clean |
 | Weight change per rep (progression/regression) | Exercise config, Just Lift | More options / Just Lift | Clean (Just Lift hosted) |
-| Warm-up reps | Settings | Settings (shown in More options) | Hosted (Settings) |
+| Warm-up reps (1-3, set the range of motion) | Settings | Settings → Warm-up reps; "Reset ROM" on the live screen restarts the set | Clean (app + web) |
 | Stop at top | Settings | Settings (shown in More options) | Clean |
 | Remember as exercise default | Saved per-profile defaults | Automatic per lifter; Set setup starts from last time | Clean |
 | Trainer scan, pick, connect, disconnect | Device picker, banner | Connection pill on Train, Settings → Trainer | Hosted (classic dialogs) |

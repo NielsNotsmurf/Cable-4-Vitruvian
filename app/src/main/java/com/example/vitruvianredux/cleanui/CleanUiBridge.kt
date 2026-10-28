@@ -27,6 +27,7 @@ import com.example.vitruvianredux.presentation.viewmodel.MainViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
@@ -180,6 +181,7 @@ class CleanUiBridge(
     override fun advanceToNextExercise() = vm.advanceToNextExercise()
     override fun resetForNewWorkout() = vm.resetForNewWorkout()
     override fun finishSetEarly() = vm.finishSetEarly()
+    override fun restartSet() = vm.restartSet()
     override fun moveSet(delta: Int) = vm.moveUpcomingSet(delta)
     override fun moveExercise(delta: Int) = vm.moveUpcomingExercise(delta)
     override fun setUpcomingLoads(exerciseId: String, loadsByLifter: Map<String, List<Float>>) =
@@ -278,6 +280,7 @@ class CleanUiBridge(
     ) {
         scope.launch {
             try {
+                vm.setWarmupReps(store.warmupReps.first())
                 val exercises = plans.mapIndexed { index, plan -> routineExerciseFor(plan, index) }
                 vm.loadRoutine(
                     Routine(
@@ -454,18 +457,26 @@ class CleanUiBridge(
     }
 
     override val settings: Flow<CleanSettings> =
-        combine(vm.userPreferences, store.defaultSets, store.defaultPercent) { p, sets, pct ->
+        combine(vm.userPreferences, store.defaultSets, store.defaultPercent, store.warmupReps) { p, sets, pct, warmup ->
             currentSets = sets
             currentPercent = pct
-            p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct)
+            currentWarmup = warmup
+            vm.setWarmupReps(warmup)
+            p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct, warmupReps = warmup)
         }
 
     private var currentSets = 3
     private var currentPercent = 60
+    private var currentWarmup = 3
 
     override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
-        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent)
+        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent, warmupReps = currentWarmup)
         val new = transform(old)
+        if (new.warmupReps != old.warmupReps) {
+            currentWarmup = new.warmupReps.coerceIn(1, 3)
+            vm.setWarmupReps(currentWarmup)
+            scope.launch { store.setWarmupReps(currentWarmup) }
+        }
         if (new.defaultPercent != old.defaultPercent) {
             currentPercent = new.defaultPercent.coerceIn(30, 100)
             scope.launch { store.setDefaultPercent(currentPercent) }

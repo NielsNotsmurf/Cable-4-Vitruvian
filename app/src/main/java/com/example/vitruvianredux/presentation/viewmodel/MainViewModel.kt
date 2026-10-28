@@ -1364,6 +1364,25 @@ class MainViewModel @Inject constructor(
         val warmingUp = _workoutState.value is WorkoutState.Active && params.warmupReps > 0 &&
             !params.isJustLift && !_isCurrentExerciseBodyweight.value && !repCounter.getRepCount().isWarmupComplete
         if (!warmingUp) return
+        resendSet(params, "adjustWeightLive")
+    }
+
+    /**
+     * Starts the current set over: the rep counter is cleared and the trainer gets the set again,
+     * so the warm-up reps measure the range of motion anew. Used when the ROM was set wrong.
+     */
+    fun restartSet() {
+        val params = _workoutParameters.value
+        if (_workoutState.value !is WorkoutState.Active || params.isJustLift || _isCurrentExerciseBodyweight.value) return
+        resendSet(params, "restartSet")
+    }
+
+    /** Sets how many warm-up reps every following set starts with (1-3; they set the ROM). */
+    fun setWarmupReps(reps: Int) {
+        _workoutParameters.value = _workoutParameters.value.copy(warmupReps = reps.coerceIn(1, 3))
+    }
+
+    private fun resendSet(params: WorkoutParameters, caller: String) {
         viewModelScope.launch {
             repCounter.reset()
             repCounter.configure(
@@ -1379,7 +1398,7 @@ class MainViewModel @Inject constructor(
             }
             _repCount.value = repCounter.getRepCount()
             val result = bleRepository.startWorkout(params)
-            if (result.isFailure) Timber.w("adjustWeightLive: resending the set failed: ${result.exceptionOrNull()?.message}")
+            if (result.isFailure) Timber.w("$caller: resending the set failed: ${result.exceptionOrNull()?.message}")
         }
     }
 
