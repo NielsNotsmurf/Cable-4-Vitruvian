@@ -8,6 +8,8 @@ name: Release APK
 on:
   push:
     branches: [master]
+    # Text-only changes don't need a new APK.
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', '.github/ISSUE_TEMPLATE/**']
   workflow_dispatch:
 
 permissions:
