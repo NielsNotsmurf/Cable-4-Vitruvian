@@ -8,6 +8,19 @@ name: Release APK
 on:
   push:
     branches: [master]
+    # Only changes to what the app is built from need a new APK.
+    paths:
+      - 'app/**'
+      - 'clean-ui/**'
+      - 'web-app/**'
+      - 'gradle/**'
+      - 'kotlin-js-store/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradlew*'
+      - 'package.json'
+      - '.github/workflows/release.yml'
+      - '!**.md'
   workflow_dispatch:
 
 permissions:
@@ -100,6 +113,8 @@ jobs:
           # A merge whose message contains [pre-release] (the web beta) is published as a
           # pre-release. Obtainium skips those unless "Include prereleases" is on.
           NOTES="Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)
+
+          Also: the Cable web app (beta) for iPhone, iPad and computers: https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (iPhone and iPad: train through the Bluefy browser; install and use guide in the README: https://github.com/NielsNotsmurf/Cable-4-Vitruvian#web-app-beta-iphone-ipad-and-any-browser).
 
           Goal: once sponsors cover about €200 (Apple developer account for two years, Google Play once), Cable moves to TestFlight and the Play Store. https://github.com/sponsors/NielsNotsmurf"
           EXTRA=()

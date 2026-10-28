@@ -58,49 +58,44 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 
 ## Features
 
-- **Web app (beta):** the same app in the browser and on the home screen of iPhone, iPad,
-  Android and computers; see [Web app](#web-app-beta-iphone-ipad-and-any-browser).
-- **Tablets and computers:** from 600 dp wide the tabs become a rail on the left and screens stay
-  readable.
-- **First launch:** a short onboarding picks or creates your account, offers a PIN, explains
-  Garmin heart rate and offers the app tour.
-- **Local accounts:** every profile is an account. A PIN (4 to 6 digits, stored only as a salted
-  hash) is asked when the app opens as you, before a protected profile joins a training, and
-  before it's deleted. Others on the phone don't see a protected profile's history until it's
-  unlocked. A forgotten PIN is reset with the phone's own screen lock.
-- **App tour:** arrows and a dimmed overlay point out every part of the app, including Garmin
-  heart rate pairing. Each account's tour status is remembered; replay it from Settings → Help.
-- **Lifters:** up to 4 people train together and sets rotate between them. Each lifter has a
-  profile, a colour and their own defaults.
-- **Clean layout:** the default screens. They're built in `:clean-ui`, and
-  [clean-ui/FEATURES.md](clean-ui/FEATURES.md) lists every feature and where it lives.
-- **% of 1RM loading:** each lifter's 1RM shows next to every exercise, and loads default to a
-  percentage of it. A guided 1RM test fills it in. One tested lift gives an estimated 1RM
-  for every related exercise (bench 25 kg means incline about 22.5 kg), shown as "estimated"
-  until you test it. The ratios are in `clean-ui/src/androidMain/assets/one_rep_max_map.json`.
-- **All trainer modes:** Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo, with
-  per-set reps, weights, rest, AMRAP and timed sets.
-- **Workout builder:** pick one or more muscle groups and a time, and the app builds the
-  workout with each lifter's % of 1RM. Swap any exercise for one on other equipment; exercises
-  on the same equipment sit next to each other so you switch as little as possible.
-- **Exercise library:** a short description per exercise, search by name, muscle (forearms, glutes,
-  …) or equipment, body-region and muscle filters, favourites and video demos.
-- **Moving through a workout:** end a set early, skip or redo a set, jump to the next exercise, change
-  the % of 1RM for the coming sets, and leave the workout running to pick it up again from home.
-- **1RMs you control:** only the 1RM test or your own entry sets a 1RM; tap one in Analytics to correct it.
-- **Live heart rate:** pair a Garmin watch broadcast or a chest strap per lifter. HR shows
-  during a set and in history.
-- **History and analytics:** workouts, personal records and volume over time. Analytics opens
-  on a Vitruvian body map: each region is coloured by the measure and period you pick (reps,
-  volume, … this week, this year, …) and shows its heaviest load. Those two filters drive the
-  whole screen: trend bars, headline numbers, insights, balance and exercise cards.
-- **Sounds:** short synthesized bops and boops for every tap, screen change and dialog, plus
-  workout sounds for the countdown, each rep, warm-up done, set done, records, the end of rest and
-  1RM attempts. "Menu sounds" and "Workout beeps" each have a switch in Settings; music keeps playing.
-- **Backup and restore:** a full JSON backup saved to `Download/Cable`.
-- **Theme:** black and white, with light and dark modes.
-- **Settings:** grouped as Account, People, Training, Sound and video, Trainer LED colour,
-  Help, Data, and Advanced (connection logs, protocol tester, classic layout) folded away.
+**Getting started**
+
+| Feature | What it does |
+| --- | --- |
+| First launch | Short onboarding: pick or create your account, set a PIN, Garmin heart rate, app tour. |
+| Local accounts | Every profile is an account. Optional 4 to 6 digit PIN (salted hash only), asked on open, before a protected profile joins a training and before deleting it. Its history stays hidden until unlocked. Forgot it? Reset with the phone's screen lock. |
+| App tour | Arrows and a dimmed overlay explain every part, including heart rate pairing. Remembered per account; replay from Settings → Help. |
+| Lifters | Up to 4 people train together, sets rotate between them. Each has a profile, colour and defaults. |
+
+**Training**
+
+| Feature | What it does |
+| --- | --- |
+| All trainer modes | Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo. Per-set reps, weight, rest, AMRAP and timed sets. |
+| % of 1RM loading | Each lifter's 1RM shows next to every exercise and loads default to a % of it. A guided 1RM test fills it in, and one tested lift estimates related ones (bench 25 kg ≈ incline 22.5 kg), marked "estimated" until tested. Ratios: `one_rep_max_map.json` in `clean-ui` assets. |
+| 1RMs you control | Only the 1RM test or your own entry sets a 1RM. Tap one in Analytics to correct it. |
+| Workout builder | Pick muscle groups and a time; the app builds the workout at each lifter's % of 1RM. Swap exercises for other equipment; same-equipment exercises are grouped to save switching. |
+| Exercise library | Short descriptions, search by name, muscle or equipment, region and muscle filters, favourites and video demos. |
+| During a workout | End a set early, skip or redo a set, jump to the next exercise, change the % of 1RM for coming sets, or pause and resume later. |
+| Live heart rate | Garmin watch broadcast or chest strap per lifter; shown during sets and in history. |
+| Sounds | Synthesized bops for taps and screens, plus workout cues (countdown, reps, warm-up, set done, records, rest over, 1RM). Separate switches for menu sounds and workout beeps; music keeps playing. |
+
+**Progress and data**
+
+| Feature | What it does |
+| --- | --- |
+| History and analytics | Workouts, personal records and volume over time. Opens on a body map coloured by the measure (reps, volume, …) and period (week, year, …) you pick, with each region's heaviest load. Those filters drive the whole screen: trends, headline numbers, insights, balance and exercise cards. |
+| Backup and restore | Full JSON backup saved to `Download/Cable`. |
+
+**App**
+
+| Feature | What it does |
+| --- | --- |
+| Web app (beta) | The same app in the browser and on the home screen of iPhone, iPad, Android and computers; see [Web app](#web-app-beta-iphone-ipad-and-any-browser). |
+| Tablets and computers | From 600 dp wide the tabs become a rail on the left and screens stay readable. |
+| Clean layout | The default screens, built in `:clean-ui`; [clean-ui/FEATURES.md](clean-ui/FEATURES.md) maps every feature to its code. |
+| Theme | Black and white, light and dark mode. |
+| Settings | Account, People, Training, Sound and video, Trainer LED colour, Help, Data, and a folded-away Advanced (connection logs, protocol tester, classic layout). |
 
 ## Install
 
@@ -119,11 +114,10 @@ every update.
 ### Web app (beta, iPhone, iPad and any browser)
 
 > [!IMPORTANT]
-> **The web app is a beta (pre-release).** It has the same screens as the Android app, but it
+> **The web app is a beta.** It has the same screens as the Android app, but it
 > is new and has not been tested on every trainer, phone and browser yet. Expect rough edges,
 > and please [report what you find](https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml).
-> It comes with Cable 2.0 (beta), a pre-release; the last 1.3 release stays the stable Android
-> version.
+> The Android app (2.0) is a normal release; only the web app is still a beta.
 
 Open [nielsnotsmurf.github.io/Cable-4-Vitruvian/app](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/).
 On first launch it explains itself and shows how to put it on your home screen.
@@ -174,7 +168,7 @@ does not work on your unit, please
 No. Cable is an independent community project, not affiliated with or endorsed by Vitruvian.
 
 **iPhone?**
-Yes, through the web app, which is still a beta (pre-release). Safari can only show a simulated
+Yes, through the web app, which is still a beta. Safari can only show a simulated
 trainer; to train with your trainer, open the web app in the free Bluefy browser. A real iPhone
 app through TestFlight comes once the [sponsor goal](#support) is reached. See
 [Web app](#web-app-beta-iphone-ipad-and-any-browser).
@@ -195,7 +189,7 @@ no imports from `:app`).
 ## Changelog
 
 - **Sponsor goal:** about €200 for TestFlight (iPhone, iPad) and the Play Store; see [Support](#support).
-- **2.0 (beta, pre-release), web app beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
+- **2.0, with the web app as a beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
   with the trainer and heart rate over Web Bluetooth, the same screens as the app, offline use
   and backups. On wide screens (also Android tablets) the tabs move to a rail on the left.
 - **2026-10-26:** a small landing page on GitHub Pages and better image descriptions, so search engines find Cable.
