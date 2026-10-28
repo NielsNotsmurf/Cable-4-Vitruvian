@@ -1,16 +1,20 @@
 package nl.nielsnotsmurf.webapp
 
 import com.example.vitruvianredux.data.baseline.AnchorExerciseConfig
+import com.example.vitruvianredux.util.ColorSchemes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
@@ -33,18 +37,21 @@ import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.platform.nowMillis
+import nl.nielsnotsmurf.cleanui.trainer.TrainerProtocol
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * The browser's TrainerGateway. Profiles, history and settings live in localStorage, the
- * exercise library is the one the app bundles, and the trainer is simulated until the Web
- * Bluetooth connection lands (docs/WEB_TRACK.md, phase 2). Every set behaves like a real
- * one: countdown, reps, set done, rest, next lifter.
+ * The browser's TrainerGateway. Profiles, history and settings live in localStorage and the
+ * exercise library is the one the app bundles. The trainer and heart rate straps connect over
+ * Web Bluetooth with the app's own protocol (TrainerProtocol). Without Web Bluetooth (Safari,
+ * iOS home screen), or when the device picker is cancelled, a simulated trainer runs the set.
  */
 class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     private val scope: CoroutineScope = MainScope()
     private val data = MutableStateFlow(load())
+    private val live = MutableStateFlow<LiveWorkout?>(null)
 
     private fun update(change: (Saved) -> Saved) {
         data.value = change(data.value)
@@ -53,7 +60,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
 
     // Profiles
 
-    override val lifters: Flow<List<Lifter>> = data.map { d -> d.lifters.map { Lifter(it.id, it.name, it.color) } }
+    private val heartRateSensors = MutableStateFlow<Map<String, String>>(emptyMap()) // lifter -> strap name
+
+    override val lifters: Flow<List<Lifter>> = combine(data, heartRateSensors) { d, hr ->
+        d.lifters.map { Lifter(it.id, it.name, it.color, heartRateSensor = hr[it.id], heartRateConnected = it.id in hr) }
+    }
 
     override val activeLifterIds: Flow<List<String>> = data.map { d ->
         d.active.filter { id -> d.lifters.any { it.id == id } }.ifEmpty { d.lifters.take(1).map { it.id } }
@@ -71,8 +82,70 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
 
     // Trainer
 
-    private val connectionState = MutableStateFlow<TrainerConnection>(TrainerConnection.Connected(SIMULATED))
+    private val bluetooth = bluetoothAvailable()
+    private var trainer: TrainerLink? = null
+    private val repCounters = MutableStateFlow<TrainerProtocol.Reps?>(null)
+    private val connectionState = MutableStateFlow<TrainerConnection>(
+        if (bluetooth) TrainerConnection.Disconnected else TrainerConnection.Connected(SIMULATED)
+    )
     override val connection: Flow<TrainerConnection> = connectionState
+
+    /** Connects on the first start, like the app does; a cancelled picker means simulated. */
+    private suspend fun ensureTrainer(): Boolean {
+        if (!bluetooth || trainer != null) return true
+        connectionState.value = TrainerConnection.Connecting
+        return try {
+            val link = TrainerLink.connect(onReps = { repCounters.value = it }, onGone = ::trainerGone)
+            trainer = link
+            connectionState.value = TrainerConnection.Connected(link?.name ?: SIMULATED)
+            true
+        } catch (e: Throwable) {
+            connectionState.value = TrainerConnection.Failed(e.message ?: "Bluetooth error")
+            false
+        }
+    }
+
+    private fun trainerGone() {
+        trainer = null
+        connectionState.value = TrainerConnection.Failed("Trainer disconnected")
+        endSet?.complete(Unit)
+    }
+
+    // Heart rate: one strap per lifter, connected for this browser session.
+
+    private val heartRates = MutableStateFlow<Map<String, Int>>(emptyMap())
+    private val heartRateLinks = mutableMapOf<String, HeartRateLink>()
+
+    override val liveHeartRate: Flow<Int?> = combine(heartRates, live) { rates, l ->
+        (l?.lifterId ?: data.value.active.firstOrNull())?.let { rates[it] } ?: rates.values.firstOrNull()
+    }
+
+    val heartRateAvailable: Boolean get() = bluetooth
+
+    /** Opens the browser's picker for a heart rate strap or watch; returns its name or null. */
+    suspend fun pairHeartRate(lifterId: String): String? {
+        forgetHeartRate(lifterId)
+        val link = HeartRateLink.connect(
+            onBpm = { bpm -> heartRates.value = heartRates.value + (lifterId to bpm) },
+            onGone = { dropHeartRate(lifterId) }
+        ) ?: return null
+        heartRateLinks[lifterId] = link
+        heartRateSensors.value = heartRateSensors.value + (lifterId to link.name)
+        return link.name
+    }
+
+    fun forgetHeartRate(lifterId: String) {
+        heartRateLinks.remove(lifterId)?.disconnect()
+        dropHeartRate(lifterId)
+    }
+
+    fun heartRateSensor(lifterId: String): String? = heartRateSensors.value[lifterId]
+
+    private fun dropHeartRate(lifterId: String) {
+        heartRateLinks.remove(lifterId)
+        heartRates.value = heartRates.value - lifterId
+        heartRateSensors.value = heartRateSensors.value - lifterId
+    }
 
     override val weightUnit: Flow<WeightUnit> = data.map { it.settings.unit() }
 
@@ -125,21 +198,22 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         it.copy(settings = SavedSettings.from(transform(it.settings.toClean())))
     }
 
-    override val ledSchemes: List<LedScheme> = listOf(
-        LedScheme("Orange", listOf(0xFFFF7A00.toInt())),
-        LedScheme("Blue", listOf(0xFF2563EB.toInt())),
-        LedScheme("Green", listOf(0xFF16A34A.toInt())),
-        LedScheme("Purple", listOf(0xFF9333EA.toInt())),
-        LedScheme("Red", listOf(0xFFDC2626.toInt()))
-    )
+    override val ledSchemes: List<LedScheme> = ColorSchemes.ALL.map { scheme ->
+        LedScheme(scheme.name, scheme.colors.map { c -> (0xFF shl 24) or (c.r shl 16) or (c.g shl 8) or c.b })
+    }
 
-    override fun setLedScheme(index: Int) {}
+    override fun setLedScheme(index: Int) {
+        val t = trainer ?: return
+        val scheme = ColorSchemes.ALL.getOrElse(index) { ColorSchemes.ALL[0] }
+        scope.launch {
+            runCatching { t.send(TrainerProtocol.colorScheme(scheme.brightness, scheme.colors.map { (it.r shl 16) or (it.g shl 8) or it.b })) }
+        }
+    }
 
     override fun switchToClassicUi() {}
 
-    // The simulated set
+    // The set: on the trainer over Bluetooth, or simulated
 
-    private val live = MutableStateFlow<LiveWorkout?>(null)
     override val liveWorkout: Flow<LiveWorkout?> = live
     private val records = MutableSharedFlow<String>(extraBufferCapacity = 8)
     override val personalRecords: Flow<String> = records
@@ -154,8 +228,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     override fun startWorkout(name: String, plans: List<SetPlan>, onStarted: () -> Unit, onFailed: (String) -> Unit) {
         if (plans.isEmpty()) return onFailed("Nothing to train")
         plans.forEach { remember(it) }
-        run(plans, attempt = false)
-        onStarted()
+        scope.launch {
+            if (!ensureTrainer()) return@launch onFailed("Couldn't connect to your Vitruvian")
+            run(plans, attempt = false)
+            onStarted()
+        }
     }
 
     override fun startSingleAttempt(lifterId: String, exercise: ExerciseCard, kg: Float, onStarted: () -> Unit, onFailed: (String) -> Unit) {
@@ -165,8 +242,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             sets = listOf(SetSpec(reps = 3, restSeconds = 0)),
             loads = listOf(nl.nielsnotsmurf.cleanui.model.LifterLoad(lifterId, listOf(kg)))
         )
-        run(listOf(plan), attempt = true)
-        onStarted()
+        scope.launch {
+            if (!ensureTrainer()) return@launch onFailed("Couldn't connect to your Vitruvian")
+            run(listOf(plan), attempt = true)
+            onStarted()
+        }
     }
 
     private fun run(plans: List<SetPlan>, attempt: Boolean) {
@@ -191,7 +271,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                             nextName = plans.getOrNull(p + 1)?.exercise?.name.orEmpty()
                         )
                         for (c in 3 downTo 1) { live.value = base.copy(countdown = c); delay(1000) }
-                        val reps = lift(base, spec)
+                        val reps = trainer?.let { lift(it, base, spec, plan) } ?: simulate(base, spec)
                         val prev = done[lifterId]
                         done[lifterId] = ((prev?.first ?: 0) + reps) to maxOf(prev?.second ?: 0f, live.value?.loadKg ?: kg)
                         if (attempt) { live.value = null; return@launch }
@@ -212,8 +292,92 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         }
     }
 
+    /**
+     * One set on the trainer, as the app runs it: reset, the mode's frame, then poll the cables
+     * every 100 ms while the trainer counts reps; the set ends at the target (not for AMRAP) or
+     * when finished early, and always ends with the reset command so the cables let go.
+     */
+    private suspend fun lift(t: TrainerLink, base: LiveWorkout, spec: SetSpec, plan: SetPlan): Int {
+        val amrap = spec.kind == SetKind.AMRAP
+        fun frame(kg: Float) = if (plan.mode == TrainingMode.ECHO) {
+            TrainerProtocol.echoControl(TrainerProtocol.EchoLevel.valueOf(plan.echoLevel.name), WARMUP_REPS, spec.reps, amrap, plan.eccentricLoadPercent)
+        } else {
+            TrainerProtocol.programParams(spec.reps, WARMUP_REPS, amrap, plan.mode.profile(), kg, plan.progressionKg)
+        }
+        val end = CompletableDeferred<Unit>().also { endSet = it }
+        var sentKg = base.loadKg
+        var warmup = 0
+        var working = 0
+        var counters: TrainerProtocol.Reps? = null
+        var low = Float.MAX_VALUE
+        var high = -Float.MAX_VALUE
+        var last: TrainerProtocol.Sample? = null
+        var lastAt = 0L
+        var powerSum = 0f
+        var powerCount = 0
+        suspend fun begin() {
+            repCounters.value = null
+            counters = null
+            t.send(TrainerProtocol.init())
+            delay(50)
+            t.send(frame(sentKg))
+            delay(100)
+        }
+        try {
+            begin()
+            live.value = base.copy(phase = LivePhase.LIFTING, warmupTarget = WARMUP_REPS, warmupDone = false)
+            while (!end.isCompleted) {
+                val shown = live.value ?: break
+                // A weight change during warm-up restarts the set at the new weight, as in the app.
+                if (shown.loadKg != sentKg && warmup < WARMUP_REPS) { sentKg = shown.loadKg; warmup = 0; working = 0; begin() }
+                val now = nowMillis()
+                val sample = t.readSample()
+                val reps = repCounters.value
+                if (reps != null && reps != counters) {
+                    if (reps.isLegacy) {
+                        val ups = (reps.up - (counters?.up ?: reps.up)).coerceAtLeast(0)
+                        repeat(ups) { if (warmup < WARMUP_REPS) warmup++ else working++ }
+                    } else {
+                        warmup = reps.romCount.coerceAtMost(WARMUP_REPS)
+                        working = reps.setCount
+                    }
+                    counters = reps
+                }
+                var power = shown.avgPower
+                if (sample != null) {
+                    low = minOf(low, sample.positionA)
+                    high = maxOf(high, sample.positionA)
+                    val prev = last
+                    if (prev != null && now > lastAt) {
+                        val seconds = (now - lastAt) / 1000f
+                        val va = abs(sample.positionA - prev.positionA) / 1000f / seconds
+                        val vb = abs(sample.positionB - prev.positionB) / 1000f / seconds
+                        power = (sample.loadA * va + sample.loadB * vb) * 9.81f
+                        powerSum += power
+                        powerCount++
+                    }
+                    last = sample
+                    lastAt = now
+                }
+                live.value = shown.copy(
+                    reps = working, doneReps = working, warmupReps = warmup,
+                    warmupDone = warmup >= WARMUP_REPS,
+                    liveLoadKg = sample?.let { maxOf(it.loadA, it.loadB) } ?: shown.liveLoadKg,
+                    position = if (high - low > 1f && sample != null) ((sample.positionA - low) / (high - low)).coerceIn(0f, 1f) else null,
+                    peakPower = maxOf(shown.peakPower, power),
+                    avgPower = if (powerCount > 0) powerSum / powerCount else 0f
+                )
+                if (!amrap && working >= spec.reps) break
+                delay(100)
+            }
+        } finally {
+            withContext(NonCancellable) { runCatching { t.send(TrainerProtocol.reset()) } }
+        }
+        return working
+    }
+
     /** Reps at a steady tempo; the handles go up and down with them. */
-    private suspend fun lift(base: LiveWorkout, spec: SetSpec): Int {
+    private suspend fun simulate(base: LiveWorkout, spec: SetSpec): Int {
         val target = if (spec.kind == SetKind.AMRAP) 12 else spec.reps
         val end = CompletableDeferred<Unit>().also { endSet = it }
         var reps = 0
@@ -270,8 +434,18 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     override fun resetForNewWorkout() { job?.cancel(); live.value = null }
     override fun finishSetEarly() { endSet?.complete(Unit) }
 
+    private fun TrainingMode.profile() = when (this) {
+        TrainingMode.PUMP -> TrainerProtocol.Profile.PUMP
+        TrainingMode.TUT -> TrainerProtocol.Profile.TUT
+        TrainingMode.TUT_BEAST -> TrainerProtocol.Profile.TUT_BEAST
+        TrainingMode.ECCENTRIC_ONLY -> TrainerProtocol.Profile.ECCENTRIC_ONLY
+        else -> TrainerProtocol.Profile.OLD_SCHOOL
+    }
+
     private companion object {
         const val STORAGE_KEY = "web_gateway"
+        /** The app's default warm-up before the working reps count. */
+        const val WARMUP_REPS = 3
         const val SIMULATED = "Simulated trainer"
         const val REP_MS = 2200L
         val json = Json { ignoreUnknownKeys = true }

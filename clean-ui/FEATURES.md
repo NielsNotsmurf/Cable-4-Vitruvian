@@ -89,7 +89,14 @@ The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMa
 **Clean** row above works the same in the browser. Differences for now:
 
 - **Hosted** rows (classic screens) show "in the Android app only for now" on the web.
-- The trainer is simulated until Web Bluetooth lands (phase 2b); heart rate likewise.
+- The trainer connects over Web Bluetooth (Chrome, Edge, Bluefy on iOS) on the first Start,
+  with the same protocol code as the app (`clean-ui/.../trainer/TrainerProtocol.kt`). Without
+  Web Bluetooth (Safari, iOS home screen), or when the device picker is cancelled, a simulated
+  trainer runs the set.
+- Heart rate: any strap or watch that broadcasts the standard heart rate service, connected per
+  lifter for the browser session (the browser can't reconnect on its own after a reload).
+- Rep counting uses the trainer's own warm-up and working counters; a weight change during the
+  warm-up restarts the set at the new weight, as in the app.
 - Demo videos show their poster; a tap opens the clip in a new tab (phase 3).
 - The browser back button doesn't step back inside the app yet (phase 3).
 - The web font lacks a few symbols (e.g. "›"); a bundled font comes with phase 3.

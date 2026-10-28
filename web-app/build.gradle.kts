@@ -17,7 +17,9 @@ val appShared = tasks.register<Sync>("syncAppSharedSources") {
     from(rootProject.file("app/src/main/java")) {
         include(
             "com/example/vitruvianredux/domain/model/ExerciseBucket.kt",
-            "com/example/vitruvianredux/data/baseline/AnchorExerciseConfig.kt"
+            "com/example/vitruvianredux/data/baseline/AnchorExerciseConfig.kt",
+            "com/example/vitruvianredux/util/ColorScheme.kt",
+            "com/example/vitruvianredux/util/RGBColor.kt"
         )
     }
     into(layout.buildDirectory.dir("generated/appShared"))

@@ -12,12 +12,11 @@ passes and Niels says go.
 
 - [x] Plan (this file)
 - [x] Decision: Apple + Bluetooth: option 1, full + Safari fallback (Niels, 2026-10-28)
-- [x] Phase 1a: clean-ui becomes multiplatform; models, gateway and core logic shared and tested on Android + web
-- [x] Phase 1b: all screens and the rest of the logic move to shared code (app unchanged)
-- [ ] Phase 2: web app shell + trainer connection over Web Bluetooth
-  - [x] 2a: `:web-app` shows the real app in the browser; profiles, history, settings and the
-    exercise library in the browser; a simulated trainer runs every set
-  - [ ] 2b: the real trainer and heart rate straps over Web Bluetooth
+- [x] Phase 1: clean-ui is multiplatform; all screens, logic, models and the gateway are shared and tested on Android + web (app unchanged)
+- [x] Phase 2: the real app in the browser (profiles, history, settings, exercise library),
+  the trainer and heart rate straps over Web Bluetooth with the app's own protocol code, and a
+  simulated trainer where the browser has no Bluetooth. Still to check: one workout on the real
+  trainer in Chrome on Android (Niels).
 - [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
 - [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
 - [ ] Phase 5: anonymous usage statistics + stats view
@@ -103,8 +102,7 @@ Parity rules (apply from phase 1 onward, for every thread):
 
 Each phase is sized for one thread and one PR, with its own test list.
 
-**Phase 1: shared code** (split in 1a: build setup, models, gateway, core logic; 1b: screens,
-ViewModel, storage, video, sound, dates/number formatting, the remaining logic). Convert `:clean-ui` to KMP with `androidTarget` and
+**Phase 1: shared code.** Convert `:clean-ui` to KMP with `androidTarget` and
 `wasmJs`, move code to `commonMain`, do the swaps above. Done when the APK behaves
 exactly as before (same screens, same stored data, existing unit tests pass in
 `commonTest` on JVM and wasm) and CI runs `:clean-ui:allTests` plus a wasm compile.
@@ -178,8 +176,8 @@ then on every master release builds the APK and the web app together.
 
 ## Working on this track cheaply
 
-- One phase per thread, one PR per phase into `web-beta`; tick the box above when
-  it merges.
+- One phase per thread, one PR per phase into `web-beta` (phases are not split further);
+  tick the box above when it merges.
 - Start a phase by saying "start web phase N" in the project chat.
 - Master keeps getting normal app releases meanwhile; `web-beta` merges master in
   at the start of each phase.

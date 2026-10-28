@@ -32,7 +32,8 @@ fun main() {
                 gateway = gateway,
                 activeWorkoutContent = { nav -> NotOnWebYet("This lifting screen", nav) },
                 justLiftContent = { nav -> NotOnWebYet("Just Lift", nav) },
-                classicContent = { screen, nav -> NotOnWebYet(screen.title ?: "This screen", nav) }
+                classicContent = { screen, nav -> NotOnWebYet(screen.title ?: "This screen", nav) },
+                heartRateContent = { lifterId, onDismiss -> HeartRatePairing(gateway, lifterId, onDismiss) }
             )
         }
     }
