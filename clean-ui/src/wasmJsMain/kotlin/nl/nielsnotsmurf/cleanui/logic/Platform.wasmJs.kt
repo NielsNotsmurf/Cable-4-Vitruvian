@@ -1,4 +1,7 @@
 package nl.nielsnotsmurf.cleanui.logic
 
-// Browsers get the same "46.5" a phone with an English locale shows.
-internal actual fun decimalSeparator(): Char = '.'
+private fun jsDecimalSeparator(): String =
+    js("(1.5).toLocaleString((typeof navigator !== 'undefined' && navigator.language) || 'en-US').charAt(1)")
+
+// The browser's language decides, as the phone's does on Android.
+internal actual fun decimalSeparator(): Char = jsDecimalSeparator().firstOrNull() ?: '.'

@@ -12,9 +12,12 @@ passes and Niels says go.
 
 - [x] Plan (this file)
 - [x] Decision: Apple + Bluetooth: option 1, full + Safari fallback (Niels, 2026-10-28)
-- [ ] Phase 1a: clean-ui becomes multiplatform; models, gateway and core logic shared and tested on Android + web
-- [ ] Phase 1b: all screens and the rest of the logic move to shared code (app unchanged)
+- [x] Phase 1a: clean-ui becomes multiplatform; models, gateway and core logic shared and tested on Android + web
+- [x] Phase 1b: all screens and the rest of the logic move to shared code (app unchanged)
 - [ ] Phase 2: web app shell + trainer connection over Web Bluetooth
+  - [x] 2a: `:web-app` shows the real app in the browser; profiles, history, settings and the
+    exercise library in the browser; a simulated trainer runs every set
+  - [ ] 2b: the real trainer and heart rate straps over Web Bluetooth
 - [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
 - [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
 - [ ] Phase 5: anonymous usage statistics + stats view

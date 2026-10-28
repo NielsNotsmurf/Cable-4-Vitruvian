@@ -6,10 +6,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.TimeZone
 
 class BodyAnalyticsTest {
-    private val utc = TimeZone.getTimeZone("UTC")
+    private val utc = "UTC"
     private val day = 24 * 60 * 60 * 1000L
     private val hour = 60 * 60 * 1000L
 
