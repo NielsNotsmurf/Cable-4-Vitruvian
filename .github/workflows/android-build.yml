@@ -24,11 +24,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Clean UI unit tests
-        run: ./gradlew --no-daemon :clean-ui:testDebugUnitTest
+      # Shared code is tested on both platforms: Android (JVM) and web (wasm, in headless Chrome).
+      - name: Clean UI unit tests (Android + web)
+        run: ./gradlew --no-daemon :clean-ui:testDebugUnitTest :clean-ui:wasmJsTest
+
+      # The web app is the same screens; it must build whenever the app does.
+      - name: Build web app
+        run: ./gradlew --no-daemon :web-app:wasmJsBrowserDistribution
 
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleProductionDebug
+
+      - name: APK still contains the Clean UI assets
+        run: unzip -l app/build/outputs/apk/production/debug/*.apk | grep -q one_rep_max_map.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -36,3 +44,10 @@ jobs:
           name: phoenix-debug-apk
           path: app/build/outputs/apk/production/debug/*.apk
           if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        with:
+          retention-days: 3
+          name: web-app
+          path: web-app/build/dist/wasmJs/productionExecutable
+          if-no-files-found: error

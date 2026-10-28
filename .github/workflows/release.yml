@@ -19,7 +19,7 @@ concurrency:
 
 env:
   # Bump the prefix by hand for a bigger version jump; the build number is added by CI.
-  VERSION_PREFIX: "1.3"
+  VERSION_PREFIX: "2.0"
 
 jobs:
   release:
@@ -40,7 +40,10 @@ jobs:
           # Must stay above 155, the last versionCode built in the old private repo
           # (run 55, 100 + run), so installed copies keep upgrading.
           echo "APP_VERSION_CODE=$((200 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "APP_VERSION_NAME=${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          # A [pre-release] merge (see Publish GitHub release) gets a -beta version name.
+          SUFFIX=""
+          if git log -1 --pretty=%B | grep -qi '\[pre-release\]'; then SUFFIX="-beta"; fi
+          echo "APP_VERSION_NAME=${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}${SUFFIX}" >> "$GITHUB_ENV"
 
       - name: Restore signing key
         env:
@@ -94,7 +97,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${APP_VERSION_NAME}" dist/*.apk \
+          # A merge whose message contains [pre-release] (the web beta) is published as a
+          # pre-release. Obtainium skips those unless "Include prereleases" is on.
+          NOTES="Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)
+
+          Goal: once sponsors cover about €200 (Apple developer account for two years, Google Play once), Cable moves to TestFlight and the Play Store. https://github.com/sponsors/NielsNotsmurf"
+          EXTRA=()
+          if git log -1 --pretty=%B | grep -qi '\[pre-release\]'; then
+            EXTRA=(--prerelease)
+            NOTES="Beta / pre-release. Includes the Cable web app (beta): https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (iPhone and iPad: train through the Bluefy browser, see the README).
+
+          ${NOTES}"
+          fi
+          gh release create "v${APP_VERSION_NAME}" dist/*.apk "${EXTRA[@]}" \
             --target "$GITHUB_SHA" \
             --title "Cable ${APP_VERSION_NAME}" \
-            --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"
+            --notes "$NOTES"

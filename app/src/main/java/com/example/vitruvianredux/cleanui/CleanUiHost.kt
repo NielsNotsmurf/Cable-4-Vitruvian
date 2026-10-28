@@ -47,6 +47,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
+import nl.nielsnotsmurf.cleanui.data.get
 import nl.nielsnotsmurf.cleanui.ui.CleanApp
 import nl.nielsnotsmurf.cleanui.ui.ClassicScreen
 

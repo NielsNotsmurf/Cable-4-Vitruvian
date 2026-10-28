@@ -1,4 +1,5 @@
 [versions]
+jetbrainsCompose = "1.10.0"
 agp = "8.13.2"
 kotlin = "2.2.21"
 kotlinxSerialization = "1.9.0"
@@ -34,6 +35,16 @@ vico = "2.3.6"
 composeCharts = "0.2.0"
 
 [libraries]
+# Multiplatform Compose for :clean-ui and :web-app (docs/WEB_TRACK.md). Versions match the
+# androidx ones above (Compose 1.10 / Material3 1.4 / Lifecycle 2.10 / Navigation 2.9).
+jetbrains-compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "jetbrainsCompose" }
+jetbrains-compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "jetbrainsCompose" }
+jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsCompose" }
+jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version = "1.9.0" }
+jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version = "1.7.3" }
+jetbrains-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version = "2.10.0" }
+jetbrains-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version = "2.10.0" }
+jetbrains-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version = "2.9.2" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -118,6 +129,8 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "jetbrainsCompose" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
