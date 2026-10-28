@@ -114,6 +114,8 @@ jobs:
           # pre-release. Obtainium skips those unless "Include prereleases" is on.
           NOTES="Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)
 
+          Also: the Cable web app (beta) for iPhone, iPad and computers: https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (iPhone and iPad: train through the Bluefy browser; install and use guide in the README: https://github.com/NielsNotsmurf/Cable-4-Vitruvian#web-app-beta-iphone-ipad-and-any-browser).
+
           Goal: once sponsors cover about €200 (Apple developer account for two years, Google Play once), Cable moves to TestFlight and the Play Store. https://github.com/sponsors/NielsNotsmurf"
           EXTRA=()
           if git log -1 --pretty=%B | grep -qi '\[pre-release\]'; then

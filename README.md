@@ -114,11 +114,10 @@ every update.
 ### Web app (beta, iPhone, iPad and any browser)
 
 > [!IMPORTANT]
-> **The web app is a beta (pre-release).** It has the same screens as the Android app, but it
+> **The web app is a beta.** It has the same screens as the Android app, but it
 > is new and has not been tested on every trainer, phone and browser yet. Expect rough edges,
 > and please [report what you find](https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues/new?template=feedback.yml).
-> It comes with Cable 2.0 (beta), a pre-release; the last 1.3 release stays the stable Android
-> version.
+> The Android app (2.0) is a normal release; only the web app is still a beta.
 
 Open [nielsnotsmurf.github.io/Cable-4-Vitruvian/app](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/).
 On first launch it explains itself and shows how to put it on your home screen.
@@ -169,7 +168,7 @@ does not work on your unit, please
 No. Cable is an independent community project, not affiliated with or endorsed by Vitruvian.
 
 **iPhone?**
-Yes, through the web app, which is still a beta (pre-release). Safari can only show a simulated
+Yes, through the web app, which is still a beta. Safari can only show a simulated
 trainer; to train with your trainer, open the web app in the free Bluefy browser. A real iPhone
 app through TestFlight comes once the [sponsor goal](#support) is reached. See
 [Web app](#web-app-beta-iphone-ipad-and-any-browser).
@@ -190,7 +189,7 @@ no imports from `:app`).
 ## Changelog
 
 - **Sponsor goal:** about €200 for TestFlight (iPhone, iPad) and the Play Store; see [Support](#support).
-- **2.0 (beta, pre-release), web app beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
+- **2.0, with the web app as a beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
   with the trainer and heart rate over Web Bluetooth, the same screens as the app, offline use
   and backups. On wide screens (also Android tablets) the tabs move to a rail on the left.
 - **2026-10-26:** a small landing page on GitHub Pages and better image descriptions, so search engines find Cable.
