@@ -19,7 +19,8 @@ passes and Niels says go.
   trainer in Chrome on Android (Niels).
 - [x] Phase 3: installable (manifest, icons, offline service worker), first-launch intro with
   the lag notice and per-device install guide (Safari vs Bluefy), backup and restore, browser back
-- [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
+- [x] Phase 4: responsive layout: bottom tabs on phones, a rail on the left from 600 dp wide
+  (tablet, iPad, landscape, desktop) with screens kept to 720 dp; the same in the app
 - [ ] Phase 5: anonymous usage statistics + stats view
 - [ ] Phase 6: security hardening
 - [ ] Phase 7: beta hosting on GitHub Pages

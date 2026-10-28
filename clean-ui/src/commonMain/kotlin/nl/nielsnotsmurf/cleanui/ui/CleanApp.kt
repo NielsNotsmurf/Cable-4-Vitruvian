@@ -2,8 +2,10 @@ package nl.nielsnotsmurf.cleanui.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -11,6 +13,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,6 +123,10 @@ enum class ClassicScreen(val route: String, val title: String?, val showBack: Bo
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
     PROTOCOL_TESTER("protocol_tester", null)
 }
+
+/** From this width the tabs move to a rail and the screens stop growing wider. */
+private val WIDE_LAYOUT = 600.dp
+private val MAX_CONTENT_WIDTH = 720.dp
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -317,238 +326,246 @@ private fun SignedInApp(
         )
     }
 
-    Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            NavHost(
-                navController = nav,
-                startDestination = CleanRoutes.TRAIN,
-                modifier = Modifier.weight(1f)
-            ) {
-                composable(CleanRoutes.TRAIN) {
-                    TodayScreen(
-                        state = state,
-                        history = history,
-                        heartRate = heartRate,
-                        onToggleLifter = ::toggleLifter,
-                        onPickExercise = { openTab(CleanRoutes.EXERCISES) },
-                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                        onBuild = { groups, minutes ->
-                            vm.buildWorkout(groups, minutes)
-                            nav.navigate(CleanRoutes.WORKOUT_PLAN)
-                        },
-                        onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
-                        onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
-                        onRetest = { lifterId, exerciseId ->
-                            vm.openTest(lifterId, listOf(exerciseId))
-                            nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
-                        },
-                        onRowShown = vm::requestEstimates
-                    )
-                }
-                composable(
-                    "${CleanRoutes.EXERCISES}?region={region}",
-                    arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
-                ) { entry ->
-                    val region = entry.arguments?.read { getStringOrNull("region") }
-                    ExercisesScreen(
-                        state = state,
-                        onBack = if (region != null) ({ nav.popBackStack(); Unit }) else null,
-                        onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
-                        onRowShown = vm::requestEstimates,
-                        onToggleFavorite = vm::toggleFavorite,
-                        region = region
-                    )
-                }
-                composable(CleanRoutes.HISTORY) {
-                    HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
-                }
-                composable(CleanRoutes.ANALYTICS) {
-                    AnalyticsScreen(
-                        state = state,
-                        history = history,
-                        onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) },
-                        onSetOneRepMax = vm::setManualOneRepMax
-                    )
-                }
-                composable(CleanRoutes.SETTINGS) {
-                    SettingsScreen(
-                        state = state,
-                        settings = settings,
-                        account = account,
-                        ledSchemes = gateway.ledSchemes,
-                        ledIndex = ledScheme,
-                        onUpdate = vm::updateSettings,
-                        onLedScheme = vm::setLedScheme,
-                        uiSounds = uiSounds,
-                        onUiSounds = vm::setUiSounds,
-                        onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
-                        onSetPin = { onNewPin(me) },
-                        // Changing or removing a PIN asks for the current one, even when signed in.
-                        onChangePin = { withPin(me, "Type your current PIN", true) { onNewPin(me) } },
-                        onRemovePin = { withPin(me, "Type your PIN to remove it", true) { vm.removePin(me) } },
-                        onSwitchAccount = vm::signOut,
-                        onStartTour = tour::start,
-                        onPairHeartRate = onHeartRate,
-                        onBackup = { nav.navigate(ClassicScreen.SETTINGS.route) },
-                        onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
-                        onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
-                        onSwitchToClassic = vm::switchToClassic
-                    )
-                }
-                composable(CleanRoutes.PROFILES) {
-                    ProfilesScreen(
-                        state = state,
-                        account = account,
-                        onBack = { nav.popBackStack() },
-                        onToggleLifter = ::toggleLifter,
-                        onAdd = vm::addLifter,
-                        onDelete = { id -> withPin(id, "To delete this profile", true) { vm.deleteLifter(id) } },
-                        onHeartRate = onHeartRate?.let { open -> { id: String -> withPin(id, "To pair a heart rate sensor", false) { open(id) } } }
-                    )
-                }
-                composable(CleanRoutes.WORKOUT_PLAN) {
-                    val w = builtWorkout
-                    if (w == null) {
-                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.WORKOUT_PLAN, inclusive = true) }
-                    } else {
-                        WorkoutPlanScreen(
+    // Phones get the tab bar at the bottom; tablets, iPads, landscape and desktop a rail on the
+    // left, with the screens kept to a readable width.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= WIDE_LAYOUT
+        Row(Modifier.fillMaxSize()) {
+            if (wide && isTab) TabRail(currentRoute, onSelect = ::openTab)
+            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                NavHost(
+                    navController = nav,
+                    startDestination = CleanRoutes.TRAIN,
+                    modifier = Modifier.weight(1f).widthIn(max = MAX_CONTENT_WIDTH)
+                ) {
+                    composable(CleanRoutes.TRAIN) {
+                        TodayScreen(
                             state = state,
-                            workout = w,
-                            loadFor = { id, ex -> vm.workoutLoad(id, ex, w) },
-                            onPercent = vm::setWorkoutPercent,
-                            onSubstitute = vm::substituteInWorkout,
-                            onRemove = vm::removeFromWorkout,
-                            onBack = { nav.popBackStack() },
-                            onSets = vm::setWorkoutSets,
-                            onReps = vm::setWorkoutReps,
-                            onNudgeLoad = vm::nudgeWorkoutLoad,
-                            onStart = {
-                                vm.startBuiltWorkout {
-                                    nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }
-                                }
-                            }
-                        )
-                    }
-                }
-                composable(CleanRoutes.SETUP) {
-                    val s = setup
-                    if (s == null) {
-                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.SETUP, inclusive = true) }
-                    } else {
-                        SetSetupScreen(
-                            state = state,
-                            setup = s,
-                            loadFor = { id -> vm.loadFor(id, s) },
-                            onUpdate = vm::updateSetup,
-                            onPercent = vm::setPercent,
-                            onNudge = vm::nudgeLoad,
-                            onBack = { nav.popBackStack() },
-                            onTestOneRepMax = { lifterId ->
-                                vm.openTest(lifterId, listOf(s.exercise.id))
+                            history = history,
+                            heartRate = heartRate,
+                            onToggleLifter = ::toggleLifter,
+                            onPickExercise = { openTab(CleanRoutes.EXERCISES) },
+                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                            onBuild = { groups, minutes ->
+                                vm.buildWorkout(groups, minutes)
+                                nav.navigate(CleanRoutes.WORKOUT_PLAN)
+                            },
+                            onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
+                            onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                            onRetest = { lifterId, exerciseId ->
+                                vm.openTest(lifterId, listOf(exerciseId))
                                 nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
                             },
-                            onStart = {
-                                vm.start {
-                                    nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
-                                        popUpTo(CleanRoutes.TRAIN)
+                            onRowShown = vm::requestEstimates
+                        )
+                    }
+                    composable(
+                        "${CleanRoutes.EXERCISES}?region={region}",
+                        arguments = listOf(navArgument("region") { type = NavType.StringType; nullable = true })
+                    ) { entry ->
+                        val region = entry.arguments?.read { getStringOrNull("region") }
+                        ExercisesScreen(
+                            state = state,
+                            onBack = if (region != null) ({ nav.popBackStack(); Unit }) else null,
+                            onOpenExercise = { vm.openSetup(it); nav.navigate(CleanRoutes.SETUP) },
+                            onRowShown = vm::requestEstimates,
+                            onToggleFavorite = vm::toggleFavorite,
+                            region = region
+                        )
+                    }
+                    composable(CleanRoutes.HISTORY) {
+                        HistoryScreen(state = state, history = history, onDelete = vm::deleteWorkouts)
+                    }
+                    composable(CleanRoutes.ANALYTICS) {
+                        AnalyticsScreen(
+                            state = state,
+                            history = history,
+                            onMoreAnalytics = { nav.navigate(ClassicScreen.ANALYTICS.route) },
+                            onSetOneRepMax = vm::setManualOneRepMax
+                        )
+                    }
+                    composable(CleanRoutes.SETTINGS) {
+                        SettingsScreen(
+                            state = state,
+                            settings = settings,
+                            account = account,
+                            ledSchemes = gateway.ledSchemes,
+                            ledIndex = ledScheme,
+                            onUpdate = vm::updateSettings,
+                            onLedScheme = vm::setLedScheme,
+                            uiSounds = uiSounds,
+                            onUiSounds = vm::setUiSounds,
+                            onProfiles = { nav.navigate(CleanRoutes.PROFILES) },
+                            onSetPin = { onNewPin(me) },
+                            // Changing or removing a PIN asks for the current one, even when signed in.
+                            onChangePin = { withPin(me, "Type your current PIN", true) { onNewPin(me) } },
+                            onRemovePin = { withPin(me, "Type your PIN to remove it", true) { vm.removePin(me) } },
+                            onSwitchAccount = vm::signOut,
+                            onStartTour = tour::start,
+                            onPairHeartRate = onHeartRate,
+                            onBackup = { nav.navigate(ClassicScreen.SETTINGS.route) },
+                            onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
+                            onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
+                            onSwitchToClassic = vm::switchToClassic
+                        )
+                    }
+                    composable(CleanRoutes.PROFILES) {
+                        ProfilesScreen(
+                            state = state,
+                            account = account,
+                            onBack = { nav.popBackStack() },
+                            onToggleLifter = ::toggleLifter,
+                            onAdd = vm::addLifter,
+                            onDelete = { id -> withPin(id, "To delete this profile", true) { vm.deleteLifter(id) } },
+                            onHeartRate = onHeartRate?.let { open -> { id: String -> withPin(id, "To pair a heart rate sensor", false) { open(id) } } }
+                        )
+                    }
+                    composable(CleanRoutes.WORKOUT_PLAN) {
+                        val w = builtWorkout
+                        if (w == null) {
+                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.WORKOUT_PLAN, inclusive = true) }
+                        } else {
+                            WorkoutPlanScreen(
+                                state = state,
+                                workout = w,
+                                loadFor = { id, ex -> vm.workoutLoad(id, ex, w) },
+                                onPercent = vm::setWorkoutPercent,
+                                onSubstitute = vm::substituteInWorkout,
+                                onRemove = vm::removeFromWorkout,
+                                onBack = { nav.popBackStack() },
+                                onSets = vm::setWorkoutSets,
+                                onReps = vm::setWorkoutReps,
+                                onNudgeLoad = vm::nudgeWorkoutLoad,
+                                onStart = {
+                                    vm.startBuiltWorkout {
+                                        nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }
                                     }
                                 }
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.SETUP) {
+                        val s = setup
+                        if (s == null) {
+                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.SETUP, inclusive = true) }
+                        } else {
+                            SetSetupScreen(
+                                state = state,
+                                setup = s,
+                                loadFor = { id -> vm.loadFor(id, s) },
+                                onUpdate = vm::updateSetup,
+                                onPercent = vm::setPercent,
+                                onNudge = vm::nudgeLoad,
+                                onBack = { nav.popBackStack() },
+                                onTestOneRepMax = { lifterId ->
+                                    vm.openTest(lifterId, listOf(s.exercise.id))
+                                    nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
+                                },
+                                onStart = {
+                                    vm.start {
+                                        nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {
+                                            popUpTo(CleanRoutes.TRAIN)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.ONE_REP_MAX_TEST) {
+                        val t = test
+                        // Closing clears the test while this screen is still animating out. The
+                        // pop below must name this route: a bare popBackStack() from that leftover
+                        // frame popped the Train home too and left only the tab bar.
+                        val close = { vm.closeTest(); nav.popBackStack(); Unit }
+                        if (t == null) {
+                            LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.ONE_REP_MAX_TEST, inclusive = true) }
+                        } else {
+                            OneRepMaxTestScreen(
+                                state = state,
+                                test = t,
+                                onSelectLifter = vm::testSelectLifter,
+                                onBegin = vm::testBegin,
+                                onNudge = vm::testNudge,
+                                onRecord = vm::testRecord,
+                                onTryAgain = vm::testTryAgain,
+                                // Back from the lifting screen returns here to record the result.
+                                onLiftOnTrainer = { vm.testLiftOnTrainer { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) } },
+                                onSave = { if (vm.testSave()) close() },
+                                onSkip = { if (vm.testSkip()) close() },
+                                onBack = close
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.ACTIVE_WORKOUT) {
+                        val l = live
+                        // Load the demo as soon as the exercise is known, so it's ready by the countdown.
+                        val card = state.exercises.firstOrNull { it.name == l?.exerciseName }
+                        val guide by produceState<ExerciseGuide?>(null, card?.id, settings.videos) {
+                            value = if (card == null || !settings.videos) null
+                            else runCatching { gateway.exerciseGuide(card.id) }.getOrNull()
+                        }
+                        // A 1RM attempt is running while the test is open underneath.
+                        val attemptMode = test != null
+                        // Leave only once: the screen stays composed while it animates out, and a
+                        // second pop would close the test as well.
+                        var left by remember { mutableStateOf(false) }
+                        val done = { if (!left) { left = true; nav.popBackStack(); gateway.resetForNewWorkout() } }
+                        var attemptStarted by remember { mutableStateOf(false) }
+                        if (l?.isCleanReady() == true) attemptStarted = true
+                        if (attemptMode && attemptStarted && l?.isCleanReady() != true) {
+                            // The rep is over and the trainer went idle: back to the test to record
+                            // it instead of showing the (blank) classic screen.
+                            LaunchedEffect(Unit) { done() }
+                            Box(Modifier.fillMaxSize().background(CleanColors.Background))
+                        } else if (l == null || !l.isCleanReady()) {
+                            activeWorkoutContent(nav)
+                        } else {
+                            LiveWorkoutScreen(
+                                live = l,
+                                unit = state.unit,
+                                heartRate = heartRate,
+                                history = history,
+                                connection = state.connection,
+                                cables = card?.cables ?: 2,
+                                attemptMode = attemptMode,
+                                onSkipRest = gateway::skipRest,
+                                onContinue = gateway::proceedFromSummary,
+                                onNextExercise = gateway::advanceToNextExercise,
+                                onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
+                                onDone = done,
+                                guide = guide,
+                                onAdjustWeight = gateway::adjustLiveWeight,
+                                percent = livePercent,
+                                onPercent = vm::setLivePercent,
+                                onFinishSet = gateway::finishSetEarly,
+                                onMoveSet = gateway::moveSet,
+                                onMoveExercise = gateway::moveExercise,
+                                onLeave = { if (!left) { left = true; nav.popBackStack() } }
+                            )
+                        }
+                    }
+                    composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
+                    ClassicScreen.entries.forEach { screen ->
+                        composable(screen.route) {
+                            Column(Modifier.fillMaxSize()) {
+                                screen.title?.let { title ->
+                                    ScreenTitle(title, onBack = if (screen.showBack) ({ nav.popBackStack() }) else null)
+                                }
+                                Box(Modifier.weight(1f)) { classicContent(screen, nav) }
                             }
-                        )
-                    }
-                }
-                composable(CleanRoutes.ONE_REP_MAX_TEST) {
-                    val t = test
-                    // Closing clears the test while this screen is still animating out. The
-                    // pop below must name this route: a bare popBackStack() from that leftover
-                    // frame popped the Train home too and left only the tab bar.
-                    val close = { vm.closeTest(); nav.popBackStack(); Unit }
-                    if (t == null) {
-                        LaunchedEffect(Unit) { nav.popBackStack(CleanRoutes.ONE_REP_MAX_TEST, inclusive = true) }
-                    } else {
-                        OneRepMaxTestScreen(
-                            state = state,
-                            test = t,
-                            onSelectLifter = vm::testSelectLifter,
-                            onBegin = vm::testBegin,
-                            onNudge = vm::testNudge,
-                            onRecord = vm::testRecord,
-                            onTryAgain = vm::testTryAgain,
-                            // Back from the lifting screen returns here to record the result.
-                            onLiftOnTrainer = { vm.testLiftOnTrainer { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) } },
-                            onSave = { if (vm.testSave()) close() },
-                            onSkip = { if (vm.testSkip()) close() },
-                            onBack = close
-                        )
-                    }
-                }
-                composable(CleanRoutes.ACTIVE_WORKOUT) {
-                    val l = live
-                    // Load the demo as soon as the exercise is known, so it's ready by the countdown.
-                    val card = state.exercises.firstOrNull { it.name == l?.exerciseName }
-                    val guide by produceState<ExerciseGuide?>(null, card?.id, settings.videos) {
-                        value = if (card == null || !settings.videos) null
-                        else runCatching { gateway.exerciseGuide(card.id) }.getOrNull()
-                    }
-                    // A 1RM attempt is running while the test is open underneath.
-                    val attemptMode = test != null
-                    // Leave only once: the screen stays composed while it animates out, and a
-                    // second pop would close the test as well.
-                    var left by remember { mutableStateOf(false) }
-                    val done = { if (!left) { left = true; nav.popBackStack(); gateway.resetForNewWorkout() } }
-                    var attemptStarted by remember { mutableStateOf(false) }
-                    if (l?.isCleanReady() == true) attemptStarted = true
-                    if (attemptMode && attemptStarted && l?.isCleanReady() != true) {
-                        // The rep is over and the trainer went idle: back to the test to record
-                        // it instead of showing the (blank) classic screen.
-                        LaunchedEffect(Unit) { done() }
-                        Box(Modifier.fillMaxSize().background(CleanColors.Background))
-                    } else if (l == null || !l.isCleanReady()) {
-                        activeWorkoutContent(nav)
-                    } else {
-                        LiveWorkoutScreen(
-                            live = l,
-                            unit = state.unit,
-                            heartRate = heartRate,
-                            history = history,
-                            connection = state.connection,
-                            cables = card?.cables ?: 2,
-                            attemptMode = attemptMode,
-                            onSkipRest = gateway::skipRest,
-                            onContinue = gateway::proceedFromSummary,
-                            onNextExercise = gateway::advanceToNextExercise,
-                            onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
-                            onDone = done,
-                            guide = guide,
-                            onAdjustWeight = gateway::adjustLiveWeight,
-                            percent = livePercent,
-                            onPercent = vm::setLivePercent,
-                            onFinishSet = gateway::finishSetEarly,
-                            onMoveSet = gateway::moveSet,
-                            onMoveExercise = gateway::moveExercise,
-                            onLeave = { if (!left) { left = true; nav.popBackStack() } }
-                        )
-                    }
-                }
-                composable(CleanRoutes.JUST_LIFT) { justLiftContent(nav) }
-                ClassicScreen.entries.forEach { screen ->
-                    composable(screen.route) {
-                        Column(Modifier.fillMaxSize()) {
-                            screen.title?.let { title ->
-                                ScreenTitle(title, onBack = if (screen.showBack) ({ nav.popBackStack() }) else null)
-                            }
-                            Box(Modifier.weight(1f)) { classicContent(screen, nav) }
                         }
                     }
                 }
-            }
-            // A workout left running (Back from the lifting screen) is picked up from here.
-            val running = live
-            if (isTab && test == null && running.isCleanReady() && running?.phase != LivePhase.FINISHED) {
-                ResumeBar(running!!) { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { launchSingleTop = true } }
-            }
-            if (isTab) {
-                TabBar(currentRoute, onSelect = ::openTab)
+                // A workout left running (Back from the lifting screen) is picked up from here.
+                val running = live
+                if (isTab && test == null && running.isCleanReady() && running?.phase != LivePhase.FINISHED) {
+                    Box(Modifier.widthIn(max = MAX_CONTENT_WIDTH)) {
+                        ResumeBar(running!!) { nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { launchSingleTop = true } }
+                    }
+                }
+                if (isTab && !wide) {
+                    TabBar(currentRoute, onSelect = ::openTab)
+                }
             }
         }
         if (tour.isRunning) {
@@ -637,13 +654,57 @@ private fun TabBar(currentRoute: String?, onSelect: (String) -> Unit) {
     }
 }
 
+/** The tabs as a rail down the left side, for wide screens. */
+@Composable
+private fun TabRail(currentRoute: String?, onSelect: (String) -> Unit) {
+    Row(Modifier.fillMaxHeight().background(CleanColors.Background)) {
+        Column(
+            Modifier.fillMaxHeight().width(88.dp).padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+        ) {
+            TABS.forEach { tab ->
+                val selected = tab.route == currentRoute
+                if (tab.route == CleanRoutes.TRAIN) {
+                    TrainButton(tab, selected, Modifier.padding(vertical = 8.dp), raised = false) { if (!selected) onSelect(tab.route) }
+                    return@forEach
+                }
+                Column(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .tourTarget(TourTargets.tab(tab.route))
+                        .heightIn(min = 60.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(role = Role.Tab) { if (!selected) onSelect(tab.route) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                ) {
+                    Icon(
+                        tab.icon,
+                        contentDescription = null,
+                        tint = if (selected) CleanColors.Accent else CleanColors.Muted,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        tab.label,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (selected) CleanColors.Ink else CleanColors.Muted
+                    )
+                }
+            }
+        }
+        VerticalDivider(color = CleanColors.Line)
+    }
+}
+
 /** The round Train button in the middle of the tab bar, raised a little above it. */
 @Composable
-private fun TrainButton(tab: Tab, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun TrainButton(tab: Tab, selected: Boolean, modifier: Modifier, raised: Boolean = true, onClick: () -> Unit) {
     Box(modifier.heightIn(min = 52.dp), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .offset(y = (-12).dp)
+                .offset(y = if (raised) (-12).dp else 0.dp)
                 .size(58.dp)
                 .shadow(
                     if (selected) 10.dp else 4.dp,

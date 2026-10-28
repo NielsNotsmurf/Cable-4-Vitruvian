@@ -103,5 +103,7 @@ The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMa
 - Web only: a first-launch intro with the install guide per device (Safari vs Bluefy on iOS),
   and Settings, Backup and restore saves or restores everything the browser stores as a file
   (the app's version saves to Download/Cable). The intro's guide is repeated there.
+- Wide screens (600 dp and up, in the app too): the tabs become a rail on the left and screens
+  stay at most 720 dp wide.
 - Symbols the web's default font lacks come from a small DejaVu subset (`web-app/.../fonts`).
 
