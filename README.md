@@ -52,6 +52,10 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 
 ## Features
 
+- **Web app (beta):** the same app in the browser and on the home screen of iPhone, iPad,
+  Android and computers; see [Web app](#web-app-beta-iphone-ipad-and-any-browser).
+- **Tablets and computers:** from 600 dp wide the tabs become a rail on the left and screens stay
+  readable.
 - **First launch:** a short onboarding picks or creates your account, offers a PIN, explains
   Garmin heart rate and offers the app tour.
 - **Local accounts:** every profile is an account. A PIN (4 to 6 digits, stored only as a salted
@@ -106,6 +110,22 @@ Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/Cable-4-Vitr
 on your phone and tap the `.apk` of the latest version. You then have to repeat this for
 every update.
 
+### Web app (beta, iPhone, iPad and any browser)
+
+Cable also runs as a web app with the same screens, at
+[nielsnotsmurf.github.io/Cable-4-Vitruvian/app](https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/).
+It can feel a little slower than the Android app, and it explains itself on first launch.
+
+- **Android, Windows, Mac:** open it in Chrome or Edge and choose **Install app**. The trainer
+  and heart rate straps connect over Bluetooth, as in the app.
+- **iPhone and iPad, to look around or plan:** open it in Safari, tap **Share**, then **Add to
+  Home Screen**. Apple allows no Bluetooth there, so sets run on a simulated trainer.
+- **iPhone and iPad, to train with your trainer:** install
+  [Bluefy](https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055) (free) and open the
+  same link in it. Bluefy adds the Bluetooth that Safari lacks.
+
+Each browser keeps its own data on the device. Settings, Backup and restore saves it to a file.
+
 Every merge to `master` builds a signed APK and publishes it as a release. How the signing
 works is in [docs/RELEASES.md](docs/RELEASES.md).
 
@@ -124,7 +144,8 @@ does not work on your unit, please
 No. Cable is an independent community project, not affiliated with or endorsed by Vitruvian.
 
 **iPhone?**
-Not yet. Cable is Android only (Android 8 or newer).
+The web app (beta) runs on iPhone and iPad; train with your trainer through Bluefy. See
+[Web app](#web-app-beta-iphone-ipad-and-any-browser).
 
 **Will I lose my data from the official app?**
 Cable does not touch your Vitruvian account. Your Cable workouts stay on your phone and can be
@@ -141,6 +162,9 @@ no imports from `:app`).
 
 ## Changelog
 
+- **Web beta (coming):** Cable as an installable web app for iPhone, iPad, tablets and computers,
+  with the trainer and heart rate over Web Bluetooth, the same screens as the app, offline use
+  and backups. On wide screens (also Android tablets) the tabs move to a rail on the left.
 - **2026-10-26:** a small landing page on GitHub Pages and better image descriptions, so search engines find Cable.
 - **2026-10-21:** new screenshots in the Cable look.
 - **2026-10-20:** move through a workout: end a set early (6 of 8 reps still counts) and go on,

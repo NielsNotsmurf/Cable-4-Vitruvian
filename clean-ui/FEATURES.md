@@ -97,7 +97,15 @@ The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMa
   lifter for the browser session (the browser can't reconnect on its own after a reload).
 - Rep counting uses the trainer's own warm-up and working counters; a weight change during the
   warm-up restarts the set at the new weight, as in the app.
-- Demo videos show their poster; a tap opens the clip in a new tab (phase 3).
-- The browser back button doesn't step back inside the app yet (phase 3).
-- The web font lacks a few symbols (e.g. "›"); a bundled font comes with phase 3.
+- Demo videos show their poster; a tap opens the clip in a new tab.
+- Browser back (and Android's back gesture in the installed web app) steps back like the app's
+  back button.
+- Web only: a first-launch intro with the install guide per device (Safari vs Bluefy on iOS),
+  and Settings, Backup and restore saves or restores everything the browser stores as a file
+  (the app's version saves to Download/Cable). The intro's guide is repeated there.
+- Wide screens (600 dp and up, in the app too): the tabs become a rail on the left and screens
+  stay at most 720 dp wide.
+- Web only: anonymous usage counts (GoatCounter, no cookies or IDs) on the hosted beta, with an
+  off switch in Settings, Backup and restore. The Android app keeps download counts only.
+- Symbols the web's default font lacks come from a small DejaVu subset (`web-app/.../fonts`).
 

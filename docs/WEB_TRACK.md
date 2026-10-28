@@ -1,4 +1,4 @@
-# Web track: vitruvian- as an installable web app (beta)
+# Web track: Cable as an installable web app (beta)
 
 Goal: the real app (not the demo) running in the browser, installable to the home
 screen on iPhone, iPad and Android, looking and behaving exactly like the Android
@@ -17,11 +17,18 @@ passes and Niels says go.
   the trainer and heart rate straps over Web Bluetooth with the app's own protocol code, and a
   simulated trainer where the browser has no Bluetooth. Still to check: one workout on the real
   trainer in Chrome on Android (Niels).
-- [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
-- [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
-- [ ] Phase 5: anonymous usage statistics + stats view
-- [ ] Phase 6: security hardening
-- [ ] Phase 7: beta hosting on GitHub Pages
+- [x] Phase 3: installable (manifest, icons, offline service worker), first-launch intro with
+  the lag notice and per-device install guide (Safari vs Bluefy), backup and restore, browser back
+- [x] Phase 4: responsive layout: bottom tabs on phones, a rail on the left from 600 dp wide
+  (tablet, iPad, landscape, desktop) with screens kept to 720 dp; the same in the app
+- [x] Phase 5: anonymous usage counts (GoatCounter, cookieless, only on the hosted beta, off
+  switch in Settings) and a Web section on docs/stats. Niels: create the GoatCounter site
+  `cable-web` and allow public counters (see "Setup by Niels" below)
+- [x] Phase 6: security: strict CSP (plus form-action, no-referrer), Dependabot, CodeQL,
+  dependency review and the dependency graph (`.github/workflows/security.yml`), SECURITY.md
+- [x] Phase 7: beta hosting: `.github/workflows/pages.yml` publishes docs/ from master plus the
+  web app from web-beta at https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (needs the
+  two Pages settings under "Setup by Niels")
 - [ ] Phase 8: beta test round on real devices, then merge to master
 
 ## Feasibility first: Bluetooth on Apple
@@ -181,3 +188,18 @@ then on every master release builds the APK and the web app together.
 - Start a phase by saying "start web phase N" in the project chat.
 - Master keeps getting normal app releases meanwhile; `web-beta` merges master in
   at the start of each phase.
+
+## Setup by Niels (once, before the beta round)
+
+1. **GoatCounter** (anonymous web counts): sign up free at goatcounter.com with site code
+   `cable-web`. In its Settings, turn on "Allow adding visitor counts on your website"
+   so docs/stats can show the totals. Until then the web app's counts go nowhere and the
+   stats page shows "No web numbers yet".
+2. **GitHub Pages** (phase 7): repository Settings, Pages, Source: GitHub Actions. Then
+   Settings, Environments, github-pages, Deployment branches: add `web-beta` next to master.
+   Re-run the Pages workflow (Actions tab) once; the demo and stats links keep working and the
+   beta appears at /app/.
+3. **Security** (phase 6): repository Settings, Code security: turn on Dependency graph and
+   Dependabot alerts (dependency review needs the graph), and check that secret scanning and push
+   protection are on (default for public repositories). Then remove `continue-on-error` from
+   the dependency-review step in `.github/workflows/security.yml` so it blocks again.

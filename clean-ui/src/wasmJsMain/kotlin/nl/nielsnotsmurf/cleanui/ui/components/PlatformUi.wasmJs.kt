@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,8 +42,48 @@ import nl.nielsnotsmurf.cleanui.theme.CleanColors
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
-    // Browser back navigation comes with the PWA phase (docs/WEB_TRACK.md, phase 3).
+    val current by rememberUpdatedState(onBack)
+    val entry = remember { BrowserBack.Entry() }
+    entry.enabled = enabled
+    entry.onBack = { current() }
+    DisposableEffect(entry) {
+        BrowserBack.add(entry)
+        onDispose { BrowserBack.remove(entry) }
+    }
 }
+
+/**
+ * The browser's back button (and Android's back gesture in the installed web app) does what
+ * Android's back does in the app: the innermost enabled handler gets it. One extra history
+ * entry is kept while something can go back, so the page itself is left only from the root.
+ */
+private object BrowserBack {
+    class Entry {
+        var enabled = true
+        var onBack: () -> Unit = {}
+    }
+
+    private val entries = mutableListOf<Entry>()
+    private var guarded = false
+
+    fun add(entry: Entry) {
+        if (entries.isEmpty() && !guarded) { jsListen { onPop() }; jsPushGuard(); guarded = true }
+        entries += entry
+    }
+
+    fun remove(entry: Entry) { entries -= entry }
+
+    private fun onPop() {
+        val top = entries.lastOrNull { it.enabled }
+        if (top != null) { top.onBack(); jsPushGuard() } else { guarded = false; jsBack() }
+    }
+}
+
+private fun jsListen(onPop: () -> Unit): Unit = js("window.addEventListener('popstate', () => onPop())")
+
+private fun jsPushGuard(): Unit = js("history.pushState({ vitruvian: true }, '')")
+
+private fun jsBack(): Unit = js("history.back()")
 
 private fun jsFetchBytes(url: String): kotlin.js.Promise<JsAny?> =
     js("fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(b => b ? new Uint8Array(b) : null).catch(() => null)")
