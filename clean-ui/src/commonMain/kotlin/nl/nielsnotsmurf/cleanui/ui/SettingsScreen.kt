@@ -160,6 +160,12 @@ fun SettingsScreen(
                 onPlus = { onUpdate { it.copy(defaultReps = (it.defaultReps + 1).coerceAtMost(50)) } },
                 modifier = Modifier.padding(vertical = 10.dp)
             )
+            Stepper(
+                "Warm-up reps (set the range of motion)", settings.warmupReps.toString(),
+                onMinus = { onUpdate { it.copy(warmupReps = (it.warmupReps - 1).coerceAtLeast(1)) } },
+                onPlus = { onUpdate { it.copy(warmupReps = (it.warmupReps + 1).coerceAtMost(3)) } },
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
             Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
                 Text("Training load · % of 1RM", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Text("${settings.defaultPercent}%", style = MaterialTheme.typography.titleLarge)

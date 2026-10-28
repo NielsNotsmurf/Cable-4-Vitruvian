@@ -82,6 +82,12 @@ class CleanUiStore(
     /** Sets per exercise from Settings; 3 until changed. */
     val defaultSets: Flow<Int> = kv.data.map { it[DEFAULT_SETS] ?: 3 }
 
+    val warmupReps: Flow<Int> = kv.data.map { it[WARMUP_REPS] ?: 3 }
+
+    suspend fun setWarmupReps(reps: Int) {
+        kv.edit { it[WARMUP_REPS] = reps.coerceIn(1, 3) }
+    }
+
     suspend fun setDefaultSets(sets: Int) {
         kv.edit { it[DEFAULT_SETS] = sets.coerceIn(1, 10) }
     }
@@ -159,6 +165,7 @@ class CleanUiStore(
         private val LED_SCHEME = Key<Int>("led_scheme")
         private val UI_SOUNDS = Key<Boolean>("ui_sounds")
         private val DEFAULT_SETS = Key<Int>("default_sets")
+        private val WARMUP_REPS = Key<Int>("warmup_reps")
         private val DEFAULT_PERCENT = Key<Int>("default_percent")
         private val ONBOARDED = Key<Boolean>("onboarded")
         private val LAST_ACCOUNT = Key<String>("last_account")

@@ -191,6 +191,8 @@ data class CleanSettings(
     val defaultPercent: Int = 60,
     val autoplay: Boolean = true,
     val stopAtTop: Boolean = false,
+    /** Warm-up reps (1-3) at the start of every set; the trainer sets the range of motion from them. */
+    val warmupReps: Int = 3,
     val beeps: Boolean = true,
     val videos: Boolean = true
 )

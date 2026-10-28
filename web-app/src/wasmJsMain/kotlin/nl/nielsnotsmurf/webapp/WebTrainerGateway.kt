@@ -302,10 +302,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
      */
     private suspend fun lift(t: TrainerLink, base: LiveWorkout, spec: SetSpec, plan: SetPlan): Int {
         val amrap = spec.kind == SetKind.AMRAP
+        val warmupTarget = data.value.settings.warmupReps.coerceIn(1, 3)
         fun frame(kg: Float) = if (plan.mode == TrainingMode.ECHO) {
-            TrainerProtocol.echoControl(TrainerProtocol.EchoLevel.valueOf(plan.echoLevel.name), WARMUP_REPS, spec.reps, amrap, plan.eccentricLoadPercent)
+            TrainerProtocol.echoControl(TrainerProtocol.EchoLevel.valueOf(plan.echoLevel.name), warmupTarget, spec.reps, amrap, plan.eccentricLoadPercent)
         } else {
-            TrainerProtocol.programParams(spec.reps, WARMUP_REPS, amrap, plan.mode.profile(), kg, plan.progressionKg)
+            TrainerProtocol.programParams(spec.reps, warmupTarget, amrap, plan.mode.profile(), kg, plan.progressionKg)
         }
         val end = CompletableDeferred<Unit>().also { endSet = it }
         var sentKg = base.loadKg
@@ -328,20 +329,25 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         }
         try {
             begin()
-            live.value = base.copy(phase = LivePhase.LIFTING, warmupTarget = WARMUP_REPS, warmupDone = false)
+            live.value = base.copy(phase = LivePhase.LIFTING, warmupTarget = warmupTarget, warmupDone = false)
             while (!end.isCompleted) {
                 val shown = live.value ?: break
                 // A weight change during warm-up restarts the set at the new weight, as in the app.
-                if (shown.loadKg != sentKg && warmup < WARMUP_REPS) { sentKg = shown.loadKg; warmup = 0; working = 0; begin() }
+                if (shown.loadKg != sentKg && warmup < warmupTarget) { sentKg = shown.loadKg; warmup = 0; working = 0; begin() }
+                // Reset ROM: the set starts over, so the warm-up reps set the range of motion again.
+                if (restart) {
+                    restart = false; warmup = 0; working = 0; low = Float.MAX_VALUE; high = -Float.MAX_VALUE; begin()
+                    live.value = live.value?.copy(reps = 0, doneReps = 0, warmupReps = 0, warmupDone = false)
+                }
                 val now = nowMillis()
                 val sample = t.readSample()
                 val reps = repCounters.value
                 if (reps != null && reps != counters) {
                     if (reps.isLegacy) {
                         val ups = (reps.up - (counters?.up ?: reps.up)).coerceAtLeast(0)
-                        repeat(ups) { if (warmup < WARMUP_REPS) warmup++ else working++ }
+                        repeat(ups) { if (warmup < warmupTarget) warmup++ else working++ }
                     } else {
-                        warmup = reps.romCount.coerceAtMost(WARMUP_REPS)
+                        warmup = reps.romCount.coerceAtMost(warmupTarget)
                         working = reps.setCount
                     }
                     counters = reps
@@ -364,7 +370,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 }
                 live.value = shown.copy(
                     reps = working, doneReps = working, warmupReps = warmup,
-                    warmupDone = warmup >= WARMUP_REPS,
+                    warmupDone = warmup >= warmupTarget,
                     liveLoadKg = sample?.let { maxOf(it.loadA, it.loadB) } ?: shown.liveLoadKg,
                     position = if (high - low > 1f && sample != null) ((sample.positionA - low) / (high - low)).coerceIn(0f, 1f) else null,
                     peakPower = maxOf(shown.peakPower, power),
@@ -436,6 +442,8 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     override fun advanceToNextExercise() { skip?.complete(Unit) }
     override fun resetForNewWorkout() { job?.cancel(); live.value = null }
     override fun finishSetEarly() { endSet?.complete(Unit) }
+    override fun restartSet() { restart = true }
+    private var restart = false
 
     private fun TrainingMode.profile() = when (this) {
         TrainingMode.PUMP -> TrainerProtocol.Profile.PUMP
@@ -448,7 +456,6 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     private companion object {
         const val STORAGE_KEY = "web_gateway"
         /** The app's default warm-up before the working reps count. */
-        const val WARMUP_REPS = 3
         const val SIMULATED = "Simulated trainer"
         const val REP_MS = 2200L
         val json = Json { ignoreUnknownKeys = true }
@@ -507,14 +514,15 @@ private data class SavedPlan(
 @Serializable
 private data class SavedSettings(
     val lb: Boolean = false, val defaultReps: Int = 10, val defaultSets: Int = 3, val defaultPercent: Int = 60,
-    val autoplay: Boolean = true, val stopAtTop: Boolean = false, val beeps: Boolean = true, val videos: Boolean = true
+    val autoplay: Boolean = true, val stopAtTop: Boolean = false, val beeps: Boolean = true, val videos: Boolean = true,
+    val warmupReps: Int = 3
 ) {
     fun unit() = if (lb) WeightUnit.LB else WeightUnit.KG
-    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, beeps, videos)
+    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, warmupReps, beeps, videos)
 
     companion object {
         fun from(s: CleanSettings) = SavedSettings(
-            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos
+            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos, s.warmupReps
         )
     }
 }

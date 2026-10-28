@@ -188,6 +188,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- Settings → Warm-up reps (1 to 3) sets how many reps measure the range of motion. "Reset ROM" on the
+  live screen starts the set over to measure it again. In the app and the web app.
 - **Sponsor goal:** about €200 for TestFlight (iPhone, iPad) and the Play Store; see [Support](#support).
 - **2.0, with the web app as a beta:** Cable as an installable web app for iPhone, iPad, tablets and computers,
   with the trainer and heart rate over Web Bluetooth, the same screens as the app, offline use

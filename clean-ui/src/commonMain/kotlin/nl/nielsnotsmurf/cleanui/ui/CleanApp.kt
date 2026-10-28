@@ -538,6 +538,7 @@ private fun SignedInApp(
                                 percent = livePercent,
                                 onPercent = vm::setLivePercent,
                                 onFinishSet = gateway::finishSetEarly,
+                                onRestartSet = gateway::restartSet,
                                 onMoveSet = gateway::moveSet,
                                 onMoveExercise = gateway::moveExercise,
                                 onLeave = { if (!left) { left = true; nav.popBackStack() } }

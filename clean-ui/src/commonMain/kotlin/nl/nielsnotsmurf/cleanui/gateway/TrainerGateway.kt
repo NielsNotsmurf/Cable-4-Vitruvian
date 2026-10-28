@@ -105,6 +105,8 @@ interface TrainerGateway {
     fun resetForNewWorkout() {}
     /** Ends the set being lifted now with the reps done so far and moves on as usual. */
     fun finishSetEarly() {}
+    /** Starts the set being lifted over, so the warm-up reps set the range of motion again. */
+    fun restartSet() {}
     /** During rest: the coming set moves [delta] sets forward (skip) or back (redo), across exercises. */
     fun moveSet(delta: Int) {}
     /** During rest: the coming set becomes the first set of the next (1) or previous (-1) exercise. */
