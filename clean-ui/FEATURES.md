@@ -82,3 +82,15 @@ Android status:
 | Protocol tester | Developer screen | Settings → Advanced → Protocol tester | Hosted (Settings → Advanced) |
 | Support link, app info | Settings | Settings → About | Hosted (Settings) |
 | Switch layout | Settings → Clean layout | Settings → Advanced → Switch to the classic layout | Hosted (Settings, both ways) |
+
+## Web (beta, docs/WEB_TRACK.md)
+
+The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMain`, so every
+**Clean** row above works the same in the browser. Differences for now:
+
+- **Hosted** rows (classic screens) show "in the Android app only for now" on the web.
+- The trainer is simulated until Web Bluetooth lands (phase 2b); heart rate likewise.
+- Demo videos show their poster; a tap opens the clip in a new tab (phase 3).
+- The browser back button doesn't step back inside the app yet (phase 3).
+- The web font lacks a few symbols (e.g. "›"); a bundled font comes with phase 3.
+

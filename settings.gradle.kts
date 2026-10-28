@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 rootProject.name = "vitruvian-project-phoenix"
 include(":app")
 include(":clean-ui")
+include(":web-app")
