@@ -1,7 +1,7 @@
 {
   "name": "Cable (web beta)",
   "short_name": "Cable",
-  "description": "Cable trainer companion: plans, 1RMs, history and live sets, in your browser.",
+  "description": "For Vitruvian V-Form & Trainer+: plans, 1RMs, history and live sets in your browser. Unofficial, not affiliated with Vitruvian.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

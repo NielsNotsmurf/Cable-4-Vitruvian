@@ -69,6 +69,11 @@ fun WebIntro(onDone: () -> Unit) {
                     "It's a web page rather than an installed app, so it can feel a little slower than the Android app.",
                 style = MaterialTheme.typography.bodyLarge
             )
+            Text(
+                "For Vitruvian V-Form & Trainer+. Unofficial, not affiliated with Vitruvian.",
+                style = MaterialTheme.typography.bodySmall,
+                color = CleanColors.Muted
+            )
             InstallGuide()
             SectionLabel("Your data", Modifier.padding(top = 8.dp))
             Text(
