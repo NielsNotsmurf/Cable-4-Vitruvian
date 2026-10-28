@@ -1,38 +1,38 @@
 [versions]
-jetbrainsCompose = "1.10.0"
-agp = "8.13.2"
-kotlin = "2.2.21"
-kotlinxSerialization = "1.9.0"
-coreKtx = "1.17.0"
+jetbrainsCompose = "1.12.2"
+agp = "9.5.0"
+kotlin = "2.4.21"
+kotlinxSerialization = "1.12.0"
+coreKtx = "1.19.1"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.1"
-composeBom = "2025.12.00"
-hilt = "2.57.2"
-hiltNavigationCompose = "1.3.0"
-coroutines = "1.10.2"
-room = "2.8.4"
-datastore = "1.2.0"
+composeBom = "2026.09.00"
+hilt = "2.60.1"
+hiltNavigationCompose = "1.4.0"
+coroutines = "1.11.0"
+room = "2.8.5"
+datastore = "1.3.0"
 nordicBle = "2.11.0"
-kable = "0.40.0"
+kable = "0.45.0"
 mpAndroidChart = "v3.1.0"
 timber = "5.0.1"
-navigationCompose = "2.9.6"
-mockk = "1.14.6"
+navigationCompose = "2.10.2"
+mockk = "1.14.11"
 turbine = "1.2.1"
 truth = "1.4.5"
 accompanist = "0.37.3"
 splashScreen = "1.2.0"
 coil = "2.7.0"
 materialIconsExtended = "1.7.8"
-mockitoCore = "5.20.0"
+mockitoCore = "5.24.0"
 mockitoInline = "5.2.0"
-robolectric = "4.16"
-ksp = "2.2.21-2.0.4"
-vico = "2.3.6"
-composeCharts = "0.2.0"
+robolectric = "4.17"
+ksp = "2.3.12"
+vico = "2.5.2"
+composeCharts = "1.0.0"
 
 [libraries]
 # Multiplatform Compose for :clean-ui and :web-app (docs/WEB_TRACK.md). Versions match the
@@ -42,9 +42,9 @@ jetbrains-compose-foundation = { group = "org.jetbrains.compose.foundation", nam
 jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "jetbrainsCompose" }
 jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version = "1.9.0" }
 jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version = "1.7.3" }
-jetbrains-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version = "2.10.0" }
-jetbrains-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version = "2.10.0" }
-jetbrains-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version = "2.9.2" }
+jetbrains-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version = "2.11.0" }
+jetbrains-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version = "2.11.0" }
+jetbrains-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version = "2.10.0" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
