@@ -33,6 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import no.nordicsemi.android.ble.BleManager
 import no.nordicsemi.android.ble.ConnectionPriorityRequest
 import no.nordicsemi.android.ble.data.Data
+import nl.nielsnotsmurf.cleanui.trainer.TrainerProtocol
 import timber.log.Timber
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -1457,26 +1458,13 @@ class VitruvianBleManager(
                 return
             }
 
-            val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            // Parsing is shared with the web app (TrainerProtocol.parseSample).
+            val sample = TrainerProtocol.parseSample(bytes) ?: return
+            val ticks = sample.ticks
 
-            // BLE packet parsing - official app format
-            // Format: u16[0-1]=ticks_lo, u16[2-3]=ticks_hi, s16[4-5]=posA*10, u16[8-9]=loadA*100,
-            //         s16[10-11]=posB*10, u16[14-15]=loadB*100
-            val ticksLo = buffer.getShort(0).toInt() and 0xFFFF    // Offset 0-1 (unsigned)
-            val ticksHi = buffer.getShort(2).toInt() and 0xFFFF    // Offset 2-3 (unsigned)
-            val posARaw = buffer.getShort(4)                       // Offset 4-5 (SIGNED - position)
-            val loadARaw = buffer.getShort(8).toInt() and 0xFFFF   // Offset 8-9 (unsigned - load*100)
-            val posBRaw = buffer.getShort(10)                      // Offset 10-11 (SIGNED - position)
-            val loadBRaw = buffer.getShort(14).toInt() and 0xFFFF  // Offset 14-15 (unsigned - load*100)
-
-            // Reconstruct 32-bit tick counter
-            val ticks = ticksLo + (ticksHi shl 16)
-
-            // Position values - signed 16-bit with 0.1mm resolution, scale to mm
-            // Per official app: position = buffer.getShort() / 10.0
             // Valid range after scaling: -1000.0 to +1000.0 mm
-            var positionA = posARaw / 10.0f
-            var positionB = posBRaw / 10.0f
+            var positionA = sample.positionA
+            var positionB = sample.positionB
 
             // Validate position range and use last good value if invalid
             if (positionA !in WorkoutConstants.MIN_POSITION..WorkoutConstants.MAX_POSITION) {
@@ -1492,15 +1480,9 @@ class VitruvianBleManager(
                 lastGoodPosB = positionB
             }
 
-            // Load in kg (device sends kg * 100)
-            val loadA = loadARaw / 100.0f
-            val loadB = loadBRaw / 100.0f
-
-            // Status (Bytes 16-17) if available
-            var status = 0
-            if (bytes.size >= 18) {
-                status = buffer.getShort(16).toInt() and 0xFFFF
-            }
+            val loadA = sample.loadA
+            val loadB = sample.loadB
+            val status = sample.status
 
             Timber.v("Parsed ${bytes.size}-byte format: posA=$positionA, posB=$positionB, loadA=$loadA")
 
@@ -1651,59 +1633,25 @@ class VitruvianBleManager(
                 return
             }
 
-            val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-
-            val repData: RepNotification
-
-            if (bytes.size >= 24) {
-                // FULL 24-byte packet - parse all fields
-                val upCounter = buffer.getInt(0)
-                val downCounter = buffer.getInt(4)
-                val rangeTop = buffer.getFloat(8)
-                val rangeBottom = buffer.getFloat(12)
-                val repsRomCount = buffer.getShort(16).toInt() and 0xFFFF
-                val repsRomTotal = buffer.getShort(18).toInt() and 0xFFFF
-                val repsSetCount = buffer.getShort(20).toInt() and 0xFFFF
-                val repsSetTotal = buffer.getShort(22).toInt() and 0xFFFF
-
-                Timber.d("Rep notification (24-byte format):")
-                Timber.d("  up=$upCounter, down=$downCounter")
-                Timber.d("  repsRomCount=$repsRomCount (warmup), repsSetCount=$repsSetCount (working)")
-                Timber.d("  hex=${bytes.joinToString(" ") { "%02X".format(it) }}")
-
-                repData = RepNotification(
-                    topCounter = upCounter,
-                    completeCounter = downCounter,
-                    repsRomCount = repsRomCount,
-                    repsSetCount = repsSetCount,
-                    rangeTop = rangeTop,
-                    rangeBottom = rangeBottom,
-                    rawData = bytes,
-                    timestamp = System.currentTimeMillis(),
-                    isLegacyFormat = false
-                )
+            // Parsing is shared with the web app (TrainerProtocol.parseReps).
+            val parsed = TrainerProtocol.parseReps(bytes) ?: return
+            if (parsed.isLegacy) {
+                Timber.w("Rep notification (LEGACY 6-byte format - Issue #187 fallback): top=${parsed.up}, complete=${parsed.down}")
             } else {
-                // LEGACY 6-byte packet (Beta 4 format) - parse u16 counters
-                // This handles Samsung devices and older firmware that may send shorter packets
-                val topCounter = buffer.getShort(0).toInt() and 0xFFFF
-                val completeCounter = buffer.getShort(4).toInt() and 0xFFFF
-
-                Timber.w("Rep notification (LEGACY 6-byte format - Issue #187 fallback):")
-                Timber.w("  top=$topCounter, complete=$completeCounter")
-                Timber.w("  hex=${bytes.joinToString(" ") { "%02X".format(it) }}")
-
-                repData = RepNotification(
-                    topCounter = topCounter,
-                    completeCounter = completeCounter,
-                    repsRomCount = 0,  // Not available in legacy format
-                    repsSetCount = 0,  // Not available in legacy format
-                    rangeTop = 0f,
-                    rangeBottom = 0f,
-                    rawData = bytes,
-                    timestamp = System.currentTimeMillis(),
-                    isLegacyFormat = true
-                )
+                Timber.d("Rep notification (24-byte format): up=${parsed.up}, down=${parsed.down}, repsRomCount=${parsed.romCount} (warmup), repsSetCount=${parsed.setCount} (working)")
             }
+
+            val repData = RepNotification(
+                topCounter = parsed.up,
+                completeCounter = parsed.down,
+                repsRomCount = parsed.romCount,
+                repsSetCount = parsed.setCount,
+                rangeTop = parsed.rangeTop,
+                rangeBottom = parsed.rangeBottom,
+                rawData = bytes,
+                timestamp = System.currentTimeMillis(),
+                isLegacyFormat = parsed.isLegacy
+            )
 
             val emitted = _repEvents.tryEmit(repData)
             Timber.d("🔥 Emitted rep event: success=$emitted, subscribers=${_repEvents.subscriptionCount.value}, legacy=${repData.isLegacyFormat}")
