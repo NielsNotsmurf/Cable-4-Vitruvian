@@ -81,6 +81,7 @@ fun WebIntro(onDone: () -> Unit) {
                     "site data, so save a backup now and then: Settings, Backup and restore.",
                 style = MaterialTheme.typography.bodyMedium
             )
+            AppStoreGoal()
             PrimaryButton("Start", onClick = { LocalStorage[INTRO_SEEN] = nowMillis().toString(); onDone() })
         }
     }
@@ -236,9 +237,24 @@ fun WebSettings() {
                 )
             }
             InstallGuide()
+            AppStoreGoal()
         }
     }
 }
+
+/** The sponsor goal for real iPhone and Play Store apps; shown in the intro and in Settings. */
+@Composable
+fun AppStoreGoal() {
+    SectionLabel("Toward iPhone and Play Store apps", Modifier.padding(top = 8.dp))
+    Text(
+        "Cable is free and stays free. Once sponsors cover about €200 (Apple's developer account at \$99 a year " +
+            "for two years, and Google Play's one-time \$25), Cable moves to TestFlight on iPhone and iPad and to the Play Store.",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    PrimaryButton("Sponsor on GitHub", onClick = { openUrl(SPONSOR_URL) })
+}
+
+const val SPONSOR_URL = "https://github.com/sponsors/NielsNotsmurf"
 
 /** Everything the web app stores, as one JSON file. */
 object WebBackup {
