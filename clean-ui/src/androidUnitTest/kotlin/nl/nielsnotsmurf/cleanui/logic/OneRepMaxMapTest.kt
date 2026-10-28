@@ -47,7 +47,7 @@ class OneRepMaxMapTest {
 
     @Test
     fun shippedAssetParsesAndCoversTheLibrary() {
-        val parsed = OneRepMaxMap.parse(File("src/main/assets/one_rep_max_map.json").readText())
+        val parsed = OneRepMaxMap.parse(File("src/androidMain/assets/one_rep_max_map.json").readText())
         // Incline Bench Press (handles) from Bench Press (handles).
         assertEquals(22.5f, parsed.estimate("aR4mXWcgsqNaxw4C", mapOf("ZZ92N8QsBdp6HCh3" to tested(25f))))
         val curlEstimate = parsed.estimate("fc5ca114-3cb6-462a-ab54-7ef1233b5fc2", mapOf("ZZ92N8QsBdp6HCh3" to tested(25f)))

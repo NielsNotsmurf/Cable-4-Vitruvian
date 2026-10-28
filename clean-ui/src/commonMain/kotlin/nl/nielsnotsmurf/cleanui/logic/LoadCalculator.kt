@@ -82,7 +82,7 @@ object LoadCalculator {
     fun format(kg: Float, unit: WeightUnit, withUnit: Boolean = true): String {
         val v = toDisplay(kg, unit)
         val rounded = (v * 2).roundToInt() / 2f
-        val text = if (rounded % 1f == 0f) rounded.toInt().toString() else "%.1f".format(rounded)
+        val text = if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString().replace('.', decimalSeparator())
         return if (withUnit) "$text ${if (unit == WeightUnit.LB) "lb" else "kg"}" else text
     }
 

@@ -4,10 +4,45 @@
 // interface; :app provides the implementation (see app/.../cleanui/CleanUiBridge.kt).
 // Keeping it that way means upstream Phoenix changes can only ever break the bridge,
 // never the screens in here.
+//
+// Web track (docs/WEB_TRACK.md): this is a Kotlin Multiplatform module. Shared code
+// lives in src/commonMain and is also compiled for the browser (wasmJs); src/androidMain
+// holds what is still Android-only. New logic goes in commonMain.
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+
 plugins {
+    alias(libs.plugins.kotlin.multiplatform)
     id("com.android.library")
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        nodejs()
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+    }
+}
+
+// The Compose screens are still Android-only, so only that target needs the Compose compiler.
+composeCompiler {
+    targetKotlinPlatforms.set(setOf(KotlinPlatformType.androidJvm))
 }
 
 android {
@@ -22,10 +57,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = "11"
     }
 
     buildFeatures {

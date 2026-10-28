@@ -67,7 +67,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 - **% of 1RM loading:** each lifter's 1RM shows next to every exercise, and loads default to a
   percentage of it. A guided 1RM test fills it in. One tested lift gives an estimated 1RM
   for every related exercise (bench 25 kg means incline about 22.5 kg), shown as "estimated"
-  until you test it. The ratios are in `clean-ui/src/main/assets/one_rep_max_map.json`.
+  until you test it. The ratios are in `clean-ui/src/androidMain/assets/one_rep_max_map.json`.
 - **All trainer modes:** Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo, with
   per-set reps, weights, rest, AMRAP and timed sets.
 - **Workout builder:** pick one or more muscle groups and a time, and the app builds the
