@@ -18,6 +18,9 @@ a{color:inherit}
 <p class="muted">APK downloads per release, straight from GitHub. Obtainium downloads every update, so the latest release shows roughly how many phones keep the app up to date, and the total counts every install and update.</p>
 <div class="kpis"><div class="kpi"><b id="latest">–</b><span class="muted" id="latestName">latest release</span></div><div class="kpi"><b id="total">–</b><span class="muted">downloads in total</span></div><div class="kpi"><b id="count">–</b><span class="muted">releases</span></div></div>
 <table><thead><tr><th>Release</th><th>Date</th><th>Downloads</th></tr></thead><tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody></table>
+<h2 style="font-size:18px;margin:28px 0 4px">Web app (beta)</h2>
+<p class="muted">Anonymous counts from the web app, through GoatCounter: no cookies, no IDs, nothing about who you are or what you lift. Users can switch it off in the web app's settings.</p>
+<table><thead><tr><th>Event</th><th></th><th>Count</th></tr></thead><tbody id="web"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody></table>
 <p class="muted"><a href="../demo/">Live demo</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/issues">Feedback</a> · <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/graphs/traffic">Repo traffic</a> (owner only)</p>
 </main>
 <script>
@@ -37,6 +40,15 @@ a{color:inherit}
     if(rel[0]){document.getElementById('latest').textContent=rel[0].n;document.getElementById('latestName').textContent='latest release ('+rel[0].name+')'}
     rows.innerHTML=rel.map(x=>`<tr><td>${x.name}</td><td class="muted">${x.t.toLocaleDateString()}</td><td><span class="bar" style="width:${Math.round(x.n/max*80)}px"></span>${x.n}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">No releases yet.</td></tr>';
   }catch(e){rows.innerHTML=`<tr><td colspan="3" class="muted">Couldn't load the numbers (${e.message}). Try again in a minute.</td></tr>`}
+})();
+(async()=>{
+  const site='https://cable-web.goatcounter.com';
+  const events=[['open/browser','Opened in a browser'],['open/installed','Opened from the home screen'],['device/phone','On a phone'],['device/tablet','On a tablet or iPad'],['device/desktop','On a computer'],['browser/chrome','Chrome'],['browser/safari','Safari'],['browser/edge','Edge'],['browser/bluefy','Bluefy'],['browser/firefox','Firefox'],['browser/samsung','Samsung Internet'],['workout/finished','Workouts finished'],['trainer/connected','Trainer connected'],['trainer/simulated','Simulated trainer used'],['trainer/failed','Trainer connection failed']];
+  const web=document.getElementById('web');
+  const counts=await Promise.all(events.map(([p])=>fetch(site+'/counter/'+encodeURIComponent('/web/'+p)+'.json').then(r=>r.ok?r.json():null).then(j=>j?Number(String(j.count).replace(/\D/g,''))||0:0).catch(()=>null)));
+  if(counts.every(c=>c===null)){web.innerHTML='<tr><td colspan="3" class="muted">No web numbers yet.</td></tr>';return}
+  const max=Math.max(1,...counts.map(c=>c||0));
+  web.innerHTML=events.map(([,label],i)=>`<tr><td>${label}</td><td></td><td><span class="bar" style="width:${Math.round((counts[i]||0)/max*80)}px"></span>${counts[i]??'–'}</td></tr>`).join('');
 })();
 </script>
 </body></html>

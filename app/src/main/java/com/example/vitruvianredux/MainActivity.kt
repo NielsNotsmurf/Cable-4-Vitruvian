@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.vitruvianredux.cleanui.CleanUiHost
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
+import nl.nielsnotsmurf.cleanui.data.get
 import com.example.vitruvianredux.domain.model.WorkoutState
 import com.example.vitruvianredux.presentation.screen.EnhancedMainScreen
 import com.example.vitruvianredux.presentation.screen.LargeSplashScreen
