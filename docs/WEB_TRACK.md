@@ -17,7 +17,8 @@ passes and Niels says go.
   the trainer and heart rate straps over Web Bluetooth with the app's own protocol code, and a
   simulated trainer where the browser has no Bluetooth. Still to check: one workout on the real
   trainer in Chrome on Android (Niels).
-- [ ] Phase 3: PWA install (home-screen intro, offline, lag disclaimer)
+- [x] Phase 3: installable (manifest, icons, offline service worker), first-launch intro with
+  the lag notice and per-device install guide (Safari vs Bluefy), backup and restore, browser back
 - [ ] Phase 4: responsive layout (phone, tablet, iPad; also in the app)
 - [ ] Phase 5: anonymous usage statistics + stats view
 - [ ] Phase 6: security hardening

@@ -293,6 +293,9 @@ private fun SignedInApp(
         if (nav.popBackStack(route, inclusive = false)) return@LaunchedEffect
         if (TABS.any { it.route == route }) openTab(route) else nav.navigate(route) { launchSingleTop = true }
     }
+    // Back steps back through the screens. On Android the NavHost below already does this (its
+    // handler is newer, so it wins); the browser's back button needs this one.
+    PlatformBackHandler(enabled = backStack != null && nav.previousBackStackEntry != null) { nav.popBackStack() }
     PlatformBackHandler(enabled = tour.isRunning) {
         tour.stop()
         vm.setTourStatus(me, done = false)
