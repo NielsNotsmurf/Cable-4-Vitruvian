@@ -26,7 +26,9 @@ passes and Niels says go.
   `vitruvian-web` and allow public counters (see "Setup by Niels" below)
 - [x] Phase 6: security: strict CSP (plus form-action, no-referrer), Dependabot, CodeQL,
   dependency review and the dependency graph (`.github/workflows/security.yml`), SECURITY.md
-- [ ] Phase 7: beta hosting on GitHub Pages
+- [x] Phase 7: beta hosting: `.github/workflows/pages.yml` publishes docs/ from master plus the
+  web app from web-beta at https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (needs the
+  two Pages settings under "Setup by Niels")
 - [ ] Phase 8: beta test round on real devices, then merge to master
 
 ## Feasibility first: Bluetooth on Apple
@@ -193,6 +195,9 @@ then on every master release builds the APK and the web app together.
    `vitruvian-web`. In its Settings, turn on "Allow adding visitor counts on your website"
    so docs/stats can show the totals. Until then the web app's counts go nowhere and the
    stats page shows "No web numbers yet".
-2. **GitHub Pages** (phase 7): repository Settings, Pages, Source: GitHub Actions.
+2. **GitHub Pages** (phase 7): repository Settings, Pages, Source: GitHub Actions. Then
+   Settings, Environments, github-pages, Deployment branches: add `web-beta` next to master.
+   Re-run the Pages workflow (Actions tab) once; the demo and stats links keep working and the
+   beta appears at /app/.
 3. **Security** (phase 6): repository Settings, Code security: check that secret scanning and
    push protection are on (default for public repositories) and that Dependabot alerts are on.

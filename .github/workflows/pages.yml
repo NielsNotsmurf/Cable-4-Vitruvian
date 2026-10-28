@@ -1,0 +1,64 @@
+name: Pages
+
+# The public site: docs/ from master as before (demo, stats, guides), plus the web app beta at
+# /app/, built from web-beta. Runs when either branch changes. Needs Settings, Pages, Source:
+# GitHub Actions, and web-beta allowed under Settings, Environments, github-pages.
+on:
+  push:
+    branches: [master, web-beta]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Site from master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: site-src
+      - name: Web app from web-beta
+        uses: actions/checkout@v4
+        with:
+          ref: web-beta
+          path: web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: web
+      - name: Build the web app
+        working-directory: web
+        run: ./gradlew --no-daemon :web-app:wasmJsBrowserDistribution
+      - name: Put the site together
+        run: |
+          mkdir -p site
+          cp -r site-src/docs/. site/
+          mkdir -p site/app
+          cp -r web/web-app/build/dist/wasmJs/productionExecutable/. site/app/
+          rm -f site/app/*.map
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}app/
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
