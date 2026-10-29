@@ -12,7 +12,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.vitruvianredux"
+        // Its own ID (not Project Phoenix's), so Cable installs next to Phoenix instead of over it.
+        // The Kotlin packages keep the old name; only the installed app ID changed.
+        applicationId = "nl.nielsnotsmurf.cable"
         minSdk = 26
         targetSdk = 36
         // CI release builds pass these so every published APK upgrades the last one
@@ -69,7 +71,6 @@ android {
 
     // Product flavors for production and beta builds
     // Note: Both use same applicationId so they replace each other when installed
-    // Users wanting coexistence should use debug builds alongside release
     flavorDimensions += "version"
     productFlavors {
         create("production") {
@@ -80,7 +81,6 @@ android {
         }
         create("beta") {
             dimension = "version"
-            // No applicationIdSuffix - updates existing 0.6.2 beta installations
             versionCode = 10  // Higher than existing beta (9) to allow update
             versionName = "0.6.2-beta"
             buildConfigField("String", "BUILD_TYPE_LABEL", "\"Beta\"")

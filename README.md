@@ -111,6 +111,13 @@ Without Obtainium: open [Releases](https://github.com/NielsNotsmurf/Cable-4-Vitr
 on your phone and tap the `.apk` of the latest version. You then have to repeat this for
 every update.
 
+> [!NOTE]
+> **Installed Cable before 2026-10-29?** Cable now has its own app ID, so it installs next to Project Phoenix
+> instead of over it. Your old Cable stays installed as a separate app and won't update anymore.
+> In the old app, use Settings → Backup and restore to save everything to Download/Cable. Then
+> remove it in Obtainium, add `https://github.com/NielsNotsmurf/Cable-4-Vitruvian` again, install,
+> and restore the backup in the new app.
+
 ### Web app (beta, iPhone, iPad and any browser)
 
 > [!IMPORTANT]
@@ -188,6 +195,10 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-10-29:** Cable has its own app ID, so it installs next to Project Phoenix instead of replacing it.
+  Coming from an older Cable? Back up, re-add it in Obtainium and restore (see [Install](#install)).
+  The web app now shows a message instead of a white page when a browser can't run it (for example
+  Bluefy on iOS older than 18.2).
 - Settings → Warm-up reps (1 to 3) sets how many reps measure the range of motion. "Reset ROM" on the
   live screen starts the set over to measure it again. In the app and the web app.
 - **Sponsor goal:** about €200 for TestFlight (iPhone, iPad) and the Play Store; see [Support](#support).

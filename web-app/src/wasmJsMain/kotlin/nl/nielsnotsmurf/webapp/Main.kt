@@ -38,7 +38,6 @@ fun main() {
         val gateway = WebTrainerGateway(library)
         val symbols = fetchBytes("fonts/symbols.ttf")
         WebStats.opened()
-        hideLoadingText()
         ComposeViewport {
             // Symbols the default web font lacks (→ ✓ ‹ ›) come from a small fallback font.
             val fonts = LocalFontFamilyResolver.current
@@ -46,6 +45,7 @@ fun main() {
             LaunchedEffect(Unit) {
                 if (symbols != null) runCatching { fonts.preload(FontFamily(Font("symbols", symbols))) }
                 ready = true
+                hideLoadingText()
             }
             if (!ready) return@ComposeViewport
             var intro by remember { mutableStateOf(!introSeen()) }
