@@ -23,7 +23,8 @@ object LocalStorage {
     fun remove(key: String) = jsRemoveItem(key)
 }
 
-fun hideLoadingText(): Unit = js("{ const e = document.getElementById('loading'); if (e) e.remove(); }")
+/** Removes the start text once the first screen is drawn; from then on start errors stay quiet. */
+fun hideLoadingText(): Unit = js("{ window.__started = true; const e = document.getElementById('loading'); if (e) e.remove(); }")
 
 fun randomId(): String = js("(crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))")
 
