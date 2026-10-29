@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 # A new push to the same PR stops the run for the old one.
 concurrency:
   group: build-${{ github.ref }}
