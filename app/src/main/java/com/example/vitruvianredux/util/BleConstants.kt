@@ -4,7 +4,7 @@ import java.util.UUID
 
 /**
  * BLE Constants - UUIDs and configuration values for Vitruvian device communication
- * Based on Phoenix Backend (deobfuscated official app)
+ * Based on the official app's protocol
  */
 @Suppress("unused")  // Protocol reference constants - many are kept for documentation
 object BleConstants {
@@ -12,7 +12,7 @@ object BleConstants {
     val GATT_SERVICE_UUID: UUID = UUID.fromString("00001801-0000-1000-8000-00805f9b34fb")
     val NUS_SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
 
-    // Primary Characteristic UUIDs (from Phoenix Backend)
+    // Primary Characteristic UUIDs (from official app)
     val NUS_RX_CHAR_UUID: UUID = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
     val SAMPLE_CHAR_UUID: UUID = UUID.fromString("90e991a6-c548-44ed-969b-eb541014eae3") // 28 bytes
     val MONITOR_CHAR_UUID: UUID = SAMPLE_CHAR_UUID // Alias for backward compat
@@ -64,7 +64,7 @@ object BleConstants {
     const val DEVICE_NAME_PREFIX = "Vee"
     val DEVICE_NAME_PATTERN = Regex("^Vitruvian.*$")
 
-    // Command IDs (Official Protocol from Phoenix Backend)
+    // Command IDs (Official Protocol from official app)
     object Commands {
         const val STOP_COMMAND: Byte = 0x50        // Stop/halt (official app)
         const val RESET_COMMAND: Byte = 0x0A       // Reset/init (web app stop) - recovery fallback
@@ -79,7 +79,7 @@ object BleConstants {
     @Suppress("unused") const val CMD_ECHO = 0x4E
     @Suppress("unused") const val CMD_STOP = 0x50
 
-    // Data Protocol Constants (from Phoenix Backend)
+    // Data Protocol Constants (from official app)
     @Suppress("unused")  // Protocol reference documentation
     object DataProtocol {
         // Scaling factors for cable data

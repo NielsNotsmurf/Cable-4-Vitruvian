@@ -1,6 +1,6 @@
 # Exercise Taxonomy and Baseline Strength Assessment Plan
 
-_Phoenix / Vitruvian — Design document, not an implementation spec._
+_Cable — Design document, not an implementation spec._
 _Status: Draft — not yet approved or implemented._
 
 ---
@@ -81,7 +81,7 @@ Exercises like Burpees, Push-ups, Planks, Bird Dogs, Copenhagen Planks have no l
 
 `ExerciseCategory.kt` defines `FULL_BODY` as a category. The JSON uses `LEGS`, `ARMS`, `SHOULDERS`, `BACK`, `CORE`, `CHEST`. There is no `FULL_BODY` in the actual data. The UI filter for "Full Body" has no matching exercises.
 
-### 1.3 Recommended exercise buckets for Phoenix
+### 1.3 Recommended exercise buckets for Cable
 
 For all workout generation, baseline testing, and analytics, use these 10 canonical buckets derived from the `muscles` field rather than `muscleGroups`:
 
@@ -104,7 +104,7 @@ Chest and Back are separated by movement direction (push vs pull). Posterior Cha
 
 ### 2.1 Purpose
 
-A new user should not start at zero. Defaults of "10 reps × 10 kg" are dangerous for strong users (too light, uninteresting) and intimidating for beginners (may not complete the target reps). An initial assessment of 10–15 minutes gives Phoenix enough data to populate meaningful defaults for all other exercises.
+A new user should not start at zero. Defaults of "10 reps × 10 kg" are dangerous for strong users (too light, uninteresting) and intimidating for beginners (may not complete the target reps). An initial assessment of 10–15 minutes gives Cable enough data to populate meaningful defaults for all other exercises.
 
 ### 2.2 Constraints
 
@@ -120,10 +120,10 @@ A new user should not start at zero. Defaults of "10 reps × 10 kg" are dangerou
 Use a **submaximal estimation protocol**: the user performs 8–12 reps at a self-selected starting weight, then adjusts until they find the weight where they reach RPE 7–8 (hard but could do 2–3 more reps). This is safer than a true 1RM and still produces a reliable baseline.
 
 For each test exercise:
-1. Phoenix suggests a starting weight (based on body weight if known, else conservative default)
+1. Cable suggests a starting weight (based on body weight if known, else conservative default)
 2. User performs a set of 10 reps
 3. User rates difficulty: "Too easy / About right / Too hard"
-4. Phoenix adjusts weight and repeats if needed (max 2 rounds)
+4. Cable adjusts weight and repeats if needed (max 2 rounds)
 5. Result is the weight at which user completed 10 reps at RPE 7–8
 
 ### 2.4 Test exercises (one per bucket)
@@ -315,7 +315,7 @@ Start training session
        ↓
 Choose muscle group  (e.g., "Back")
        ↓
-Phoenix suggests 3–5 exercises
+Cable suggests 3–5 exercises
        ↓
 Defaults already populated from history / baseline
        ↓
@@ -344,7 +344,7 @@ Workout begins
 
 ### 4.5 Data requirements
 
-To implement this workflow, Phoenix needs:
+To implement this workflow, Cable needs:
 
 | Data | Source | Available now? |
 |---|---|---|
@@ -365,8 +365,8 @@ The assessment should be run **per profile, independently**, not as a shared ses
 
 **Recommended flow:**
 
-1. Before the first shared session, Phoenix detects that participant P has no baseline.
-2. Phoenix prompts: "Niels hasn't completed a strength assessment. Run it now? (5–10 min)"
+1. Before the first shared session, Cable detects that participant P has no baseline.
+2. Cable prompts: "Niels hasn't completed a strength assessment. Run it now? (5–10 min)"
 3. P completes the assessment solo (just Lift mode, one exercise at a time).
 4. Assessment results are stored under `profileId = P.id` in the per-profile DataStore.
 5. Once both participants have baselines, the shared session starts with accurate defaults for both.
@@ -412,7 +412,7 @@ Not recommended. Trying to assess two people simultaneously on one machine adds 
 
 2. **What unit does the baseline store?** Always kg per cable (same as BLE protocol). UI shows kg or lb per user preference.
 
-3. **How should Phoenix handle a user who is much stronger than the suggested starting weight?** The "Too easy" feedback path must allow quickly jumping to a higher weight without many iterations. Consider a doubling heuristic: if "Too easy," try 2× the previous weight next round.
+3. **How should Cable handle a user who is much stronger than the suggested starting weight?** The "Too easy" feedback path must allow quickly jumping to a higher weight without many iterations. Consider a doubling heuristic: if "Too easy," try 2× the previous weight next round.
 
 4. **Should assessment weights be re-tested periodically?** A "re-test prompt" after 90 days of inactivity or after significant performance improvement would keep baselines accurate. Not in scope for Phase 2 but worth designing for.
 

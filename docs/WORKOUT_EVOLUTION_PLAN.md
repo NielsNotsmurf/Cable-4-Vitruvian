@@ -1,4 +1,4 @@
-# Phoenix — Workout Evolution Plan
+# Cable — Workout Evolution Plan
 
 **Status:** Planning  
 **Last updated:** 2026-06-04  
@@ -9,15 +9,15 @@
 
 ## 1. Project Vision
 
-Phoenix is a community-rescue Android app that keeps Vitruvian Trainer machines alive after the company's bankruptcy. The machine hardware is excellent; the software should match it.
+Cable is a community Android app that keeps Vitruvian Trainer machines alive after the company's bankruptcy. The machine hardware is excellent; the software should match it.
 
-The goal of this evolution is to make Phoenix the best possible native companion for real gym use — specifically:
+The goal of this evolution is to make Cable the best possible native companion for real gym use — specifically:
 
 - Multiple people can use the same tablet/phone in a gym setting, each with their own history and stats.
 - A workout can start with "I want to train chest today" rather than requiring a pre-built routine.
 - Defaults get smarter over time based on what you actually do.
 
-This is not a rewrite. Phoenix already has a solid foundation (Room v26, MVVM, BLE reliability, 200+ exercises, routines, analytics). The evolution layers improvements on top of that foundation.
+This is not a rewrite. Cable already has a solid foundation (Room v26, MVVM, BLE reliability, 200+ exercises, routines, analytics). The evolution layers improvements on top of that foundation.
 
 ---
 

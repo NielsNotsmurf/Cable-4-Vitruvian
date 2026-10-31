@@ -23,12 +23,12 @@ object WorkoutConstants {
 }
 
 /**
- * Protocol constants - aligned with Phoenix Backend (official app)
+ * Protocol constants - aligned with the official app
  * NOTE: Legacy web app used different sizes and commands
  */
 @Suppress("unused")  // Protocol reference constants
 object ProtocolConstants {
-    // Command types (single-byte commands per Phoenix Backend)
+    // Command types (single-byte commands per official app)
     const val CMD_STOP: Byte = 0x50           // Stop/halt (2 bytes total)
     const val CMD_REGULAR: Byte = 0x4F        // Regular mode packet (25 bytes)
     const val CMD_ECHO: Byte = 0x4E           // Echo mode packet (29 bytes)
@@ -41,7 +41,7 @@ object ProtocolConstants {
     @Deprecated("Web app legacy - use CMD_COLOR_SCHEME instead")
     const val CMD_INIT_PRESET: Byte = 0x11
 
-    // Frame sizes (Phoenix Backend aligned)
+    // Frame sizes (official app aligned)
     const val STOP_PACKET_SIZE = 2
     const val REGULAR_PACKET_SIZE = 25        // Was 96 in web app
     const val ECHO_PACKET_SIZE = 29           // Was 40 in web app

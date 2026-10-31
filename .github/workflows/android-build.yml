@@ -68,7 +68,7 @@ jobs:
         if: steps.changes.outputs.code == 'true'
         with:
           retention-days: 3
-          name: phoenix-debug-apk
+          name: cable-debug-apk
           path: app/build/outputs/apk/production/debug/*.apk
           if-no-files-found: warn
 

@@ -84,6 +84,12 @@ class CleanUiStore(
 
     val warmupReps: Flow<Int> = kv.data.map { it[WARMUP_REPS] ?: 3 }
 
+    val defaultAmrap: Flow<Boolean> = kv.data.map { it[DEFAULT_AMRAP] ?: false }
+
+    suspend fun setDefaultAmrap(on: Boolean) {
+        kv.edit { it[DEFAULT_AMRAP] = on }
+    }
+
     suspend fun setWarmupReps(reps: Int) {
         kv.edit { it[WARMUP_REPS] = reps.coerceIn(1, 3) }
     }
@@ -166,6 +172,7 @@ class CleanUiStore(
         private val UI_SOUNDS = Key<Boolean>("ui_sounds")
         private val DEFAULT_SETS = Key<Int>("default_sets")
         private val WARMUP_REPS = Key<Int>("warmup_reps")
+        private val DEFAULT_AMRAP = Key<Boolean>("default_amrap")
         private val DEFAULT_PERCENT = Key<Int>("default_percent")
         private val ONBOARDED = Key<Boolean>("onboarded")
         private val LAST_ACCOUNT = Key<String>("last_account")

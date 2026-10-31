@@ -21,7 +21,7 @@ import nl.nielsnotsmurf.cleanui.model.WeightUnit
  * The only door between the Clean UI and the rest of the app.
  *
  * :app implements this on top of the existing BLE, profile, history and baseline code.
- * When upstream Phoenix changes, only that implementation needs to follow.
+ * When the upstream code changes, only that implementation needs to follow.
  */
 interface TrainerGateway {
 

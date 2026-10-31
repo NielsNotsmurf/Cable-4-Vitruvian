@@ -522,14 +522,14 @@ private data class SavedPlan(
 private data class SavedSettings(
     val lb: Boolean = false, val defaultReps: Int = 10, val defaultSets: Int = 3, val defaultPercent: Int = 60,
     val autoplay: Boolean = true, val stopAtTop: Boolean = false, val beeps: Boolean = true, val videos: Boolean = true,
-    val warmupReps: Int = 3
+    val warmupReps: Int = 3, val defaultAmrap: Boolean = false
 ) {
     fun unit() = if (lb) WeightUnit.LB else WeightUnit.KG
-    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, warmupReps, beeps, videos)
+    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, warmupReps, beeps, videos, defaultAmrap)
 
     companion object {
         fun from(s: CleanSettings) = SavedSettings(
-            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos, s.warmupReps
+            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos, s.warmupReps, s.defaultAmrap
         )
     }
 }

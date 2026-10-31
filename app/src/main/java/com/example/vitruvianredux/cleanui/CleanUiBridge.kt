@@ -62,7 +62,7 @@ import com.example.vitruvianredux.util.ColorSchemes
  * The single place where the Clean UI meets the app.
  *
  * Everything the clean-ui module needs goes through [TrainerGateway]; this class maps it
- * onto MainViewModel, the repositories and PreferencesManager. When upstream Phoenix
+ * onto MainViewModel, the repositories and PreferencesManager. When the upstream code
  * changes these APIs, this is the only file that should need to follow.
  */
 class CleanUiBridge(
@@ -459,20 +459,22 @@ class CleanUiBridge(
     }
 
     override val settings: Flow<CleanSettings> =
-        combine(vm.userPreferences, store.defaultSets, store.defaultPercent, store.warmupReps) { p, sets, pct, warmup ->
+        combine(vm.userPreferences, store.defaultSets, store.defaultPercent, store.warmupReps, store.defaultAmrap) { p, sets, pct, warmup, amrap ->
             currentSets = sets
+            currentAmrap = amrap
             currentPercent = pct
             currentWarmup = warmup
             vm.setWarmupReps(warmup)
-            p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct, warmupReps = warmup)
+            p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct, warmupReps = warmup, defaultAmrap = amrap)
         }
 
     private var currentSets = 3
     private var currentPercent = 60
     private var currentWarmup = 3
+    private var currentAmrap = false
 
     override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
-        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent, warmupReps = currentWarmup)
+        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent, warmupReps = currentWarmup, defaultAmrap = currentAmrap)
         val new = transform(old)
         if (new.warmupReps != old.warmupReps) {
             currentWarmup = new.warmupReps.coerceIn(1, 3)
@@ -482,6 +484,10 @@ class CleanUiBridge(
         if (new.defaultPercent != old.defaultPercent) {
             currentPercent = new.defaultPercent.coerceIn(30, 100)
             scope.launch { store.setDefaultPercent(currentPercent) }
+        }
+        if (new.defaultAmrap != old.defaultAmrap) {
+            currentAmrap = new.defaultAmrap
+            scope.launch { store.setDefaultAmrap(currentAmrap) }
         }
         if (new.defaultSets != old.defaultSets) {
             currentSets = new.defaultSets.coerceIn(1, 10)

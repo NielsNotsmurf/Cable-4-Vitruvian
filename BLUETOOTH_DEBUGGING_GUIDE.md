@@ -1,11 +1,11 @@
-# Bluetooth Debugging Guide for Vitruvian Redux
+# Bluetooth Debugging Guide for Cable
 
 This guide explains how to capture detailed Bluetooth logs when experiencing connection issues with your Vitruvian trainer.
 
 ## Prerequisites
 
 - Pixel 7 (or similar Android device with Android 12+)
-- Vitruvian Redux app installed
+- Cable app installed
 - Your Vitruvian trainer powered on
 
 ## Step 1: Enable Developer Mode (One-Time Setup)
@@ -27,7 +27,7 @@ This guide explains how to capture detailed Bluetooth logs when experiencing con
 
 ## Step 3: Reproduce the Issue
 
-1. Open the **Vitruvian Redux** app
+1. Open the **Cable** app
 2. Navigate to **Settings** > **Protocol Tester**
 3. Select either:
    - **Recommended** - to test connection protocols
@@ -43,7 +43,7 @@ This guide explains how to capture detailed Bluetooth logs when experiencing con
    - Connection logs
    - Bluetooth HCI snoop log (if accessible)
 3. Select **Email** or your preferred sharing method
-4. Send to: **VitruvianRedux@gmail.com**
+4. Attach it to an issue on the GitHub repository
 
 ## What Gets Captured
 

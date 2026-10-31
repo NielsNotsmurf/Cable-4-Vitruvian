@@ -238,10 +238,11 @@ class CleanViewModel(
 
     private val defaultReps: Int get() = gateway.defaultReps.coerceIn(1, 50)
     private val defaultSets: Int get() = settings.value.defaultSets.coerceIn(1, 10)
+    private val defaultKind: SetKind get() = if (settings.value.defaultAmrap) SetKind.AMRAP else SetKind.REPS
     private val defaultPercent: Int get() = settings.value.defaultPercent.coerceIn(30, 100)
 
     /** Sets and reps always come from Settings, never from what was done last time. */
-    private fun defaultSetList(rest: Int = 90) = List(defaultSets) { SetSpec(reps = defaultReps, restSeconds = rest) }
+    private fun defaultSetList(rest: Int = 90) = List(defaultSets) { SetSpec(kind = defaultKind, reps = defaultReps, restSeconds = rest) }
 
     private val _setup = MutableStateFlow<SetupState?>(null)
     val setup: StateFlow<SetupState?> = _setup.asStateFlow()
@@ -465,7 +466,7 @@ class CleanViewModel(
             _workout.update { it?.copy(error = if (lifters.isEmpty()) "Choose who's training first." else "Add an exercise first.") }
             return
         }
-        val sets = List(w.sets) { SetSpec(reps = w.reps, restSeconds = WorkoutBuilder.REST_SECONDS) }
+        val sets = List(w.sets) { SetSpec(kind = defaultKind, reps = w.reps, restSeconds = WorkoutBuilder.REST_SECONDS) }
         val plans = w.exercises.map { ex ->
             SetPlan(
                 exercise = ex,

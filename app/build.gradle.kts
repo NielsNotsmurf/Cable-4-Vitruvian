@@ -12,7 +12,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Its own ID (not Project Phoenix's), so Cable installs next to Phoenix instead of over it.
+        // Its own ID (not the upstream app's), so Cable installs next to it instead of over it.
         // The Kotlin packages keep the old name; only the installed app ID changed.
         applicationId = "nl.nielsnotsmurf.cable"
         minSdk = 26
