@@ -2,7 +2,7 @@
 //
 // This module must never depend on :app. It only knows the TrainerGateway
 // interface; :app provides the implementation (see app/.../cleanui/CleanUiBridge.kt).
-// Keeping it that way means upstream Phoenix changes can only ever break the bridge,
+// Keeping it that way means upstream changes can only ever break the bridge,
 // never the screens in here.
 //
 // Web track (docs/WEB_TRACK.md): this is a Kotlin Multiplatform module. Screens and logic

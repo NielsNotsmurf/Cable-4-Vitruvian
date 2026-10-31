@@ -93,7 +93,7 @@ multiplatform equivalent, so the Android app keeps working the same):
 Trainer protocol for the web: the packet building and parsing the Android BLE code
 uses will be ported into common Kotlin so Android and web speak to the trainer with
 the same code. Only port from this repository's MIT code; never copy from
-Phoenix-MP (proprietary licence).
+the upstream multiplatform app (proprietary licence).
 
 Parity rules (apply from phase 1 onward, for every thread):
 

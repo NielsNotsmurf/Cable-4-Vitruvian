@@ -1,6 +1,6 @@
 # Anchor Exercise Architecture
 
-_Phoenix / Vitruvian — Design document. Research only. No code._
+_Cable — Design document. Research only. No code._
 _Status: Draft — not yet approved or implemented._
 
 ---
@@ -508,7 +508,7 @@ For users without a bench: Bench Press → Floor Press, Bulgarian Split Squat �
 
 1. **Should the anchor IDs be hardcoded in a config file or stored in the database?** Config file is simpler; DB entry would allow future updates via the exercise library sync. Recommendation: config file initially, with a path to DB if the library ever becomes remote-editable.
 
-2. **How should Phoenix present the 10-anchor assessment to the user?** As a wizard ("Complete 10 short tests") or as an optional "Quick Setup" card on first launch? The answer determines the UX design more than the data model.
+2. **How should Cable present the 10-anchor assessment to the user?** As a wizard ("Complete 10 short tests") or as an optional "Quick Setup" card on first launch? The answer determines the UX design more than the data model.
 
 3. **What happens when a user skips an anchor test?** The app needs a defined behavior: (a) leave exercises in that cluster at a fixed safe default, or (b) ask again on first use of a cluster exercise. Option (a) is simpler. Option (b) is more precise but more friction.
 
@@ -518,7 +518,7 @@ For users without a bench: Bench Press → Floor Press, Bulgarian Split Squat �
 
 6. **When should anchor results be invalidated?** Possibly never (user can retake voluntarily), or after 90 days of inactivity. This is a product decision, not a technical one.
 
-7. **Should exercise IDs be pinned to specific variants, or should Phoenix pick the "best" variant at runtime?** Pinning to specific IDs is safer. If the upstream library removes an exercise, the system breaks. Recommendation: pin canonical IDs in config, with a fallback name-match as a recovery path.
+7. **Should exercise IDs be pinned to specific variants, or should Cable pick the "best" variant at runtime?** Pinning to specific IDs is safer. If the upstream library removes an exercise, the system breaks. Recommendation: pin canonical IDs in config, with a fallback name-match as a recovery path.
 
 8. **Does the `popularity` field represent real usage across all Vitruvian users, or is it arbitrary?** If real, it is valuable signal. If arbitrary, it should not be used for anchor selection. Data provenance is unclear from the JSON alone.
 

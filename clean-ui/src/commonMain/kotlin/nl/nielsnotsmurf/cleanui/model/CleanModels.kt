@@ -194,7 +194,9 @@ data class CleanSettings(
     /** Warm-up reps (1-3) at the start of every set; the trainer sets the range of motion from them. */
     val warmupReps: Int = 3,
     val beeps: Boolean = true,
-    val videos: Boolean = true
+    val videos: Boolean = true,
+    /** New sets start as AMRAP (to failure) instead of [defaultReps]. */
+    val defaultAmrap: Boolean = false
 )
 
 /** A trainer LED colour scheme: its name and the colours it cycles through. */

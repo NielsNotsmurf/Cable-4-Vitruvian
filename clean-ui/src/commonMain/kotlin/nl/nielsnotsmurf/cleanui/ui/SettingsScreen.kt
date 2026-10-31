@@ -160,6 +160,9 @@ fun SettingsScreen(
                 onPlus = { onUpdate { it.copy(defaultReps = (it.defaultReps + 1).coerceAtMost(50)) } },
                 modifier = Modifier.padding(vertical = 10.dp)
             )
+            Toggle("AMRAP by default", "New sets go to failure; the set stops when you can't finish a rep", settings.defaultAmrap) { v ->
+                onUpdate { it.copy(defaultAmrap = v) }
+            }
             Stepper(
                 "Warm-up reps (set the range of motion)", settings.warmupReps.toString(),
                 onMinus = { onUpdate { it.copy(warmupReps = (it.warmupReps - 1).coerceAtLeast(1)) } },

@@ -6,7 +6,7 @@ _Status: Implemented — commit pending_
 
 ## 1. Executive Summary
 
-Phase 2 replaces the manual "configure everything yourself" workout entry with a muscle-group-driven experience where Phoenix knows your strength level and pre-fills settings.
+Phase 2 replaces the manual "configure everything yourself" workout entry with a muscle-group-driven experience where Cable knows your strength level and pre-fills settings.
 
 **New entry flow:**
 ```
@@ -14,7 +14,7 @@ Connect
 → Train by Muscle Group
 → Choose muscle group (Chest / Back / Legs / etc.)
 → Choose training style (Strength / Hypertrophy / Pump / TUT / Echo / Recovery)
-→ Phoenix generates 3–5 exercises with pre-filled weights
+→ Cable generates 3–5 exercises with pre-filled weights
 → Train
 ```
 

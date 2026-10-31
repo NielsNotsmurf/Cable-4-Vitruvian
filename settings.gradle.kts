@@ -18,7 +18,7 @@ dependencyResolutionManagement {
 }
 
 // No spaces: the Kotlin/Wasm build uses this as the npm package name.
-rootProject.name = "vitruvian-project-phoenix"
+rootProject.name = "cable-4-vitruvian"
 include(":app")
 include(":clean-ui")
 include(":web-app")

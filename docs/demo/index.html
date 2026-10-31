@@ -1242,9 +1242,9 @@ function exportCsv(){
   sheet(`<h3>Export CSV</h3>${[['w','Workout history'],['p','Personal records'],['g','PR progression']].map(([k,l])=>`<button class="navrow" data-csv="${k}"><span class="grow">${l}</span>${I.down}</button>`).join('')}<button class="ghost" data-x>Close</button>`,(d,close)=>{
     if(d.x!=null){close();return}
     const rows=[];
-    if(d.csv==='w'){rows.push('date,exercise,mode,lifter,set,reps,weight_per_cable_'+U());S.sessions.forEach(s=>s.sets.forEach((x,i)=>rows.push([new Date(s.t).toISOString(),s.ex?EX(s.ex).name:'Just Lift',s.mode,lifter(x.lid)?.name,i+1,x.reps,num(x.kg)].join(','))));download('phoenix-workouts.csv',rows.join('\n'),'text/csv')}
-    if(d.csv==='p'){rows.push('lifter,exercise,weight_'+U()+',reps,est_1rm_'+U());S.lifters.forEach(l=>EXERCISES.forEach(e=>{const b=bestPR(l.id,e.id);if(b)rows.push([l.name,e.name,num(b.kg),b.reps,num(epley(b.kg,b.reps))].join(','))}));download('phoenix-prs.csv',rows.join('\n'),'text/csv')}
-    if(d.csv==='g'){rows.push('date,lifter,exercise,type,set');S.lifters.forEach(l=>prEvents(l.id).forEach(p=>rows.push([new Date(p.t).toISOString(),l.name,EX(p.ex).name,p.kind,p.text].join(','))));download('phoenix-pr-progression.csv',rows.join('\n'),'text/csv')}
+    if(d.csv==='w'){rows.push('date,exercise,mode,lifter,set,reps,weight_per_cable_'+U());S.sessions.forEach(s=>s.sets.forEach((x,i)=>rows.push([new Date(s.t).toISOString(),s.ex?EX(s.ex).name:'Just Lift',s.mode,lifter(x.lid)?.name,i+1,x.reps,num(x.kg)].join(','))));download('cable-workouts.csv',rows.join('\n'),'text/csv')}
+    if(d.csv==='p'){rows.push('lifter,exercise,weight_'+U()+',reps,est_1rm_'+U());S.lifters.forEach(l=>EXERCISES.forEach(e=>{const b=bestPR(l.id,e.id);if(b)rows.push([l.name,e.name,num(b.kg),b.reps,num(epley(b.kg,b.reps))].join(','))}));download('cable-prs.csv',rows.join('\n'),'text/csv')}
+    if(d.csv==='g'){rows.push('date,lifter,exercise,type,set');S.lifters.forEach(l=>prEvents(l.id).forEach(p=>rows.push([new Date(p.t).toISOString(),l.name,EX(p.ex).name,p.kind,p.text].join(','))));download('cable-pr-progression.csv',rows.join('\n'),'text/csv')}
     close();
   });
 }
@@ -1423,7 +1423,7 @@ app.addEventListener('click',ev=>{
   if(d.theme){S.settings.theme=d.theme;save();applyTheme();render();return}
   if(d.led!=null){sheet(`<h3>LED colour</h3><span class="small">The trainer's lights change as you lift. The app takes on the same colour.</span><div class="row wrap" style="gap:12px">${LED.map(([n,c])=>`<button class="swatch ${S.settings.led===n?'on':''}" style="background:${c}" data-sw="${n}" aria-label="${n}"></button>`).join('')}</div><button class="ghost" data-x>Done</button>`,(dd,close,el)=>{if(dd.x!=null){close();return}if(dd.sw){S.settings.led=dd.sw;save();applyAccent();log('INFO','LED colour set to '+dd.sw);el.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('on',s.dataset.sw===dd.sw));render()}});return}
   if(d.classic!=null){toast('In the app this switches back to the classic screens');return}
-  if(d.backup!=null){download('phoenix-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({app:'phoenix-clean',version:2,data:S},null,1),'application/json');return}
+  if(d.backup!=null){download('cable-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({app:'cable-clean',version:2,data:S},null,1),'application/json');return}
   if(d.restore!=null){document.getElementById('restoreFile').click();return}
   if(d.delall!=null){delAll();return}
   if(d.lost!=null){if(R.conn!=='on'){toast('Connect a trainer first');return}R.conn='off';log('ERROR','Connection lost: GATT 8 (timeout)');render();
@@ -1432,7 +1432,7 @@ app.addEventListener('click',ev=>{
   if(d.editlifter){editLifter(d.editlifter);return}
   if(d.logl){UI.logL=d.logl;render();return}
   if(d.clearlogs!=null){R.logs=[];render();return}
-  if(d.exportlogs!=null){download('phoenix-connection-logs.txt',R.logs.map(x=>x.t.toISOString()+' '+x.level+' '+x.msg).join('\n'),'text/plain');return}
+  if(d.exportlogs!=null){download('cable-connection-logs.txt',R.logs.map(x=>x.t.toISOString()+' '+x.level+' '+x.msg).join('\n'),'text/plain');return}
   if(d.cmd){if(R.conn!=='on'){toast('Connect a trainer first');return}V.out=V.out||[];V.out.push('→ '+d.cmd);V.out.push('← ACK '+d.cmd.split(' ')[0]);log('DEBUG','TX '+d.cmd);render();return}
 });
 function endWorkoutNow(){stopTimers();if(V.screen==='lifting'&&run.rep>0){run.total=run.turn+1;finishSet();return}endWorkout()}
@@ -1456,8 +1456,8 @@ function editLifter(id,onCreated){
 function editLifterDelete(l,id){confirmSheet('Delete '+l.name+'?','Their workouts, 1RMs and PIN are removed too.','Delete',()=>{S.lifters=S.lifters.filter(x=>x.id!==id);S.active=S.active.filter(x=>x!==id);if(!S.active.length)S.active=[S.lifters[0].id];if(S.def===id)S.def=S.lifters[0].id;S.sessions.forEach(s=>{s.sets=s.sets.filter(x=>x.lid!==id);s.lifters=s.lifters.filter(x=>x!==id)});S.sessions=S.sessions.filter(s=>s.sets.length);delete S.stored[id];delete S.acc.pins[id];delete S.acc.tour[id];if(R.signed===id){R.signed=null}save();render()},true)}
 document.getElementById('restoreFile').onchange=ev=>{
   const f=ev.target.files[0];if(!f)return;const rd=new FileReader();
-  rd.onload=()=>{let b;try{b=JSON.parse(rd.result)}catch(e){toast('That file is not a Phoenix backup');return}
-    if(!b||!b.data||!b.data.lifters){toast('That file is not a Phoenix backup');return}
+  rd.onload=()=>{let b;try{b=JSON.parse(rd.result)}catch(e){toast('That file is not a Cable backup');return}
+    if(!b||!b.data||!b.data.lifters){toast('That file is not a Cable backup');return}
     confirmSheet('Restore this backup?',`${b.data.lifters.length} profiles and ${(b.data.sessions||[]).length} workouts. This replaces what's on this device.`,'Restore',()=>{S=normalize(b.data);save();applyTheme();go('settings');toast('Backup restored')})};
   rd.readAsText(f);ev.target.value='';
 };
