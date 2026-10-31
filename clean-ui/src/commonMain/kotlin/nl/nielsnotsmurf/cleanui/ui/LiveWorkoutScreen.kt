@@ -347,6 +347,14 @@ private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<His
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 if (live.warmupDone) {
                     BigNumber(live.reps.toString(), live.targetReps?.let { "of $it reps" } ?: "reps")
+                    live.autoStopSeconds?.let {
+                        Text(
+                            "Stopping in ${it}s, the load lets go",
+                            Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = CleanColors.Muted
+                        )
+                    }
                 } else {
                     BigNumber(live.warmupReps.toString(), "Warm-up of ${live.warmupTarget}", CleanColors.Muted)
                 }

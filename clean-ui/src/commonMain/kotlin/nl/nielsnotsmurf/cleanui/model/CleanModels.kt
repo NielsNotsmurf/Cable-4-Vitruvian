@@ -229,5 +229,7 @@ data class LiveWorkout(
     val peakPower: Float = 0f,
     val avgPower: Float = 0f,
     /** True for a bodyweight exercise, which only the classic screen times. */
-    val bodyweight: Boolean = false
+    val bodyweight: Boolean = false,
+    /** AMRAP / Just Lift: seconds until the set stops by itself (failure or handles down); null when not counting. */
+    val autoStopSeconds: Int? = null
 )
