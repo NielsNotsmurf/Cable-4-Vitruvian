@@ -125,8 +125,9 @@ class CleanUiBridge(
         combine(vm.loadedRoutine, vm.currentExerciseIndex, vm.isCurrentExerciseBodyweight, vm.currentPerformer, vm.currentPerformerSetDisplay) {
             routine, index, bodyweight, performer, setDisplay ->
             RoutineInputs(routine, index, bodyweight, performer, setDisplay)
-        }
-    ) { a, b ->
+        },
+        vm.autoStopState
+    ) { a, b, autoStop ->
         val st = a.state
         val phase = when (st) {
             WorkoutState.Initializing -> LivePhase.STARTING
@@ -148,7 +149,7 @@ class CleanUiBridge(
             exerciseName = exercises.getOrNull(b.index)?.exercise?.name.orEmpty(),
             countdown = (st as? WorkoutState.Countdown)?.secondsRemaining ?: 0,
             reps = a.reps.workingReps,
-            targetReps = a.params.reps.takeIf { it > 0 && !a.params.isJustLift },
+            targetReps = a.params.reps.takeIf { it > 0 && !a.params.isJustLift && !a.params.isAMRAP },
             warmupReps = a.reps.warmupReps,
             warmupTarget = a.params.warmupReps,
             warmupDone = a.reps.isWarmupComplete || a.params.warmupReps == 0,
@@ -166,7 +167,8 @@ class CleanUiBridge(
             doneReps = (st as? WorkoutState.SetSummary)?.repCount ?: a.reps.workingReps,
             peakPower = (st as? WorkoutState.SetSummary)?.peakPower ?: 0f,
             avgPower = (st as? WorkoutState.SetSummary)?.averagePower ?: 0f,
-            bodyweight = b.bodyweight
+            bodyweight = b.bodyweight,
+            autoStopSeconds = autoStop.secondsRemaining.takeIf { autoStop.isActive && st == WorkoutState.Active }
         )
     }
 

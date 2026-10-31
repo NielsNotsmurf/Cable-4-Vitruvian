@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.webapp
 
+import nl.nielsnotsmurf.cleanui.logic.FailureDetector
 import com.example.vitruvianredux.data.baseline.AnchorExerciseConfig
 import com.example.vitruvianredux.util.ColorSchemes
 import kotlinx.coroutines.CompletableDeferred
@@ -319,6 +320,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         var lastAt = 0L
         var powerSum = 0f
         var powerCount = 0
+        // AMRAP: ends the set on failure (stuck) or handles down, armed only after a full rep range.
+        val failure = FailureDetector()
+        var autoStop: Int? = null
         suspend fun begin() {
             repCounters.value = null
             counters = null
@@ -336,7 +340,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 if (shown.loadKg != sentKg && warmup < warmupTarget) { sentKg = shown.loadKg; warmup = 0; working = 0; begin() }
                 // Reset ROM: the set starts over, so the warm-up reps set the range of motion again.
                 if (restart) {
-                    restart = false; warmup = 0; working = 0; low = Float.MAX_VALUE; high = -Float.MAX_VALUE; begin()
+                    restart = false; warmup = 0; working = 0; low = Float.MAX_VALUE; high = -Float.MAX_VALUE; failure.reset(); begin()
                     live.value = live.value?.copy(reps = 0, doneReps = 0, warmupReps = 0, warmupDone = false)
                 }
                 val now = nowMillis()
@@ -367,6 +371,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                     }
                     last = sample
                     lastAt = now
+                    if (amrap && warmup >= warmupTarget) autoStop = failure.update(maxOf(sample.positionA, sample.positionB), now)
                 }
                 live.value = shown.copy(
                     reps = working, doneReps = working, warmupReps = warmup,
@@ -374,9 +379,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                     liveLoadKg = sample?.let { maxOf(it.loadA, it.loadB) } ?: shown.liveLoadKg,
                     position = if (high - low > 1f && sample != null) ((sample.positionA - low) / (high - low)).coerceIn(0f, 1f) else null,
                     peakPower = maxOf(shown.peakPower, power),
-                    avgPower = if (powerCount > 0) powerSum / powerCount else 0f
+                    avgPower = if (powerCount > 0) powerSum / powerCount else 0f,
+                    autoStopSeconds = autoStop
                 )
                 if (!amrap && working >= spec.reps) break
+                if (failure.shouldStop) break
                 delay(100)
             }
         } finally {
