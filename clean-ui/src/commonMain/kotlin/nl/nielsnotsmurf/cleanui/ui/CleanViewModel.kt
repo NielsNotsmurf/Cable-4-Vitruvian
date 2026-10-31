@@ -34,6 +34,7 @@ import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
 import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.SetSpec
+import nl.nielsnotsmurf.cleanui.model.SetKind
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.LiftRecord
