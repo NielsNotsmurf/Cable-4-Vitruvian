@@ -75,6 +75,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 | % of 1RM loading | Each lifter's 1RM shows next to every exercise and loads default to a % of it. A guided 1RM test fills it in, and one tested lift estimates related ones (bench 25 kg ≈ incline 22.5 kg), marked "estimated" until tested. Ratios: `one_rep_max_map.json` in `clean-ui` assets. |
 | 1RMs you control | Only the 1RM test or your own entry sets a 1RM. Tap one in Analytics to correct it. |
 | Workout builder | Pick muscle groups and a time; the app builds the workout at each lifter's % of 1RM. Swap exercises for other equipment; same-equipment exercises are grouped to save switching. |
+| Your routines | Save your own workouts (from scratch or from a built one), add or remove exercises, loads as % of each lifter's 1RM. Raise every load at once, or let it rise by itself every few weeks or after a session with all reps done. |
 | Exercise library | Short descriptions, search by name, muscle or equipment, region and muscle filters, favourites and video demos. |
 | During a workout | End a set early, skip or redo a set, jump to the next exercise, change the % of 1RM for coming sets, or pause and resume later. |
 | Live heart rate | Garmin watch broadcast or chest strap per lifter; shown during sets and in history. |

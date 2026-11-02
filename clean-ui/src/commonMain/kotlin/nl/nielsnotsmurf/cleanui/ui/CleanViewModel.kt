@@ -27,6 +27,13 @@ import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.logic.WorkoutBuilder
+import nl.nielsnotsmurf.cleanui.logic.Progression
+import nl.nielsnotsmurf.cleanui.logic.Routine
+import nl.nielsnotsmurf.cleanui.logic.Routines
+import nl.nielsnotsmurf.cleanui.model.LivePhase
+import nl.nielsnotsmurf.cleanui.platform.formatDate
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import nl.nielsnotsmurf.cleanui.model.Attempt
 import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
@@ -110,8 +117,15 @@ data class BuiltWorkout(
     /** "lifterId::exerciseId" -> load used last time, for exercises without a 1RM. */
     val lastUsedKg: Map<String, Float> = emptyMap(),
     val isStarting: Boolean = false,
-    val error: String? = null
-)
+    val error: String? = null,
+    /** Set when the workout is a saved routine: changes are saved into it. */
+    val routineId: String? = null,
+    val name: String? = null,
+    /** Moves swapped out (by [WorkoutBuilder.sameKey]), so swap doesn't bring them back. */
+    val swappedOut: Set<String> = emptySet()
+) {
+    val title: String get() = name ?: groups.joinToString(" & ")
+}
 
 enum class TestPhase { INTRO, ATTEMPT, RESULT }
 
@@ -412,31 +426,201 @@ class CleanViewModel(
         exercises.forEach(::prepareWorkoutExercise)
     }
 
-    /** Swaps [exercise] for one in the same group on different equipment. */
+    /**
+     * Changes the workout on the plan screen. A workout opened from a routine saves every
+     * change straight into the routine, so there is no separate save step to forget.
+     */
+    private fun editWorkout(transform: (BuiltWorkout) -> BuiltWorkout) {
+        val w = _workout.value ?: return
+        val next = transform(w).copy(error = null)
+        _workout.value = next
+        next.routineId?.let { id ->
+            updateRoutine(id) {
+                it.copy(
+                    name = next.name ?: it.name,
+                    exerciseIds = next.exercises.map(ExerciseCard::id),
+                    percent = next.percent,
+                    sets = next.sets,
+                    reps = next.reps,
+                    overridesKg = next.overridesKg
+                )
+            }
+        }
+    }
+
+    /** Swaps [exercise] for one in the same group on different equipment, never a move already in the workout. */
     fun substituteInWorkout(exercise: ExerciseCard) {
         val w = _workout.value ?: return
-        val sub = WorkoutBuilder.substitute(exercise, w.exercises, state.value.exercises, ::builderScore)
+        val sub = WorkoutBuilder.substitute(exercise, w.exercises, state.value.exercises, ::builderScore, w.swappedOut)
         if (sub == null) {
-            _workout.update { it?.copy(error = "No other ${exercise.region.lowercase()} exercise to swap in.") }
+            _workout.update { it?.copy(error = "No other ${exercise.region.lowercase()} exercise to swap in. Add one by hand instead.") }
             return
         }
-        _workout.update { it?.copy(exercises = WorkoutBuilder.swap(it.exercises, exercise, sub), error = null) }
+        editWorkout {
+            it.copy(
+                exercises = WorkoutBuilder.swap(it.exercises, exercise, sub),
+                swappedOut = it.swappedOut + WorkoutBuilder.sameKey(exercise)
+            )
+        }
         prepareWorkoutExercise(sub)
     }
 
     fun removeFromWorkout(exercise: ExerciseCard) =
-        _workout.update { w -> w?.copy(exercises = w.exercises.filterNot { it.id == exercise.id }, error = null) }
+        editWorkout { w -> w.copy(exercises = w.exercises.filterNot { it.id == exercise.id }) }
 
-    /** A new % replaces loads set by hand, as on the single-exercise screen. */
-    fun setWorkoutPercent(percent: Int) = _workout.update { it?.copy(percent = percent.coerceIn(30, 100), overridesKg = emptyMap()) }
+    /** Adds an exercise picked from the library to the open workout. */
+    fun addToWorkout(exercise: ExerciseCard) {
+        val w = _workout.value ?: return
+        when {
+            exercise.isBodyweight ->
+                _workout.update { it?.copy(error = "${exercise.name} is a bodyweight exercise, so it has no load to set. Pick a cable exercise.") }
+            WorkoutBuilder.isIn(exercise, w.exercises) ->
+                _workout.update { it?.copy(error = "${exercise.name.trim()} is already in this workout.") }
+            else -> {
+                editWorkout { it.copy(exercises = WorkoutBuilder.add(it.exercises, exercise)) }
+                prepareWorkoutExercise(exercise)
+            }
+        }
+    }
 
-    fun setWorkoutSets(sets: Int) = _workout.update { it?.copy(sets = sets.coerceIn(1, 10)) }
+    // ---- Routines ----
 
-    fun setWorkoutReps(reps: Int) = _workout.update { it?.copy(reps = reps.coerceIn(1, 50)) }
+    /** Saved routines, newest first. */
+    val routines: StateFlow<List<Routine>> = store.routines
+        .map { list -> list.sortedByDescending { it.lastDoneAt ?: it.lastRaisedAt } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val routineLock = Mutex()
+
+    private fun updateRoutines(transform: (List<Routine>) -> List<Routine>) {
+        viewModelScope.launch { routineLock.withLock { store.saveRoutines(transform(store.routines.first())) } }
+    }
+
+    private fun updateRoutine(id: String, transform: (Routine) -> Routine) =
+        updateRoutines { list -> list.map { if (it.id == id) transform(it) else it } }
+
+    /** Opens [routine] on the plan screen, with loads from each lifter's 1RM at the routine's %. */
+    fun openRoutine(routine: Routine) {
+        val byId = state.value.exercises.associateBy { it.id }
+        val exercises = routine.exerciseIds.mapNotNull { byId[it] }
+        _workout.value = BuiltWorkout(
+            groups = exercises.map { it.region }.filter { it.isNotBlank() }.distinct(),
+            minutes = 0,
+            exercises = exercises,
+            percent = routine.percent,
+            sets = routine.sets,
+            reps = routine.reps,
+            overridesKg = routine.overridesKg,
+            routineId = routine.id,
+            name = routine.name
+        )
+        exercises.forEach(::prepareWorkoutExercise)
+    }
+
+    /** A new, empty routine, opened to add exercises to. */
+    fun newRoutine() {
+        val now = nowMillis()
+        val routine = Routine(
+            id = "r$now",
+            name = "Routine ${routines.value.size + 1}",
+            exerciseIds = emptyList(),
+            percent = defaultPercent,
+            sets = defaultSets,
+            reps = defaultReps,
+            lastRaisedAt = now
+        )
+        updateRoutines { it + routine }
+        openRoutine(routine)
+    }
+
+    /** Keeps the built workout as a routine; later changes on the plan screen go into it. */
+    fun saveWorkoutAsRoutine(name: String) {
+        val w = _workout.value ?: return
+        val now = nowMillis()
+        val routine = Routine(
+            id = "r$now",
+            name = name.trim().ifBlank { w.groups.joinToString(" & ") },
+            exerciseIds = w.exercises.map(ExerciseCard::id),
+            percent = w.percent,
+            sets = w.sets,
+            reps = w.reps,
+            overridesKg = w.overridesKg,
+            lastRaisedAt = now
+        )
+        updateRoutines { it + routine }
+        _workout.update { it?.copy(routineId = routine.id, name = routine.name, error = null) }
+    }
+
+    fun renameWorkout(name: String) {
+        if (name.isBlank()) return
+        editWorkout { it.copy(name = name.trim()) }
+    }
+
+    fun deleteRoutine(id: String) {
+        updateRoutines { list -> list.filterNot { it.id == id } }
+        _workout.update { if (it?.routineId == id) it.copy(routineId = null) else it }
+    }
+
+    /** Sets how the open routine progresses. The weekly clock starts now. */
+    fun setProgression(progression: Progression, stepPercent: Int, everyWeeks: Int) {
+        val id = _workout.value?.routineId ?: return
+        updateRoutine(id) {
+            it.copy(
+                progression = progression,
+                stepPercent = stepPercent,
+                everyWeeks = everyWeeks,
+                lastRaisedAt = if (progression != it.progression || everyWeeks != it.everyWeeks) nowMillis() else it.lastRaisedAt
+            )
+        }
+    }
+
+    /** The routine being trained, with the reps of each set done so far. */
+    private data class RoutineRun(val routineId: String, val expectedSets: Int, val reps: Map<String, Int> = emptyMap())
+
+    private var routineRun: RoutineRun? = null
+
+    init {
+        viewModelScope.launch {
+            gateway.liveWorkout.collect { live ->
+                val run = routineRun ?: return@collect
+                when (live?.phase) {
+                    LivePhase.SET_DONE -> routineRun = run.copy(
+                        reps = run.reps + ("${live.exerciseName}|${live.setNumber}|${live.lifterId}" to live.doneReps)
+                    )
+                    LivePhase.FINISHED -> { routineRun = null; finishRoutine(run) }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    /** Marks the routine done and applies its progression for next time. */
+    private fun finishRoutine(run: RoutineRun) {
+        val now = nowMillis()
+        updateRoutine(run.routineId) { r ->
+            val done = r.copy(lastDoneAt = now)
+            if (Routines.earnsStep(done, now, run.reps.values.toList(), run.expectedSets)) {
+                val up = Routines.raise(done, 1, now)
+                up.copy(note = "Raised to ${up.percent}% on ${formatDate(now, "d MMM")}")
+            } else done
+        }
+    }
+
+    /**
+     * A new % moves every exercise: loads from a 1RM follow it, and loads set by hand move by
+     * the same ratio, so one tap raises (or lowers) the whole workout.
+     */
+    fun setWorkoutPercent(percent: Int) = editWorkout {
+        val to = percent.coerceIn(Routines.MIN_PERCENT, Routines.MAX_PERCENT)
+        it.copy(percent = to, overridesKg = Routines.scaleOverrides(it.overridesKg, it.percent, to))
+    }
+
+    fun setWorkoutSets(sets: Int) = editWorkout { it.copy(sets = sets.coerceIn(1, 10)) }
+
+    fun setWorkoutReps(reps: Int) = editWorkout { it.copy(reps = reps.coerceIn(1, 50)) }
 
     /** Moves one lifter's load for one exercise by [steps] of [LoadCalculator.STEP_KG]. */
-    fun nudgeWorkoutLoad(lifterId: String, exercise: ExerciseCard, steps: Int) = _workout.update { w ->
-        w ?: return@update null
+    fun nudgeWorkoutLoad(lifterId: String, exercise: ExerciseCard, steps: Int) = editWorkout { w ->
         val kg = (workoutLoad(lifterId, exercise, w) + steps * LoadCalculator.STEP_KG)
             .coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG)
         w.copy(overridesKg = w.overridesKg + (relatedKey(lifterId, exercise.id) to kg))
@@ -480,10 +664,11 @@ class CleanViewModel(
         }
         _workout.update { it?.copy(isStarting = true, error = null) }
         gateway.startWorkout(
-            name = w.groups.joinToString(" & "),
+            name = w.title,
             plans = plans,
             onStarted = {
                 _workout.update { it?.copy(isStarting = false) }
+                routineRun = w.routineId?.let { RoutineRun(it, w.exercises.size * w.sets * lifters.size) }
                 startedLive(plans)
                 onStarted()
             },

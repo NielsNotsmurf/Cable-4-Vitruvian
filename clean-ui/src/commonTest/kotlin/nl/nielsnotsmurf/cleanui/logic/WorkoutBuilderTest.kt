@@ -50,4 +50,39 @@ class WorkoutBuilderTest {
         assertTrue(WorkoutBuilder.exerciseCount(30, 3, 2) < 4)
         assertEquals(3, WorkoutBuilder.exerciseCount(15, 2, 3))
     }
+
+    private fun named(id: String, name: String, equipment: String, pop: Float) =
+        ExerciseCard(id = id, name = name, muscleGroup = "Chest", equipment = equipment, region = "Chest", popularity = pop)
+
+    private val dupes = listOf(
+        named("b1", "Bench Press", "Bar", 9f),
+        named("b2", "Bench Press ", "Handles", 8.5f),
+        named("i1", "Incline Bench Press", "Handles", 8f),
+        named("i2", "incline bench press", "Bar", 7.5f),
+        named("fly", "Chest Fly", "Handles", 7f)
+    )
+
+    @Test
+    fun `build never picks the same move twice under other ids`() {
+        val w = WorkoutBuilder.build(dupes, listOf("Chest"), 3, score)
+        assertEquals(3, w.map(WorkoutBuilder::sameKey).distinct().size)
+    }
+
+    @Test
+    fun `swap skips moves already in the workout and ones swapped out before`() {
+        val w = listOf(dupes[0], dupes[2])
+        val first = WorkoutBuilder.substitute(dupes[0], w, dupes, score)!!
+        assertEquals("fly", first.id)
+        val pool = dupes + named("cp", "Cable Press", "Bar", 6f)
+        val swapped = WorkoutBuilder.swap(w, dupes[0], first)
+        assertEquals("b1", WorkoutBuilder.substitute(first, swapped, pool, score)?.id)
+        assertEquals("cp", WorkoutBuilder.substitute(first, swapped, pool, score, setOf("bench press"))?.id)
+    }
+
+    @Test
+    fun `adding by hand ignores a move that is already there`() {
+        val w = listOf(dupes[0])
+        assertEquals(1, WorkoutBuilder.add(w, dupes[1]).size)
+        assertEquals(2, WorkoutBuilder.add(w, dupes[4]).size)
+    }
 }

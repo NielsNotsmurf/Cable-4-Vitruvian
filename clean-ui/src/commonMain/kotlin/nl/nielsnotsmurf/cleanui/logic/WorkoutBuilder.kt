@@ -59,11 +59,25 @@ object WorkoutBuilder {
     }
 
     private fun nextFor(ranked: List<ExerciseCard>, picked: List<ExerciseCard>): ExerciseCard? {
-        val ids = picked.map { it.id }.toSet()
         val muscles = picked.map { it.muscleGroup }.toSet()
-        val free = ranked.filter { it.id !in ids && it.name !in picked.map { p -> p.name } }
+        val free = ranked.filter { !isIn(it, picked) }
         return free.firstOrNull { it.muscleGroup !in muscles } ?: free.firstOrNull()
     }
+
+    /**
+     * Name an exercise is compared by. The library holds the same move more than once under
+     * other ids ("Bench Press" and "Bench Press ", four "Incline Bench Press"), so ids alone
+     * let a workout hold the same exercise twice.
+     */
+    fun sameKey(exercise: ExerciseCard): String = exercise.name.trim().lowercase()
+
+    /** True when [exercise], or the same move under another id, is already in [workout]. */
+    fun isIn(exercise: ExerciseCard, workout: List<ExerciseCard>): Boolean =
+        workout.any { it.id == exercise.id || sameKey(it) == sameKey(exercise) }
+
+    /** Adds [exercise] by hand, unless it is already there; keeps equipment order. */
+    fun add(workout: List<ExerciseCard>, exercise: ExerciseCard): List<ExerciseCard> =
+        if (isIn(exercise, workout)) workout else orderByEquipment(workout + exercise)
 
     /**
      * Same equipment back to back, in order of first use, so the bar or handles only
@@ -80,18 +94,22 @@ object WorkoutBuilder {
 
     /**
      * A swap for [current]: same group (same muscle first), on different equipment, not
-     * already in [workout]. Falls back to the same equipment when the group has nothing else.
+     * already in [workout] (also not under another id), and not one of [skipped] (swapped out
+     * before, so tapping swap again moves on instead of going back and forth). Falls back to the same equipment when the group has nothing else.
      */
     fun substitute(
         current: ExerciseCard,
         workout: List<ExerciseCard>,
         pool: List<ExerciseCard>,
-        score: (ExerciseCard) -> Float
+        score: (ExerciseCard) -> Float,
+        skipped: Set<String> = emptySet()
     ): ExerciseCard? {
-        val taken = workout.map { it.id }.toSet()
-        val candidates = pool.filter { it.region == current.region && !it.isBodyweight && it.id !in taken }
-        val other = candidates.filter { !it.equipment.equals(current.equipment, ignoreCase = true) }
-        val from = other.ifEmpty { candidates }
+        val candidates = pool
+            .filter { it.region == current.region && !it.isBodyweight && !isIn(it, workout) }
+            .distinctBy(::sameKey)
+        val fresh = candidates.filter { sameKey(it) !in skipped }.ifEmpty { candidates }
+        val other = fresh.filter { !it.equipment.equals(current.equipment, ignoreCase = true) }
+        val from = other.ifEmpty { fresh }
         return from.sortedWith(
             compareByDescending<ExerciseCard> { it.muscleGroup == current.muscleGroup }.thenByDescending(score)
         ).firstOrNull()

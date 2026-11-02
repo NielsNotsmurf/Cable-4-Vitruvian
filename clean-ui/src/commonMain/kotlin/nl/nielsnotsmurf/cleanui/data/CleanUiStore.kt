@@ -3,6 +3,8 @@ package nl.nielsnotsmurf.cleanui.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxMap
+import nl.nielsnotsmurf.cleanui.logic.Routine
+import nl.nielsnotsmurf.cleanui.logic.Routines
 import nl.nielsnotsmurf.cleanui.model.OneRepMax
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 
@@ -136,6 +138,13 @@ class CleanUiStore(
         }
     }
 
+    /** Saved routines (see Routines), shared by everyone on this device. */
+    val routines: Flow<List<Routine>> = kv.data.map { Routines.decode(it[ROUTINES]) }
+
+    suspend fun saveRoutines(routines: List<Routine>) {
+        kv.edit { it[ROUTINES] = Routines.encode(routines) }
+    }
+
     /** The profile that signed in last, or null. */
     val lastAccount: Flow<String?> = kv.data.map { it[LAST_ACCOUNT] }
 
@@ -176,6 +185,7 @@ class CleanUiStore(
         private val DEFAULT_PERCENT = Key<Int>("default_percent")
         private val ONBOARDED = Key<Boolean>("onboarded")
         private val LAST_ACCOUNT = Key<String>("last_account")
+        private val ROUTINES = Key<String>("routines")
         private const val PIN_PREFIX = "pin|"
         private const val TOUR_PREFIX = "tour|"
         private const val ORM_PREFIX = "orm|"

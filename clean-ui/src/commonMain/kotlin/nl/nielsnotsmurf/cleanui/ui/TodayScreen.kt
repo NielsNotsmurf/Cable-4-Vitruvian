@@ -79,6 +79,7 @@ fun TodayScreen(
     onPickExercise: () -> Unit,
     onOpenExercise: (ExerciseCard) -> Unit,
     onBuild: (groups: List<String>, minutes: Int) -> Unit,
+    onRoutines: () -> Unit,
     onAssessment: () -> Unit,
     onManageProfiles: () -> Unit,
     onRetest: (lifterId: String, exerciseId: String) -> Unit,
@@ -172,6 +173,7 @@ fun TodayScreen(
         item {
             Row(Modifier.tourTarget(TourTargets.TILES), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tile("One exercise", "Search the library by name, muscle or equipment", onPickExercise, Modifier.weight(1f))
+                Tile("Your routines", "Your own workouts, loads from each 1RM", onRoutines, Modifier.weight(1f))
             }
         }
 

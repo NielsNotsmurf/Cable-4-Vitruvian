@@ -239,6 +239,11 @@ fun SettingsScreen(
             LinkRow("Send feedback", "Report a problem or share an idea on GitHub", {
                 uriHandler.openUri(feedbackUrl)
             })
+            LinkRow(
+                "Support Cable",
+                "Cable is free and stays free. Donations via GitHub Sponsors; about €200 brings it to TestFlight (iPhone) and the Play Store",
+                { uriHandler.openUri(SPONSOR_URL) }
+            )
         }
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
@@ -329,3 +334,6 @@ private fun LinkRow(title: String, subtitle: String, onClick: () -> Unit) {
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = CleanColors.Muted)
     }
 }
+
+/** Donations go through GitHub Sponsors only (0% fees). Shown in Settings on the app and the web. */
+const val SPONSOR_URL = "https://github.com/sponsors/NielsNotsmurf"

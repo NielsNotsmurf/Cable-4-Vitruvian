@@ -102,6 +102,8 @@ object CleanRoutes {
     const val TRAIN = "home"
     const val EXERCISES = "clean_exercises"
     const val WORKOUT_PLAN = "clean_workout_plan"
+    const val WORKOUT_ADD = "clean_workout_add"
+    const val ROUTINES = "clean_routines"
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
     const val SETTINGS = "clean_settings"
@@ -258,6 +260,7 @@ private fun SignedInApp(
     val setup by vm.setup.collectAsStateWithLifecycle()
     val test by vm.test.collectAsStateWithLifecycle()
     val builtWorkout by vm.workout.collectAsStateWithLifecycle()
+    val routines by vm.routines.collectAsStateWithLifecycle()
     val history by vm.visibleHistory.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val heartRate by vm.heartRate.collectAsStateWithLifecycle()
@@ -350,6 +353,7 @@ private fun SignedInApp(
                                 vm.buildWorkout(groups, minutes)
                                 nav.navigate(CleanRoutes.WORKOUT_PLAN)
                             },
+                            onRoutines = { nav.navigate(CleanRoutes.ROUTINES) },
                             onAssessment = { vm.openTest(); nav.navigate(CleanRoutes.ONE_REP_MAX_TEST) },
                             onManageProfiles = { nav.navigate(CleanRoutes.PROFILES) },
                             onRetest = { lifterId, exerciseId ->
@@ -420,6 +424,24 @@ private fun SignedInApp(
                             onHeartRate = onHeartRate?.let { open -> { id: String -> withPin(id, "To pair a heart rate sensor", false) { open(id) } } }
                         )
                     }
+                    composable(CleanRoutes.ROUTINES) {
+                        RoutinesScreen(
+                            routines = routines,
+                            onBack = { nav.popBackStack() },
+                            onOpen = { vm.openRoutine(it); nav.navigate(CleanRoutes.WORKOUT_PLAN) },
+                            onNew = { vm.newRoutine(); nav.navigate(CleanRoutes.WORKOUT_PLAN) },
+                            onDelete = vm::deleteRoutine
+                        )
+                    }
+                    composable(CleanRoutes.WORKOUT_ADD) {
+                        ExercisesScreen(
+                            state = state,
+                            onBack = { nav.popBackStack(); Unit },
+                            onOpenExercise = { vm.addToWorkout(it); nav.popBackStack() },
+                            onRowShown = vm::requestEstimates,
+                            onToggleFavorite = vm::toggleFavorite
+                        )
+                    }
                     composable(CleanRoutes.WORKOUT_PLAN) {
                         val w = builtWorkout
                         if (w == null) {
@@ -428,6 +450,11 @@ private fun SignedInApp(
                             WorkoutPlanScreen(
                                 state = state,
                                 workout = w,
+                                routine = routines.firstOrNull { it.id == w.routineId },
+                                onAdd = { nav.navigate(CleanRoutes.WORKOUT_ADD) },
+                                onSaveAsRoutine = vm::saveWorkoutAsRoutine,
+                                onRename = vm::renameWorkout,
+                                onProgression = vm::setProgression,
                                 loadFor = { id, ex -> vm.workoutLoad(id, ex, w) },
                                 onPercent = vm::setWorkoutPercent,
                                 onSubstitute = vm::substituteInWorkout,
