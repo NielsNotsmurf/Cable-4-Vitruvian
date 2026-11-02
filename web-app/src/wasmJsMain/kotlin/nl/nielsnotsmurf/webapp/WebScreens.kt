@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.webapp
 
+import nl.nielsnotsmurf.cleanui.ui.SPONSOR_URL
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -237,12 +238,11 @@ fun WebSettings() {
                 )
             }
             InstallGuide()
-            AppStoreGoal()
         }
     }
 }
 
-/** The sponsor goal for real iPhone and Play Store apps; shown in the intro and in Settings. */
+/** The sponsor goal for real iPhone and Play Store apps, in the intro. Settings has "Support Cable" (shared with the app). */
 @Composable
 fun AppStoreGoal() {
     SectionLabel("Toward iPhone and Play Store apps", Modifier.padding(top = 8.dp))
@@ -253,8 +253,6 @@ fun AppStoreGoal() {
     )
     PrimaryButton("Sponsor on GitHub", onClick = { openUrl(SPONSOR_URL) })
 }
-
-const val SPONSOR_URL = "https://github.com/sponsors/NielsNotsmurf"
 
 /** Everything the web app stores, as one JSON file. */
 object WebBackup {
