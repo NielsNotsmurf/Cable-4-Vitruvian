@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +59,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.Stepper
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
 import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 import nl.nielsnotsmurf.cleanui.ui.components.cablesOf
+import nl.nielsnotsmurf.cleanui.ui.components.OneRepMaxDialog
 import nl.nielsnotsmurf.cleanui.platform.formatClock
 import nl.nielsnotsmurf.cleanui.platform.formatDecimal
 
@@ -73,9 +75,11 @@ fun SetSetupScreen(
     onNudge: (lifterId: String, deltaKg: Float) -> Unit,
     onBack: () -> Unit,
     onTestOneRepMax: (lifterId: String) -> Unit,
+    onSetOneRepMax: (lifterId: String, exerciseId: String, kg: Float?) -> Unit,
     onStart: () -> Unit
 ) {
     var showMore by rememberSaveable { mutableStateOf(false) }
+    var editingLifter by remember { mutableStateOf<UiLifter?>(null) }
     val bodyweight = setup.exercise.isBodyweight
     val isEcho = setup.mode == TrainingMode.ECHO && !bodyweight
     val unit = state.unit
@@ -193,11 +197,23 @@ fun SetSetupScreen(
                             note = note,
                             // Offer the test to lifters without a real 1RM for this exercise.
                             onTest = if (orm == null || orm.isEstimate) ({ onTestOneRepMax(l.id) }) else null,
+                            onSet1Rm = { editingLifter = l },
                             onMinus = { onNudge(l.id, -LoadCalculator.STEP_KG) },
                             onPlus = { onNudge(l.id, LoadCalculator.STEP_KG) }
                         )
                     }
                 }
+            }
+
+            editingLifter?.let { l ->
+                OneRepMaxDialog(
+                    lifterName = l.name,
+                    exercise = setup.exercise,
+                    current = state.oneRepMax(l.id, setup.exercise.id),
+                    unit = unit,
+                    onSave = { kg -> onSetOneRepMax(l.id, setup.exercise.id, kg); editingLifter = null },
+                    onDismiss = { editingLifter = null }
+                )
             }
 
             SetsSection(setup = setup, isEcho = isEcho || bodyweight, onUpdate = onUpdate)
@@ -323,6 +339,7 @@ private fun LifterLoadCard(
     cables: Int,
     note: String,
     onTest: (() -> Unit)?,
+    onSet1Rm: () -> Unit,
     onMinus: () -> Unit,
     onPlus: () -> Unit
 ) {
@@ -341,12 +358,20 @@ private fun LifterLoadCard(
         }
         LoadText(loadText, cables, style = MaterialTheme.typography.displayMedium, color = lifter.color)
         Text(note, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-        if (onTest != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (onTest != null) {
+                Text(
+                    "Test 1RM",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = CleanColors.AccentInk,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onTest).padding(vertical = 4.dp)
+                )
+            }
             Text(
-                "Test 1RM",
+                "Set 1RM",
                 style = MaterialTheme.typography.labelLarge,
                 color = CleanColors.AccentInk,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onTest).padding(vertical = 4.dp)
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onSet1Rm).padding(vertical = 4.dp)
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {

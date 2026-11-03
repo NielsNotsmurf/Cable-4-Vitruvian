@@ -488,6 +488,7 @@ private fun SignedInApp(
                                     vm.openTest(lifterId, listOf(s.exercise.id))
                                     nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
                                 },
+                                onSetOneRepMax = vm::setManualOneRepMax,
                                 onStart = {
                                     vm.start {
                                         nav.navigate(CleanRoutes.ACTIVE_WORKOUT) {

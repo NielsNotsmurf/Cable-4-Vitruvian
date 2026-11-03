@@ -83,6 +83,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.BodyMap
 import nl.nielsnotsmurf.cleanui.ui.components.BodySide
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
+import nl.nielsnotsmurf.cleanui.ui.components.OneRepMaxDialog
 import nl.nielsnotsmurf.cleanui.ui.components.SectionLabel
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -514,18 +515,26 @@ private fun OneRepMaxCard(
     onSet: (lifterId: String, exerciseId: String, kg: Float?) -> Unit
 ) {
     val exercises = state.exercises.filter { region == null || it.region == region }.associateBy { it.id }
-    // With a region tapped, its estimated 1RMs show too, so any of them can be set by hand.
-    val maxes = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
-        .filterValues { region != null || !it.isEstimate }
-        .mapNotNull { (id, orm) -> exercises[id]?.let { it to orm } }
-        .sortedWith(compareBy<Pair<ExerciseCard, OneRepMax>> { it.second.isEstimate }.thenByDescending { it.second.kg })
-    var editing by remember { mutableStateOf<Pair<ExerciseCard, OneRepMax>?>(null) }
+    val known = lifter?.let { state.oneRepMaxes[it.id] }.orEmpty()
+    // With a region tapped, every loadable lift in it shows (estimated or not yet known),
+    // so any of them can be set by hand.
+    val maxes: List<Pair<ExerciseCard, OneRepMax?>> =
+        (if (region == null) {
+            known.filterValues { !it.isEstimate }.mapNotNull { (id, orm) -> exercises[id]?.let { it to orm } }
+        } else {
+            exercises.values.filter { !it.isBodyweight }.map { it to known[it.id] }
+        }).sortedWith(
+            compareBy<Pair<ExerciseCard, OneRepMax?>> { (_, orm) -> if (orm == null) 2 else if (orm.isEstimate) 1 else 0 }
+                .thenByDescending { it.second?.kg ?: 0f }
+                .thenBy { it.first.name }
+        )
+    var editing by remember { mutableStateOf<Pair<ExerciseCard, OneRepMax?>?>(null) }
     var showAll by remember(region) { mutableStateOf(false) }
     Card {
         SectionLabel("1RMs${region?.let { " · $it" } ?: ""}")
         Text(
             if (maxes.isEmpty()) "No 1RMs yet. Run the 1RM test from Train. Tap a region on the body to set one by hand."
-            else "Only the 1RM test or you change these. Tap one to correct it.",
+            else "Only the 1RM test or you change these. Tap one to set or correct it.",
             style = MaterialTheme.typography.bodySmall
         )
         maxes.let { if (showAll) it else it.take(8) }.forEach { (ex, orm) ->
@@ -538,20 +547,25 @@ private fun OneRepMaxCard(
                 Column(Modifier.weight(1f)) {
                     Text(ex.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                     Text(
-                        when (orm.source) {
+                        when (orm?.source) {
+                            null -> "Not known yet · tap to set"
                             OneRepMaxSource.BENCHMARK -> "Tested"
                             OneRepMaxSource.MANUAL -> "Entered by hand"
-                            OneRepMaxSource.RELATED -> "Estimated · tap to set"
+                            OneRepMaxSource.RELATED -> "Estimated · tap to adjust"
                             else -> "Worked out from your sets"
-                        } + if (cables == 2) " · per cable, ${LoadCalculator.format(orm.kg * 2, state.unit)} total" else " · one cable",
+                        } + if (orm == null) "" else if (cables == 2) " · per cable, ${LoadCalculator.format(orm.kg * 2, state.unit)} total" else " · one cable",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                LoadText(
-                    (if (orm.isEstimate) "~" else "") + LoadCalculator.format(orm.kg, state.unit),
-                    cables,
-                    color = if (orm.isEstimate) CleanColors.Muted else accent
-                )
+                if (orm != null) {
+                    LoadText(
+                        (if (orm.isEstimate) "~" else "") + LoadCalculator.format(orm.kg, state.unit),
+                        cables,
+                        color = if (orm.isEstimate) CleanColors.Muted else accent
+                    )
+                } else {
+                    Text("–", style = MaterialTheme.typography.titleMedium, color = CleanColors.Muted)
+                }
             }
         }
         if (maxes.size > 8) {
@@ -563,46 +577,13 @@ private fun OneRepMaxCard(
     val e = editing
     if (e != null && lifter != null) {
         val (ex, orm) = e
-        var text by remember(e) {
-            mutableStateOf(if (orm.isEstimate) "" else LoadCalculator.format(orm.kg, state.unit, withUnit = false))
-        }
-        val unitName = if (state.unit == WeightUnit.LB) "lb" else "kg"
-        val entered = text.replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }
-        AlertDialog(
-            onDismissRequest = { editing = null },
-            modifier = Modifier.clickSounds(),
-            containerColor = CleanColors.Background,
-            title = { Text(ex.name) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${lifter.name}'s 1RM in $unitName" + if (ex.cables == 2) " per cable." else ".", style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = text,
-                        onValueChange = { text = it.filter { c -> c.isDigit() || c == '.' || c == ',' }.take(6) },
-                        singleLine = true,
-                        suffix = { Text(unitName) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = entered != null,
-                    onClick = {
-                        val kg = entered!!.let { if (state.unit == WeightUnit.LB) it / 2.20462f else it }
-                        onSet(lifter.id, ex.id, kg)
-                        editing = null
-                    }
-                ) { Text("Save", color = CleanColors.Ink) }
-            },
-            dismissButton = {
-                Row {
-                    if (!orm.isEstimate) {
-                        TextButton(onClick = { onSet(lifter.id, ex.id, null); editing = null }) { Text("Remove", color = CleanColors.Danger) }
-                    }
-                    TextButton(onClick = { editing = null }) { Text("Cancel", color = CleanColors.Ink) }
-                }
-            }
+        OneRepMaxDialog(
+            lifterName = lifter.name,
+            exercise = ex,
+            current = orm,
+            unit = state.unit,
+            onSave = { kg -> onSet(lifter.id, ex.id, kg); editing = null },
+            onDismiss = { editing = null }
         )
     }
 }
