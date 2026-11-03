@@ -1,11 +1,11 @@
 name: Pages
 
-# The public site: docs/ from master as before (demo, stats, guides), plus the web app beta at
-# /app/, built from web-beta. Runs when either branch changes. Needs Settings, Pages, Source:
-# GitHub Actions, and web-beta allowed under Settings, Environments, github-pages.
+# The public site: docs/ from master (demo, stats, guides), plus the web app beta at /app/,
+# also built from master so the web app gets every feature the Android app gets (sync rule).
+# Needs Settings, Pages, Source: GitHub Actions.
 on:
   push:
-    branches: [master, web-beta]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -27,10 +27,10 @@ jobs:
         with:
           ref: master
           path: site-src
-      - name: Web app from web-beta
+      - name: Web app from master
         uses: actions/checkout@v7
         with:
-          ref: web-beta
+          ref: master
           path: web
       - uses: actions/setup-java@v6
         with:

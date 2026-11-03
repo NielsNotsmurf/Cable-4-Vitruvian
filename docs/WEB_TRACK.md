@@ -27,7 +27,8 @@ passes and Niels says go.
 - [x] Phase 6: security: strict CSP (plus form-action, no-referrer), Dependabot, CodeQL,
   dependency review and the dependency graph (`.github/workflows/security.yml`), SECURITY.md
 - [x] Phase 7: beta hosting: `.github/workflows/pages.yml` publishes docs/ from master plus the
-  web app from web-beta at https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/ (needs the
+  web app at https://nielsnotsmurf.github.io/Cable-4-Vitruvian/app/, built from master since
+  2026-11-03 so it always matches the Android app (sync rule; web-beta lagged behind) (needs the
   two Pages settings under "Setup by Niels")
 - [ ] Phase 8: beta test round on real devices, then merge to master
 
