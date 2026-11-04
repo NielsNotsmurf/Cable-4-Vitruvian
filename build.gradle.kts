@@ -4,14 +4,14 @@
 // (Dependabot alerts). Build-time only; none of these end up in the APK or the web app.
 buildscript {
     dependencies {
-        classpath(platform("io.netty:netty-bom:4.1.139.Final"))
+        classpath(platform("io.netty:netty-bom:4.2.19.Final"))
         constraints {
             classpath("com.google.guava:guava:33.7.2-jre")
-            classpath("org.bouncycastle:bcprov-jdk18on:1.85")
-            classpath("org.bouncycastle:bcpkix-jdk18on:1.85")
-            classpath("org.bouncycastle:bcutil-jdk18on:1.85")
+            classpath("org.bouncycastle:bcprov-jdk18on:1.86")
+            classpath("org.bouncycastle:bcpkix-jdk18on:1.86")
+            classpath("org.bouncycastle:bcutil-jdk18on:1.86")
             classpath("org.apache.commons:commons-compress:1.28.0")
-            classpath("org.bitbucket.b_c:jose4j:0.9.6")
+            classpath("org.bitbucket.b_c:jose4j:0.9.7")
             classpath("org.jdom:jdom2:2.0.6.1")
         }
     }
