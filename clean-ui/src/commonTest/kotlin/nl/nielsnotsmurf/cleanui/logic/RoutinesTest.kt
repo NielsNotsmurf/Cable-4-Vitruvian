@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.cleanui.logic
 
+import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -10,7 +11,8 @@ class RoutinesTest {
     private val r = Routine(
         id = "r1", name = "Push", exerciseIds = listOf("a", "b"), percent = 60, reps = 10,
         overridesKg = mapOf("me::a" to 30f), progression = Progression.ALL_REPS, stepPercent = 5,
-        lastRaisedAt = 0L, note = "Raised"
+        lastRaisedAt = 0L, note = "Raised", mode = TrainingMode.TUT,
+        perExercise = mapOf("b" to ExerciseSettings(mode = TrainingMode.ECHO, sets = 4, reps = 6))
     )
 
     @Test
@@ -41,5 +43,14 @@ class RoutinesTest {
         assertFalse(Routines.earnsStep(w, Routines.WEEK_MS, emptyList(), 0))
         assertTrue(Routines.earnsStep(w, 2 * Routines.WEEK_MS, emptyList(), 0))
         assertFalse(Routines.earnsStep(w.copy(progression = Progression.OFF), 9 * Routines.WEEK_MS, emptyList(), 0))
+    }
+
+    @Test
+    fun `per exercise targets decide all reps progression`() {
+        assertTrue(Routines.earnsStep(r, 0L, listOf(10, 6), expectedSets = 2, targets = listOf(10, 6)))
+        assertFalse(Routines.earnsStep(r, 0L, listOf(10, 5), expectedSets = 2, targets = listOf(10, 6)))
+        assertEquals(TrainingMode.ECHO, Routines.modeFor(r.mode, r.perExercise, "b"))
+        assertEquals(TrainingMode.TUT, Routines.modeFor(r.mode, r.perExercise, "a"))
+        assertEquals(4, Routines.setsFor(r.sets, r.perExercise, "b"))
     }
 }

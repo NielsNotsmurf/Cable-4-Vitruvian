@@ -42,6 +42,9 @@ interface TrainerGateway {
 
     val connection: Flow<TrainerConnection>
 
+    /** Drops the Bluetooth link to the trainer (the user tapped Disconnect). */
+    fun disconnectTrainer() {}
+
     /**
      * Live heart rate of whoever lifts next (the rotation's performer, else the active profile),
      * or null when that person has no sensor broadcasting.

@@ -7,6 +7,7 @@
   <a href="https://github.com/NielsNotsmurf/Cable-4-Vitruvian/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/NielsNotsmurf/Cable-4-Vitruvian/total?style=flat-square&color=000000"></a>
   <img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-000000?style=flat-square&logo=android&logoColor=white">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-000000?style=flat-square"></a>
+  <a href="https://gofund.me/0a5d05a21"><img alt="Donate on GoFundMe" src="https://img.shields.io/badge/donate-GoFundMe-000000?style=flat-square"></a>
   <a href="https://github.com/sponsors/NielsNotsmurf"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-%E2%99%A5-000000?style=flat-square&logo=githubsponsors&logoColor=white"></a>
   <a href="https://github.com/ImranR98/Obtainium"><img alt="Get it on Obtainium" src="https://img.shields.io/badge/get%20it%20on-Obtainium-000000?style=flat-square"></a>
 </p>
@@ -27,8 +28,8 @@
 > used here to say which hardware the app works with. Use it at your own risk.
 
 > [!TIP]
-> **Goal: Cable on TestFlight and the Play Store.** Once [sponsors](https://github.com/sponsors/NielsNotsmurf)
-> cover about €200 (Apple's developer account at $99 a year for two years, plus Google Play's
+> **Goal: Cable on TestFlight and the Play Store.** Once donations ([GoFundMe](https://gofund.me/0a5d05a21),
+> no account needed, or [GitHub Sponsors](https://github.com/sponsors/NielsNotsmurf)) cover about €200 (Apple's developer account at $99 a year for two years, plus Google Play's
 > one-time $25), Cable moves to TestFlight for iPhone and iPad and to the Play Store.
 > [More in Support](#support).
 
@@ -75,7 +76,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 | % of 1RM loading | Each lifter's 1RM shows next to every exercise and loads default to a % of it. A guided 1RM test fills it in, and one tested lift estimates related ones (bench 25 kg ≈ incline 22.5 kg), marked "estimated" until tested. Ratios: `one_rep_max_map.json` in `clean-ui` assets. |
 | 1RMs you control | Only the 1RM test or your own entry sets a 1RM. Tap one in Analytics to correct it. |
 | Workout builder | Pick muscle groups and a time; the app builds the workout at each lifter's % of 1RM. Swap exercises for other equipment; same-equipment exercises are grouped to save switching. |
-| Your routines | Save your own workouts (from scratch or from a built one), add or remove exercises, loads as % of each lifter's 1RM. Raise every load at once, or let it rise by itself every few weeks or after a session with all reps done. |
+| Your routines | Save your own workouts (from scratch or from a built one), add or remove exercises, loads as % of each lifter's 1RM. Raise every load at once, or let it rise by itself every few weeks or after a session with all reps done. Pick a base training mode, give each exercise its own mode, sets and reps, and reorder exercises (or group them by equipment). |
 | Exercise library | Short descriptions, search by name, muscle or equipment, region and muscle filters, favourites and video demos. |
 | During a workout | End a set early, skip or redo a set, jump to the next exercise, change the % of 1RM for coming sets, or pause and resume later. |
 | Live heart rate | Garmin watch broadcast or chest strap per lifter; shown during sets and in history. |
@@ -163,6 +164,14 @@ works is in [docs/RELEASES.md](docs/RELEASES.md).
 
 ## FAQ
 
+**Where are Echo and Eccentric?**
+Open any cable exercise: the training modes (Old School, Pump, TUT, TUT Beast, Eccentric and Echo)
+are the chips under "Training mode", with one line on what the chosen mode does. In a routine, pick
+the base mode at the top, or tap Edit on one exercise to give it its own mode.
+
+**How do I disconnect from the trainer?**
+Tap the trainer's name at the top of Home or Settings, then Disconnect. Starting a set connects again.
+
 **Is there a free alternative to the official Vitruvian app?**
 Yes, Cable. It is a free, open-source Android app for the Vitruvian V-Form and Trainer+ that
 connects to the trainer directly over Bluetooth, without a subscription or cloud account.
@@ -196,6 +205,10 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-11-11:** Routines: a base training mode plus each exercise's own mode, sets and reps; move
+  exercises up or down, or group them by equipment. Disconnect from the trainer from Home or Settings.
+  Training modes wrap onto the screen, so Eccentric and Echo are always visible. Web: delete all
+  workouts in Settings. Donate on GoFundMe, no GitHub account needed.
 - **2026-10-29:** Cable has its own app ID, so it installs next to Project Phoenix instead of replacing it.
   Coming from an older Cable? Back up, re-add it in Obtainium and restore (see [Install](#install)).
   The web app now shows a message instead of a white page when a browser can't run it (for example
@@ -252,7 +265,9 @@ no imports from `:app`).
 ## Support
 
 Cable is free and stays free. If it saves you a subscription and you want to say thanks,
-you can [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). Stars, bug reports
+you can **[donate on GoFundMe](https://gofund.me/0a5d05a21)** (no account needed) or
+[sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). The app links to GoFundMe
+too, under Settings, "Support Cable". Stars, bug reports
 and sharing the app with other Vitruvian owners help just as much.
 
 **Goal: about €200 for real iPhone and Play Store apps.**
@@ -262,9 +277,9 @@ and sharing the app with other Vitruvian owners help just as much.
 | Apple Developer Program, two years | $99 a year, $198 |
 | Google Play developer account | $25, once |
 
-When sponsors reach it, Cable moves to TestFlight on iPhone and iPad (no Bluefy needed) and to
+When donations reach it, Cable moves to TestFlight on iPhone and iPad (no Bluefy needed) and to
 the Play Store (updates without Obtainium). Until then the web app and the APK stay the way to
-get Cable. Every sponsor goes to these accounts first.
+get Cable. Every donation goes to these accounts first.
 
 ## Credits
 

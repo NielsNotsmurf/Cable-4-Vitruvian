@@ -106,7 +106,7 @@ private fun RoutineRow(routine: Routine, onOpen: () -> Unit, onDelete: () -> Uni
                 Text(routine.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val count = routine.exerciseIds.size
                 Text(
-                    "$count exercise${if (count == 1) "" else "s"} · ${routine.sets}×${routine.reps} · ${routine.percent}% of 1RM",
+                    "$count exercise${if (count == 1) "" else "s"} · ${routine.sets}×${routine.reps} · ${routine.mode.label} · ${routine.percent}% of 1RM",
                     style = MaterialTheme.typography.bodySmall,
                     color = CleanColors.Muted
                 )

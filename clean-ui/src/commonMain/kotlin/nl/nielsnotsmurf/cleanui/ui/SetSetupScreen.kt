@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -65,6 +67,17 @@ import nl.nielsnotsmurf.cleanui.platform.formatDecimal
 
 private val ECCENTRIC_OPTIONS = listOf(0, 50, 75, 100, 125, 150)
 
+/** One line on what a training mode does, under the mode chips. */
+internal fun modeHint(mode: TrainingMode): String = when (mode) {
+    TrainingMode.OLD_SCHOOL -> "Old School: the same load up and down, like free weights."
+    TrainingMode.PUMP -> "Pump: quick, steady reps for a pump."
+    TrainingMode.TUT -> "TUT: slow reps for more time under tension."
+    TrainingMode.TUT_BEAST -> "TUT Beast: TUT, but harder."
+    TrainingMode.ECCENTRIC_ONLY -> "Eccentric: the trainer loads only the lowering part; lift up light, lower slowly."
+    TrainingMode.ECHO -> "Echo: the trainer matches how hard you pull, so the load adapts to you each rep."
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SetSetupScreen(
     state: CleanUiState,
@@ -117,13 +130,15 @@ fun SetSetupScreen(
                 DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp), setup.guide?.thumbnailUrl)
             }
 
-            if (!bodyweight) LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(TrainingMode.entries) { m ->
-                    CleanFilterChip(m.label, selected = setup.mode == m, onClick = { onUpdate { it.copy(mode = m) } })
+            // All modes wrap onto the screen, so Eccentric and Echo are never hidden off the edge.
+            if (!bodyweight) Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel("Training mode")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TrainingMode.entries.forEach { m ->
+                        CleanFilterChip(m.label, selected = setup.mode == m, onClick = { onUpdate { it.copy(mode = m) } })
+                    }
                 }
+                Text(modeHint(setup.mode), style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
             }
 
             if (!bodyweight) Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {

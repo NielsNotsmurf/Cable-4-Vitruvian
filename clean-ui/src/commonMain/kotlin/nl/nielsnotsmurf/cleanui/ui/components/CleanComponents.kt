@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -277,23 +279,39 @@ private fun StepperKey(symbol: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun ConnectionPill(connection: TrainerConnection) {
+fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = null) {
     val (color, text) = when (connection) {
         is TrainerConnection.Connected -> CleanColors.Success to connection.deviceName
         TrainerConnection.Connecting -> CleanColors.Accent to "Connecting"
         is TrainerConnection.Failed -> CleanColors.Danger to "Not connected"
         TrainerConnection.Disconnected -> CleanColors.Muted to "Not connected"
     }
+    val canDisconnect = onDisconnect != null && connection is TrainerConnection.Connected
+    var asking by remember { mutableStateOf(false) }
+    if (asking && canDisconnect) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            containerColor = CleanColors.Background,
+            title = { Text("Disconnect ${(connection as TrainerConnection.Connected).deviceName}?") },
+            text = { Text("The trainer is free again for another phone or browser. Starting a set connects it again.") },
+            confirmButton = {
+                TextButton(onClick = { asking = false; onDisconnect?.invoke() }) { Text("Disconnect", color = CleanColors.Danger) }
+            },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } }
+        )
+    }
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .border(1.dp, CleanColors.Line, RoundedCornerShape(50))
+            .then(if (canDisconnect) Modifier.clickable(role = Role.Button) { asking = true } else Modifier)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Dot(color, 8)
         Text(text, style = MaterialTheme.typography.labelMedium)
+        if (canDisconnect) Text("· Disconnect", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
     }
 }
 

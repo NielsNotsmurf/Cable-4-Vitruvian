@@ -83,7 +83,8 @@ fun TodayScreen(
     onAssessment: () -> Unit,
     onManageProfiles: () -> Unit,
     onRetest: (lifterId: String, exerciseId: String) -> Unit,
-    onRowShown: (ExerciseCard) -> Unit
+    onRowShown: (ExerciseCard) -> Unit,
+    onDisconnect: () -> Unit = {}
 ) {
     val active = state.activeLifters.map { it.id }.toSet()
     // Ticks so the session ends on its own five hours after the last set.
@@ -123,7 +124,7 @@ fun TodayScreen(
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.weight(1f)
                     )
-                    Box(Modifier.tourTarget(TourTargets.CONNECTION)) { ConnectionPill(state.connection) }
+                    Box(Modifier.tourTarget(TourTargets.CONNECTION)) { ConnectionPill(state.connection, onDisconnect) }
                 }
             }
         }
