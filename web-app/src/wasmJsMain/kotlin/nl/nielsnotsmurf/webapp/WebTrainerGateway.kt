@@ -95,6 +95,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     private suspend fun ensureTrainer(): Boolean {
         if (!bluetooth || trainer != null) return true
         connectionState.value = TrainerConnection.Connecting
+        leaving = false
         return try {
             val link = TrainerLink.connect(onReps = { repCounters.value = it }, onGone = ::trainerGone)
             trainer = link
@@ -110,9 +111,29 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
 
     private fun trainerGone() {
         trainer = null
-        connectionState.value = TrainerConnection.Failed("Trainer disconnected")
+        connectionState.value = if (leaving) TrainerConnection.Disconnected else TrainerConnection.Failed("Trainer disconnected")
+        leaving = false
         endSet?.complete(Unit)
     }
+
+    /** Set while the user disconnects on purpose, so it isn't shown as an error. */
+    private var leaving = false
+
+    override fun disconnectTrainer() {
+        val link = trainer ?: run {
+            // Simulated: back to "not connected", the next start opens the picker again.
+            if (bluetooth) connectionState.value = TrainerConnection.Disconnected
+            return
+        }
+        leaving = true
+        trainer = null
+        connectionState.value = TrainerConnection.Disconnected
+        endSet?.complete(Unit)
+        link.disconnect()
+    }
+
+    /** Clears this browser's workout history (Settings, "Delete all workouts"). */
+    fun deleteAllWorkouts() = update { it.copy(history = emptyList()) }
 
     // Heart rate: one strap per lifter, connected for this browser session.
 

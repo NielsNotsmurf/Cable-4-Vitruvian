@@ -85,4 +85,11 @@ class WorkoutBuilderTest {
         assertEquals(1, WorkoutBuilder.add(w, dupes[1]).size)
         assertEquals(2, WorkoutBuilder.add(w, dupes[4]).size)
     }
+
+    @Test
+    fun `moving keeps the rest of a hand-made order`() {
+        val w = listOf(dupes[0], dupes[4])
+        assertEquals(listOf(dupes[4], dupes[0]), WorkoutBuilder.move(w, 1, -1))
+        assertEquals(w, WorkoutBuilder.move(w, 0, -1))
+    }
 }

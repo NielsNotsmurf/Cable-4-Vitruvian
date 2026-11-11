@@ -360,7 +360,8 @@ private fun SignedInApp(
                                 vm.openTest(lifterId, listOf(exerciseId))
                                 nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
                             },
-                            onRowShown = vm::requestEstimates
+                            onRowShown = vm::requestEstimates,
+                            onDisconnect = vm::disconnectTrainer
                         )
                     }
                     composable(
@@ -410,7 +411,8 @@ private fun SignedInApp(
                             onBackup = { nav.navigate(ClassicScreen.SETTINGS.route) },
                             onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
                             onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
-                            onSwitchToClassic = vm::switchToClassic
+                            onSwitchToClassic = vm::switchToClassic,
+                            onDisconnect = vm::disconnectTrainer
                         )
                     }
                     composable(CleanRoutes.PROFILES) {
@@ -463,6 +465,10 @@ private fun SignedInApp(
                                 onSets = vm::setWorkoutSets,
                                 onReps = vm::setWorkoutReps,
                                 onNudgeLoad = vm::nudgeWorkoutLoad,
+                                onMode = vm::setWorkoutMode,
+                                onExerciseSettings = vm::setExerciseSettings,
+                                onMove = vm::moveInWorkout,
+                                onGroupByEquipment = vm::groupWorkoutByEquipment,
                                 onStart = {
                                     vm.startBuiltWorkout {
                                         nav.navigate(CleanRoutes.ACTIVE_WORKOUT) { popUpTo(CleanRoutes.TRAIN) }

@@ -82,7 +82,8 @@ fun SettingsScreen(
     onBackup: () -> Unit,
     onConnectionLogs: () -> Unit,
     onProtocolTester: () -> Unit,
-    onSwitchToClassic: () -> Unit
+    onSwitchToClassic: () -> Unit,
+    onDisconnect: () -> Unit = {}
 ) {
     val me = state.lifters.firstOrNull { it.id == account.signedInId }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
@@ -95,7 +96,7 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Settings", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
-            ConnectionPill(state.connection)
+            ConnectionPill(state.connection, onDisconnect)
         }
 
         if (me != null) {
@@ -241,9 +242,10 @@ fun SettingsScreen(
             })
             LinkRow(
                 "Support Cable",
-                "Cable is free and stays free. Donations via GitHub Sponsors; about €200 brings it to TestFlight (iPhone) and the Play Store",
-                { uriHandler.openUri(SPONSOR_URL) }
+                "Cable is free and stays free. Donate on GoFundMe, no account needed; about €200 brings it to TestFlight (iPhone) and the Play Store",
+                { uriHandler.openUri(DONATE_URL) }
             )
+            LinkRow("Sponsor on GitHub", "If you'd rather give through GitHub Sponsors", { uriHandler.openUri(SPONSOR_URL) })
         }
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
@@ -335,5 +337,8 @@ private fun LinkRow(title: String, subtitle: String, onClick: () -> Unit) {
     }
 }
 
-/** Donations go through GitHub Sponsors only (0% fees). Shown in Settings on the app and the web. */
+/** GitHub Sponsors, for people who use GitHub. Shown in Settings on the app and the web. */
 const val SPONSOR_URL = "https://github.com/sponsors/NielsNotsmurf"
+
+/** GoFundMe, for donations without a GitHub account. The main donation link on the app and the web. */
+const val DONATE_URL = "https://gofund.me/0a5d05a21"

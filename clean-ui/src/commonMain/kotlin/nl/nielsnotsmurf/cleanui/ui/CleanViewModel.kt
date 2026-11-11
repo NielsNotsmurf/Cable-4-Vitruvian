@@ -28,6 +28,7 @@ import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxTest
 import nl.nielsnotsmurf.cleanui.logic.WorkoutBuilder
 import nl.nielsnotsmurf.cleanui.logic.Progression
+import nl.nielsnotsmurf.cleanui.logic.ExerciseSettings
 import nl.nielsnotsmurf.cleanui.logic.Routine
 import nl.nielsnotsmurf.cleanui.logic.Routines
 import nl.nielsnotsmurf.cleanui.model.LivePhase
@@ -122,9 +123,18 @@ data class BuiltWorkout(
     val routineId: String? = null,
     val name: String? = null,
     /** Moves swapped out (by [WorkoutBuilder.sameKey]), so swap doesn't bring them back. */
-    val swappedOut: Set<String> = emptySet()
+    val swappedOut: Set<String> = emptySet(),
+    /** The base training mode; exercises can use another in [perExercise]. */
+    val mode: TrainingMode = TrainingMode.OLD_SCHOOL,
+    /** exerciseId -> its own mode, sets or reps. */
+    val perExercise: Map<String, ExerciseSettings> = emptyMap()
 ) {
     val title: String get() = name ?: groups.joinToString(" & ")
+
+    fun modeFor(exerciseId: String): TrainingMode = Routines.modeFor(mode, perExercise, exerciseId)
+    fun setsFor(exerciseId: String): Int = Routines.setsFor(sets, perExercise, exerciseId)
+    fun repsFor(exerciseId: String): Int = Routines.repsFor(reps, perExercise, exerciseId)
+    val totalSets: Int get() = exercises.sumOf { setsFor(it.id) }
 }
 
 enum class TestPhase { INTRO, ATTEMPT, RESULT }
@@ -442,7 +452,9 @@ class CleanViewModel(
                     percent = next.percent,
                     sets = next.sets,
                     reps = next.reps,
-                    overridesKg = next.overridesKg
+                    overridesKg = next.overridesKg,
+                    mode = next.mode,
+                    perExercise = next.perExercise
                 )
             }
         }
@@ -466,7 +478,28 @@ class CleanViewModel(
     }
 
     fun removeFromWorkout(exercise: ExerciseCard) =
-        editWorkout { w -> w.copy(exercises = w.exercises.filterNot { it.id == exercise.id }) }
+        editWorkout { w -> w.copy(exercises = w.exercises.filterNot { it.id == exercise.id }, perExercise = w.perExercise - exercise.id) }
+
+    /** Moves an exercise one place up (negative [delta]) or down in the open workout. */
+    fun moveInWorkout(exercise: ExerciseCard, delta: Int) = editWorkout { w ->
+        w.copy(exercises = WorkoutBuilder.move(w.exercises, w.exercises.indexOfFirst { it.id == exercise.id }, delta))
+    }
+
+    /** Puts exercises on the same equipment back to back, so the bar or handles change least. */
+    fun groupWorkoutByEquipment() = editWorkout { it.copy(exercises = WorkoutBuilder.orderByEquipment(it.exercises)) }
+
+    /** The base training mode for every exercise that has no mode of its own. */
+    fun setWorkoutMode(mode: TrainingMode) = editWorkout { it.copy(mode = mode) }
+
+    /** One exercise's own mode, sets and reps; values equal to the workout's are cleared. */
+    fun setExerciseSettings(exercise: ExerciseCard, settings: ExerciseSettings) = editWorkout { w ->
+        val clean = ExerciseSettings(
+            mode = settings.mode?.takeIf { it != w.mode },
+            sets = settings.sets?.coerceIn(1, 10)?.takeIf { it != w.sets },
+            reps = settings.reps?.coerceIn(1, 50)?.takeIf { it != w.reps }
+        )
+        w.copy(perExercise = if (clean.isDefault) w.perExercise - exercise.id else w.perExercise + (exercise.id to clean))
+    }
 
     /** Adds an exercise picked from the library to the open workout. */
     fun addToWorkout(exercise: ExerciseCard) {
@@ -482,6 +515,9 @@ class CleanViewModel(
             }
         }
     }
+
+    /** Lets go of the trainer, so it can be used by another phone or browser without a power cycle. */
+    fun disconnectTrainer() = gateway.disconnectTrainer()
 
     // ---- Routines ----
 
@@ -512,7 +548,9 @@ class CleanViewModel(
             reps = routine.reps,
             overridesKg = routine.overridesKg,
             routineId = routine.id,
-            name = routine.name
+            name = routine.name,
+            mode = routine.mode,
+            perExercise = routine.perExercise
         )
         exercises.forEach(::prepareWorkoutExercise)
     }
@@ -545,7 +583,9 @@ class CleanViewModel(
             sets = w.sets,
             reps = w.reps,
             overridesKg = w.overridesKg,
-            lastRaisedAt = now
+            lastRaisedAt = now,
+            mode = w.mode,
+            perExercise = w.perExercise
         )
         updateRoutines { it + routine }
         _workout.update { it?.copy(routineId = routine.id, name = routine.name, error = null) }
@@ -575,7 +615,13 @@ class CleanViewModel(
     }
 
     /** The routine being trained, with the reps of each set done so far. */
-    private data class RoutineRun(val routineId: String, val expectedSets: Int, val reps: Map<String, Int> = emptyMap())
+    private data class RoutineRun(
+        val routineId: String,
+        val expectedSets: Int,
+        /** Exercise name -> its target reps. */
+        val targets: Map<String, Int> = emptyMap(),
+        val reps: Map<String, Int> = emptyMap()
+    )
 
     private var routineRun: RoutineRun? = null
 
@@ -599,7 +645,9 @@ class CleanViewModel(
         val now = nowMillis()
         updateRoutine(run.routineId) { r ->
             val done = r.copy(lastDoneAt = now)
-            if (Routines.earnsStep(done, now, run.reps.values.toList(), run.expectedSets)) {
+            val keys = run.reps.keys.toList()
+            val targets = keys.map { k -> run.targets[k.substringBefore('|')] ?: r.reps }
+            if (Routines.earnsStep(done, now, keys.map { run.reps.getValue(it) }, run.expectedSets, targets)) {
                 val up = Routines.raise(done, 1, now)
                 up.copy(note = "Raised to ${up.percent}% on ${formatDate(now, "d MMM")}")
             } else done
@@ -651,11 +699,11 @@ class CleanViewModel(
             _workout.update { it?.copy(error = if (lifters.isEmpty()) "Choose who's training first." else "Add an exercise first.") }
             return
         }
-        val sets = List(w.sets) { SetSpec(kind = defaultKind, reps = w.reps, restSeconds = WorkoutBuilder.REST_SECONDS) }
         val plans = w.exercises.map { ex ->
+            val sets = List(w.setsFor(ex.id)) { SetSpec(kind = defaultKind, reps = w.repsFor(ex.id), restSeconds = WorkoutBuilder.REST_SECONDS) }
             SetPlan(
                 exercise = ex,
-                mode = TrainingMode.OLD_SCHOOL,
+                mode = w.modeFor(ex.id),
                 percentOfOneRepMax = w.percent,
                 sets = sets,
                 loads = lifters.map { l -> LifterLoad(l.id, List(sets.size) { workoutLoad(l.id, ex, w) }) },
@@ -668,7 +716,9 @@ class CleanViewModel(
             plans = plans,
             onStarted = {
                 _workout.update { it?.copy(isStarting = false) }
-                routineRun = w.routineId?.let { RoutineRun(it, w.exercises.size * w.sets * lifters.size) }
+                routineRun = w.routineId?.let { id ->
+                    RoutineRun(id, w.totalSets * lifters.size, w.exercises.associate { it.name to w.repsFor(it.id) })
+                }
                 startedLive(plans)
                 onStarted()
             },

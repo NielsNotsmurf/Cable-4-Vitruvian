@@ -1,5 +1,6 @@
 package nl.nielsnotsmurf.webapp
 
+import nl.nielsnotsmurf.cleanui.ui.DONATE_URL
 import nl.nielsnotsmurf.cleanui.ui.SPONSOR_URL
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -182,8 +183,9 @@ private fun Steps(vararg steps: String) {
  * Android app saves to Download/Cable instead), and the install guide again.
  */
 @Composable
-fun WebSettings() {
+fun WebSettings(gateway: WebTrainerGateway) {
     val scope = rememberCoroutineScope()
+    var confirmDelete by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf<String?>(null) }
     Column(
@@ -217,6 +219,17 @@ fun WebSettings() {
                 PrimaryButton("Yes, restore it", accent = true, onClick = { WebBackup.restore(pending); reloadPage() })
                 PrimaryButton("Cancel", onClick = { confirmRestore = null })
             }
+            if (!confirmDelete) {
+                PrimaryButton("Delete all workouts", onClick = { confirmDelete = true; message = null })
+            } else {
+                Text("Delete every workout in this browser? Profiles, 1RMs and routines stay.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                PrimaryButton("Yes, delete them", accent = true, onClick = {
+                    gateway.deleteAllWorkouts()
+                    confirmDelete = false
+                    message = "All workouts deleted."
+                })
+                PrimaryButton("Cancel", onClick = { confirmDelete = false })
+            }
             message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
             SectionLabel("Usage counts", Modifier.padding(top = 8.dp))
             var counting by remember { mutableStateOf(WebStats.enabled) }
@@ -247,10 +260,11 @@ fun WebSettings() {
 fun AppStoreGoal() {
     SectionLabel("Toward iPhone and Play Store apps", Modifier.padding(top = 8.dp))
     Text(
-        "Cable is free and stays free. Once sponsors cover about €200 (Apple's developer account at \$99 a year " +
+        "Cable is free and stays free. Once donations cover about €200 (Apple's developer account at \$99 a year " +
             "for two years, and Google Play's one-time \$25), Cable moves to TestFlight on iPhone and iPad and to the Play Store.",
         style = MaterialTheme.typography.bodyMedium
     )
+    PrimaryButton("Donate on GoFundMe", accent = true, onClick = { openUrl(DONATE_URL) })
     PrimaryButton("Sponsor on GitHub", onClick = { openUrl(SPONSOR_URL) })
 }
 

@@ -109,6 +109,8 @@ class CleanUiBridge(
         if (chosen.size > 1) vm.setWorkoutParticipants(chosen) else vm.clearWorkoutParticipants()
     }
 
+    override fun disconnectTrainer() = vm.disconnect()
+
     override val connection: Flow<TrainerConnection> = vm.connectionState.map {
         when (it) {
             is ConnectionState.Connected -> TrainerConnection.Connected(it.deviceName)

@@ -75,9 +75,22 @@ object WorkoutBuilder {
     fun isIn(exercise: ExerciseCard, workout: List<ExerciseCard>): Boolean =
         workout.any { it.id == exercise.id || sameKey(it) == sameKey(exercise) }
 
-    /** Adds [exercise] by hand, unless it is already there; keeps equipment order. */
-    fun add(workout: List<ExerciseCard>, exercise: ExerciseCard): List<ExerciseCard> =
-        if (isIn(exercise, workout)) workout else orderByEquipment(workout + exercise)
+    /**
+     * Adds [exercise] by hand, unless it is already there: right after the last exercise on the
+     * same equipment, else at the end. The rest keeps the order the user gave it.
+     */
+    fun add(workout: List<ExerciseCard>, exercise: ExerciseCard): List<ExerciseCard> {
+        if (isIn(exercise, workout)) return workout
+        val at = workout.indexOfLast { it.equipment.equals(exercise.equipment, ignoreCase = true) }
+        return if (at < 0) workout + exercise else workout.toMutableList().apply { add(at + 1, exercise) }
+    }
+
+    /** Moves the exercise at [index] up (negative [delta]) or down; out of range does nothing. */
+    fun move(workout: List<ExerciseCard>, index: Int, delta: Int): List<ExerciseCard> {
+        val to = index + delta
+        if (index !in workout.indices || to !in workout.indices) return workout
+        return workout.toMutableList().apply { add(to, removeAt(index)) }
+    }
 
     /**
      * Same equipment back to back, in order of first use, so the bar or handles only
@@ -115,7 +128,7 @@ object WorkoutBuilder {
         ).firstOrNull()
     }
 
-    /** Replaces [old] with [new] and puts the workout back in equipment order. */
+    /** Replaces [old] with [new] in the same place, so a hand-made order stays. */
     fun swap(workout: List<ExerciseCard>, old: ExerciseCard, new: ExerciseCard): List<ExerciseCard> =
-        orderByEquipment(workout.map { if (it.id == old.id) new else it })
+        workout.map { if (it.id == old.id) new else it }
 }
