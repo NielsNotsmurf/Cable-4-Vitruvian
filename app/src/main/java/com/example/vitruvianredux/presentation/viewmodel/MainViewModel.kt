@@ -911,7 +911,11 @@ class MainViewModel @Inject constructor(
                     Timber.v("✓ AMRAP set: checkAutoStop will be called (isAMRAP=true)")
                 }
                 checkAutoStop(metric)
+            } else if (repCounter.getRepCount().isWarmupComplete) {
+                // Normal rep sets: safety stop after 5 s without movement (no bottom/danger-zone rule).
+                checkStallStop(metric)
             } else {
+                stallDetectionStartTime = null
                 resetAutoStopTimer()
             }
         } else {
@@ -1141,6 +1145,29 @@ class MainViewModel @Inject constructor(
             }
             resetAutoStopTimer()
         }
+    }
+
+    /** Ends a normal set when the handles stand still for [STALL_DURATION_SECONDS] while in use. */
+    private fun checkStallStop(metric: WorkoutMetric) {
+        val maxVelocity = maxOf(kotlin.math.abs(metric.velocityA), kotlin.math.abs(metric.velocityB))
+        val inUse = maxOf(metric.positionA, metric.positionB) > STALL_MIN_POSITION || repCounter.hasMeaningfulRange()
+        if (maxVelocity < STALL_VELOCITY_LOW && inUse && stallDetectionStartTime == null) {
+            stallDetectionStartTime = System.currentTimeMillis()
+        } else if (maxVelocity > STALL_VELOCITY_HIGH) {
+            stallDetectionStartTime = null
+        }
+        val start = stallDetectionStartTime ?: return resetAutoStopTimer()
+        val elapsed = (System.currentTimeMillis() - start) / 1000f
+        if (elapsed >= STALL_DURATION_SECONDS) {
+            stallDetectionStartTime = null
+            requestAutoStop()
+            return
+        }
+        _autoStopState.value = AutoStopUiState(
+            isActive = true,
+            progress = (elapsed / STALL_DURATION_SECONDS).coerceIn(0f, 1f),
+            secondsRemaining = ceil(STALL_DURATION_SECONDS - elapsed).toInt()
+        )
     }
 
     private fun resetAutoStopTimer() {

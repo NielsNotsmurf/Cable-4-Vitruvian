@@ -207,7 +207,10 @@ fun LiveWorkoutScreen(
                             GhostButton("‹ Back a set", onClick = { onMoveSet(-1) }, modifier = Modifier.weight(1f))
                             GhostButton("Skip a set ›", onClick = { onMoveSet(1) }, modifier = Modifier.weight(1f))
                         }
-                        if (!live.isLastExercise) GhostButton("Skip to next exercise", onClick = { onMoveExercise(1) })
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GhostButton("‹ Exercise", onClick = { onMoveExercise(-1) }, modifier = Modifier.weight(1f))
+                            GhostButton("Exercise ›", onClick = { onMoveExercise(1) }, modifier = Modifier.weight(1f))
+                        }
                     }
                     PrimaryButton("Start now", onClick = onSkipRest)
                 }
