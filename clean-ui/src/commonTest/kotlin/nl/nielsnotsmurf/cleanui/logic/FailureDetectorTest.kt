@@ -42,4 +42,16 @@ class FailureDetectorTest {
         repeat(30) { d.update(100f, t); t += 100 }
         assertFalse(d.shouldStop)
     }
+
+    @Test
+    fun `normal sets ignore a short pause at the bottom but stop after five still seconds`() {
+        val d = FailureDetector(stopAtBottom = false)
+        var t = 0L
+        for (p in 0..40) { d.update(p * 10f, t); t += 50 }
+        for (p in 40 downTo 0) { d.update(p * 10f, t); t += 50 }
+        repeat(40) { d.update(0f, t); t += 100 }
+        assertFalse(d.shouldStop)
+        repeat(15) { d.update(0f, t); t += 100 }
+        assertTrue(d.shouldStop)
+    }
 }

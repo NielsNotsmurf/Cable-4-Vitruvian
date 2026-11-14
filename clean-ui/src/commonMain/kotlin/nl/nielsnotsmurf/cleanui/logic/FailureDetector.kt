@@ -12,11 +12,14 @@ import kotlin.math.ceil
  *   bench press stuck halfway or resting on the chest. Clear movement (> 10 mm/s) resets it.
  * - Done: the handles are back at the bottom of the learned range for 2.5 s.
  *
+ * With [stopAtBottom] false (normal rep sets) only the 5 s no-movement rule applies, as a
+ * safety stop; resting at the bottom between reps doesn't end the set.
+ *
  * Feed it every sample; [update] returns the seconds left before the stop (null when no
  * countdown runs) and [shouldStop] turns true once the set must end. The caller then sends the
  * trainer's stop/reset so the cables let go of the load.
  */
-class FailureDetector {
+class FailureDetector(private val stopAtBottom: Boolean = true) {
     private var minPos = Float.MAX_VALUE
     private var maxPos = -Float.MAX_VALUE
     private var lastPos: Float? = null
@@ -50,7 +53,7 @@ class FailureDetector {
         else if (velocity > STALL_HIGH) stallSince = null
 
         val atBottom = position <= minPos + range * 0.05f && position - minPos < 10f
-        restSince = if (atBottom) restSince ?: nowMs else null
+        restSince = if (atBottom && stopAtBottom) restSince ?: nowMs else null
 
         val stallLeft = stallSince?.let { STALL_SECONDS - (nowMs - it) / 1000f }
         val restLeft = restSince?.let { REST_SECONDS - (nowMs - it) / 1000f }

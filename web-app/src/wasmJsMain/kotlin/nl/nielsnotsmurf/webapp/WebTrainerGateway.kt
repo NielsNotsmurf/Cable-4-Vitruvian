@@ -273,49 +273,86 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         }
     }
 
+    /**
+     * The workout as a cursor over (exercise, turn), where a turn is one lifter's set. After each
+     * set comes the summary (Continue), then rest; during rest [moveSet] and [moveExercise] move
+     * the cursor back or forward, like the app. Every finished set is saved straight away, so
+     * ending or leaving the workout keeps it.
+     */
     private fun run(plans: List<SetPlan>, attempt: Boolean) {
         job?.cancel()
         val lifters = data.value.lifters.associateBy { it.id }
+        fun order(p: Int) = plans[p].loads.map { it.lifterId }.ifEmpty { data.value.active }.ifEmpty { listOf("") }
+        fun turns(p: Int) = plans[p].sets.size * order(p).size
+        fun baseFor(p: Int, turn: Int): LiveWorkout {
+            val plan = plans[p]
+            val ord = order(p)
+            val s = (turn / ord.size).coerceIn(0, plan.sets.lastIndex)
+            val lifterId = ord[turn % ord.size]
+            val lifter = lifters[lifterId]
+            val spec = plan.sets[s]
+            val kg = plan.loads.firstOrNull { it.lifterId == lifterId }?.setWeightsKg?.let { it.getOrNull(s) ?: it.lastOrNull() } ?: 0f
+            return LiveWorkout(
+                phase = LivePhase.COUNTDOWN, exerciseName = plan.exercise.name,
+                targetReps = if (spec.kind == SetKind.AMRAP) null else spec.reps,
+                loadKg = kg, liveLoadKg = kg, setNumber = s + 1, totalSets = plan.sets.size,
+                isLastExercise = p == plans.lastIndex, lifterId = lifterId,
+                lifterName = lifter?.name, lifterColorArgb = lifter?.color,
+                nextName = plans.getOrNull(p + 1)?.exercise?.name.orEmpty()
+            )
+        }
+        navigate = { p, turn, delta, byExercise ->
+            if (byExercise) {
+                (p + delta).coerceIn(0, plans.lastIndex) to 0
+            } else {
+                var e = p
+                var t = turn + delta
+                while (t < 0 && e > 0) { e--; t += turns(e) }
+                while (e < plans.lastIndex && t >= turns(e)) { t -= turns(e); e++ }
+                e to t.coerceIn(0, turns(e)) // turns(last) = past the end: the rest leads to the finish
+            }
+        }
         job = scope.launch {
             val groupId = randomId()
-            plans.forEachIndexed { p, plan ->
-                val started = nowMillis()
-                val done = mutableMapOf<String, Pair<Int, Float>>() // lifter -> reps, top kg
-                val order = plan.loads.map { it.lifterId }.ifEmpty { data.value.active }
-                plan.sets.forEachIndexed { s, spec ->
-                    order.forEachIndexed { o, lifterId ->
-                        val lifter = lifters[lifterId]
-                        val kg = plan.loads.firstOrNull { it.lifterId == lifterId }?.setWeightsKg?.let { it.getOrNull(s) ?: it.lastOrNull() } ?: 0f
-                        val base = LiveWorkout(
-                            phase = LivePhase.COUNTDOWN, exerciseName = plan.exercise.name,
-                            targetReps = if (spec.kind == SetKind.AMRAP) null else spec.reps,
-                            loadKg = kg, liveLoadKg = kg, setNumber = s + 1, totalSets = plan.sets.size,
-                            isLastExercise = p == plans.lastIndex, lifterId = lifterId,
-                            lifterName = lifter?.name, lifterColorArgb = lifter?.color,
-                            nextName = plans.getOrNull(p + 1)?.exercise?.name.orEmpty()
-                        )
-                        for (c in 3 downTo 1) { live.value = base.copy(countdown = c); delay(1000) }
-                        val reps = trainer?.let { lift(it, base, spec, plan) } ?: simulate(base, spec)
-                        val prev = done[lifterId]
-                        done[lifterId] = ((prev?.first ?: 0) + reps) to maxOf(prev?.second ?: 0f, live.value?.loadKg ?: kg)
-                        if (attempt) { live.value = null; return@launch }
-                        val lastSet = s == plan.sets.lastIndex && o == order.lastIndex
-                        if (!lastSet) {
-                            live.value = live.value?.copy(phase = LivePhase.SET_DONE, doneReps = reps)
-                            proceed = CompletableDeferred<Unit>().also { it.await() }
-                            rest(base, spec.restSeconds)
-                        }
-                    }
-                }
-                done.forEach { (lifterId, result) ->
-                    record(groupId, lifterId, plan, result.first, result.second, nowMillis() - started)
-                }
-                if (p < plans.lastIndex) rest(live.value ?: return@forEachIndexed, plan.sets.last().restSeconds)
+            val started = mutableMapOf<Int, Long>()
+            val done = mutableMapOf<Pair<Int, String>, Pair<Int, Float>>() // (exercise, lifter) -> reps, top kg
+            var p = 0
+            var turn = 0
+            while (p < plans.size && turn < turns(p)) {
+                val plan = plans[p]
+                val spec = plan.sets[turn / order(p).size]
+                val base = baseFor(p, turn)
+                val lifterId = base.lifterId.orEmpty()
+                for (c in 3 downTo 1) { live.value = base.copy(countdown = c); delay(1000) }
+                val begun = started.getOrPut(p) { nowMillis() }
+                val reps = trainer?.let { lift(it, base, spec, plan) } ?: simulate(base, spec)
+                val prev = done[p to lifterId]
+                val result = ((prev?.first ?: 0) + reps) to maxOf(prev?.second ?: 0f, live.value?.loadKg ?: base.loadKg)
+                done[p to lifterId] = result
+                if (lifterId.isNotEmpty()) record(groupId, lifterId, plan, result.first, result.second, nowMillis() - begun)
+                if (attempt) { live.value = null; return@launch }
+                if (p == plans.lastIndex && turn == turns(p) - 1) break
+                // Assign before waiting: Continue completes this exact deferred.
+                val go = CompletableDeferred<Unit>()
+                proceed = go
+                live.value = live.value?.copy(phase = LivePhase.SET_DONE, doneReps = reps)
+                go.await()
+                cursor = navigate?.invoke(p, turn, 1, false) ?: (p to turn + 1)
+                rest(spec.restSeconds) { c -> if (c.first < plans.size && c.second < turns(c.first)) baseFor(c.first, c.second) else base }
+                val next = cursor ?: break
+                p = next.first
+                turn = next.second
             }
+            cursor = null
+            navigate = null
             live.value = live.value?.copy(phase = LivePhase.FINISHED)
             if (!attempt) WebStats.event("workout/finished")
         }
     }
+
+    /** The set coming after the rest, moved by [moveSet] / [moveExercise]. */
+    private var cursor: Pair<Int, Int>? = null
+    private var navigate: ((p: Int, turn: Int, delta: Int, byExercise: Boolean) -> Pair<Int, Int>)? = null
 
     /**
      * One set on the trainer, as the app runs it: reset, the mode's frame, then poll the cables
@@ -341,8 +378,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         var lastAt = 0L
         var powerSum = 0f
         var powerCount = 0
-        // AMRAP: ends the set on failure (stuck) or handles down, armed only after a full rep range.
-        val failure = FailureDetector()
+        // AMRAP: ends the set on failure (stuck) or handles down. Every set: stops after 5 s without
+        // movement, for safety. Armed only after the warm-up and a full rep range.
+        val failure = FailureDetector(stopAtBottom = amrap)
         var autoStop: Int? = null
         suspend fun begin() {
             repCounters.value = null
@@ -392,7 +430,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                     }
                     last = sample
                     lastAt = now
-                    if (amrap && warmup >= warmupTarget) autoStop = failure.update(maxOf(sample.positionA, sample.positionB), now)
+                    if (warmup >= warmupTarget) autoStop = failure.update(maxOf(sample.positionA, sample.positionB), now)
                 }
                 live.value = shown.copy(
                     reps = working, doneReps = working, warmupReps = warmup,
@@ -434,15 +472,27 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         return reps
     }
 
-    private suspend fun rest(base: LiveWorkout, seconds: Int) {
-        if (seconds <= 0) return
+    /** Rest before the set at [cursor]; the screen shows that set, also after moving it. */
+    private suspend fun rest(seconds: Int, upcoming: (Pair<Int, Int>) -> LiveWorkout) {
         val s = CompletableDeferred<Unit>().also { skip = it }
-        for (left in seconds downTo 1) {
-            if (s.isCompleted) break
-            live.value = base.copy(phase = LivePhase.RESTING, restSeconds = left)
-            delay(1000)
+        var left = seconds.coerceAtLeast(1)
+        while (left > 0 && !s.isCompleted) {
+            val c = cursor ?: return
+            live.value = upcoming(c).copy(phase = LivePhase.RESTING, restSeconds = left)
+            // Tick in short steps so a moved set shows at once.
+            repeat(10) { if (!s.isCompleted && cursor == c) delay(100) }
+            if (cursor == c) left--
         }
     }
+
+    private fun move(delta: Int, byExercise: Boolean) {
+        val c = cursor ?: return
+        if (live.value?.phase != LivePhase.RESTING) return
+        cursor = navigate?.invoke(c.first, c.second, delta, byExercise) ?: return
+    }
+
+    override fun moveSet(delta: Int) = move(delta, byExercise = false)
+    override fun moveExercise(delta: Int) = move(delta, byExercise = true)
 
     private fun remember(plan: SetPlan) = update { d ->
         val saved = SavedPlan.from(plan)
@@ -452,12 +502,15 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         )
     }
 
+    /** Saves the exercise so far for this lifter, replacing its entry from an earlier set of this workout. */
     private fun record(groupId: String, lifterId: String, plan: SetPlan, reps: Int, topKg: Float, durationMs: Long) {
-        val best = data.value.history.filter { it.lifterId == lifterId && it.exerciseId == plan.exercise.id }.mapNotNull { it.topKg }.maxOrNull()
-        if (best != null && topKg > best) records.tryEmit("${plan.exercise.name} · ${topKg} kg")
+        val same = { h: SavedHistory -> h.groupId == groupId && h.lifterId == lifterId && h.exerciseId == plan.exercise.id }
+        val existing = data.value.history.firstOrNull(same)
+        val best = data.value.history.filter { it.lifterId == lifterId && it.exerciseId == plan.exercise.id && !same(it) }.mapNotNull { it.topKg }.maxOrNull()
+        if (best != null && topKg > best && topKg > (existing?.topKg ?: 0f)) records.tryEmit("${plan.exercise.name} · ${topKg} kg")
         update {
-            it.copy(history = it.history + SavedHistory(
-                randomId(), lifterId, plan.exercise.id, plan.exercise.name, nowMillis(), plan.mode.label,
+            it.copy(history = it.history.filterNot(same) + SavedHistory(
+                existing?.id ?: randomId(), lifterId, plan.exercise.id, plan.exercise.name, existing?.timestamp ?: nowMillis(), plan.mode.label,
                 plan.sets.size, reps, topKg.takeIf { kg -> kg > 0f }, durationMs, groupId
             ))
         }
@@ -466,9 +519,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     override fun skipRest() { skip?.complete(Unit) }
     override fun adjustLiveWeight(perCableKg: Float) { live.value = live.value?.copy(loadKg = perCableKg, liveLoadKg = perCableKg) }
     override fun proceedFromSummary() { proceed?.complete(Unit) }
-    override fun stopWorkout() { job?.cancel(); live.value = null }
+    override fun stopWorkout() { job?.cancel(); cursor = null; live.value = null }
     override fun advanceToNextExercise() { skip?.complete(Unit) }
-    override fun resetForNewWorkout() { job?.cancel(); live.value = null }
+    override fun resetForNewWorkout() { job?.cancel(); cursor = null; live.value = null }
     override fun finishSetEarly() { endSet?.complete(Unit) }
     override fun restartSet() { restart = true }
     private var restart = false
