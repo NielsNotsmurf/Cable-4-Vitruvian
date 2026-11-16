@@ -466,6 +466,7 @@ private fun SignedInApp(
                                 onReps = vm::setWorkoutReps,
                                 onNudgeLoad = vm::nudgeWorkoutLoad,
                                 onMode = vm::setWorkoutMode,
+                                onAmrap = vm::setWorkoutAmrap,
                                 onExerciseSettings = vm::setExerciseSettings,
                                 onMove = vm::moveInWorkout,
                                 onGroupByEquipment = vm::groupWorkoutByEquipment,

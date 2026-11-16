@@ -72,7 +72,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 
 | Feature | What it does |
 | --- | --- |
-| All trainer modes | Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo. Per-set reps, weight, rest, AMRAP and timed sets. |
+| All trainer modes | Old School, Pump, TUT, TUT Beast, Eccentric Only and Echo. Per-set reps, weight, rest, AMRAP and timed sets. AMRAP is also a choice in every training-mode menu (single exercise, routine and per exercise), on Android and web. |
 | % of 1RM loading | Each lifter's 1RM shows next to every exercise and loads default to a % of it. A guided 1RM test fills it in, and one tested lift estimates related ones (bench 25 kg ≈ incline 22.5 kg), marked "estimated" until tested. Ratios: `one_rep_max_map.json` in `clean-ui` assets. |
 | 1RMs you control | Only the 1RM test or your own entry sets a 1RM. Tap one in Analytics to correct it. |
 | Workout builder | Pick muscle groups and a time; the app builds the workout at each lifter's % of 1RM. Swap exercises for other equipment; same-equipment exercises are grouped to save switching. |
@@ -205,6 +205,8 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-11-16:** AMRAP mode is back as a choice in the training-mode menu, for a single exercise,
+  a whole routine or one exercise in it. Every set then goes to failure and stops by itself. Android and web.
 - **2026-11-11:** Routines: a base training mode plus each exercise's own mode, sets and reps; move
   exercises up or down, or group them by equipment. Disconnect from the trainer from Home or Settings.
   Training modes wrap onto the screen, so Eccentric and Echo are always visible. Web: delete all

@@ -12,13 +12,20 @@ class RoutinesTest {
         id = "r1", name = "Push", exerciseIds = listOf("a", "b"), percent = 60, reps = 10,
         overridesKg = mapOf("me::a" to 30f), progression = Progression.ALL_REPS, stepPercent = 5,
         lastRaisedAt = 0L, note = "Raised", mode = TrainingMode.TUT,
-        perExercise = mapOf("b" to ExerciseSettings(mode = TrainingMode.ECHO, sets = 4, reps = 6))
+        perExercise = mapOf("b" to ExerciseSettings(mode = TrainingMode.ECHO, sets = 4, reps = 6, amrap = false)),
+        amrap = true
     )
 
     @Test
     fun `round trips through json`() {
         assertEquals(listOf(r), Routines.decode(Routines.encode(listOf(r))))
         assertEquals(emptyList(), Routines.decode("not json"))
+    }
+
+    @Test
+    fun `amrap follows the routine unless the exercise has its own`() {
+        assertTrue(Routines.amrapFor(r.amrap, r.perExercise, "a"))
+        assertFalse(Routines.amrapFor(r.amrap, r.perExercise, "b"))
     }
 
     @Test
