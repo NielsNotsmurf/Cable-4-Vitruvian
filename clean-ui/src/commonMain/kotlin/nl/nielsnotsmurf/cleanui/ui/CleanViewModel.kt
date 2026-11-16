@@ -127,13 +127,16 @@ data class BuiltWorkout(
     /** The base training mode; exercises can use another in [perExercise]. */
     val mode: TrainingMode = TrainingMode.OLD_SCHOOL,
     /** exerciseId -> its own mode, sets or reps. */
-    val perExercise: Map<String, ExerciseSettings> = emptyMap()
+    val perExercise: Map<String, ExerciseSettings> = emptyMap(),
+    /** AMRAP on top of the mode: every set goes to failure. */
+    val amrap: Boolean = false
 ) {
     val title: String get() = name ?: groups.joinToString(" & ")
 
     fun modeFor(exerciseId: String): TrainingMode = Routines.modeFor(mode, perExercise, exerciseId)
     fun setsFor(exerciseId: String): Int = Routines.setsFor(sets, perExercise, exerciseId)
     fun repsFor(exerciseId: String): Int = Routines.repsFor(reps, perExercise, exerciseId)
+    fun amrapFor(exerciseId: String): Boolean = Routines.amrapFor(amrap, perExercise, exerciseId)
     val totalSets: Int get() = exercises.sumOf { setsFor(it.id) }
 }
 
@@ -432,7 +435,7 @@ class CleanViewModel(
         val s = state.value
         val count = WorkoutBuilder.exerciseCount(minutes, s.activeLifters.size, groups.size, defaultSets)
         val exercises = WorkoutBuilder.build(s.exercises, groups, count, ::builderScore)
-        _workout.value = BuiltWorkout(groups, minutes, exercises, percent = defaultPercent, sets = defaultSets, reps = defaultReps)
+        _workout.value = BuiltWorkout(groups, minutes, exercises, percent = defaultPercent, sets = defaultSets, reps = defaultReps, amrap = settings.value.defaultAmrap)
         exercises.forEach(::prepareWorkoutExercise)
     }
 
@@ -454,7 +457,8 @@ class CleanViewModel(
                     reps = next.reps,
                     overridesKg = next.overridesKg,
                     mode = next.mode,
-                    perExercise = next.perExercise
+                    perExercise = next.perExercise,
+                    amrap = next.amrap
                 )
             }
         }
@@ -491,12 +495,16 @@ class CleanViewModel(
     /** The base training mode for every exercise that has no mode of its own. */
     fun setWorkoutMode(mode: TrainingMode) = editWorkout { it.copy(mode = mode) }
 
+    /** AMRAP for every exercise that has no AMRAP choice of its own. */
+    fun setWorkoutAmrap(on: Boolean) = editWorkout { it.copy(amrap = on) }
+
     /** One exercise's own mode, sets and reps; values equal to the workout's are cleared. */
     fun setExerciseSettings(exercise: ExerciseCard, settings: ExerciseSettings) = editWorkout { w ->
         val clean = ExerciseSettings(
             mode = settings.mode?.takeIf { it != w.mode },
             sets = settings.sets?.coerceIn(1, 10)?.takeIf { it != w.sets },
-            reps = settings.reps?.coerceIn(1, 50)?.takeIf { it != w.reps }
+            reps = settings.reps?.coerceIn(1, 50)?.takeIf { it != w.reps },
+            amrap = settings.amrap?.takeIf { it != w.amrap }
         )
         w.copy(perExercise = if (clean.isDefault) w.perExercise - exercise.id else w.perExercise + (exercise.id to clean))
     }
@@ -550,7 +558,8 @@ class CleanViewModel(
             routineId = routine.id,
             name = routine.name,
             mode = routine.mode,
-            perExercise = routine.perExercise
+            perExercise = routine.perExercise,
+            amrap = routine.amrap
         )
         exercises.forEach(::prepareWorkoutExercise)
     }
@@ -585,7 +594,8 @@ class CleanViewModel(
             overridesKg = w.overridesKg,
             lastRaisedAt = now,
             mode = w.mode,
-            perExercise = w.perExercise
+            perExercise = w.perExercise,
+            amrap = w.amrap
         )
         updateRoutines { it + routine }
         _workout.update { it?.copy(routineId = routine.id, name = routine.name, error = null) }
@@ -700,7 +710,7 @@ class CleanViewModel(
             return
         }
         val plans = w.exercises.map { ex ->
-            val sets = List(w.setsFor(ex.id)) { SetSpec(kind = defaultKind, reps = w.repsFor(ex.id), restSeconds = WorkoutBuilder.REST_SECONDS) }
+            val sets = List(w.setsFor(ex.id)) { SetSpec(kind = if (w.amrapFor(ex.id)) SetKind.AMRAP else SetKind.REPS, reps = w.repsFor(ex.id), restSeconds = WorkoutBuilder.REST_SECONDS) }
             SetPlan(
                 exercise = ex,
                 mode = w.modeFor(ex.id),

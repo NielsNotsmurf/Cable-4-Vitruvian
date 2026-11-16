@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.float
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -33,9 +34,11 @@ enum class Progression {
 data class ExerciseSettings(
     val mode: TrainingMode? = null,
     val sets: Int? = null,
-    val reps: Int? = null
+    val reps: Int? = null,
+    /** AMRAP: every set goes to failure. */
+    val amrap: Boolean? = null
 ) {
-    val isDefault: Boolean get() = mode == null && sets == null && reps == null
+    val isDefault: Boolean get() = mode == null && sets == null && reps == null && amrap == null
 }
 
 /**
@@ -63,7 +66,9 @@ data class Routine(
     /** The base training mode; each exercise can use another one in [perExercise]. */
     val mode: TrainingMode = TrainingMode.OLD_SCHOOL,
     /** exerciseId -> its own mode, sets or reps. */
-    val perExercise: Map<String, ExerciseSettings> = emptyMap()
+    val perExercise: Map<String, ExerciseSettings> = emptyMap(),
+    /** AMRAP on top of the mode: every set goes to failure and stops by itself. */
+    val amrap: Boolean = false
 )
 
 object Routines {
@@ -122,6 +127,9 @@ object Routines {
     fun repsFor(base: Int, perExercise: Map<String, ExerciseSettings>, exerciseId: String): Int =
         perExercise[exerciseId]?.reps ?: base
 
+    fun amrapFor(base: Boolean, perExercise: Map<String, ExerciseSettings>, exerciseId: String): Boolean =
+        perExercise[exerciseId]?.amrap ?: base
+
     /** One line on how the routine progresses, for the list and the plan screen. */
     fun describe(routine: Routine): String = when (routine.progression) {
         Progression.OFF -> "Progression off"
@@ -146,11 +154,13 @@ object Routines {
                 r.lastDoneAt?.let { put("doneAt", it) }
                 r.note?.let { put("note", it) }
                 put("mode", r.mode.name)
+                put("amrap", r.amrap)
                 put("perExercise", JsonObject(r.perExercise.filterValues { !it.isDefault }.mapValues { (_, x) ->
                     buildJsonObject {
                         x.mode?.let { put("mode", it.name) }
                         x.sets?.let { put("sets", it) }
                         x.reps?.let { put("reps", it) }
+                        x.amrap?.let { put("amrap", it) }
                     }
                 }))
             })
@@ -180,12 +190,14 @@ object Routines {
                     lastDoneAt = o["doneAt"]?.jsonPrimitive?.long,
                     note = str("note"),
                     mode = modeNamed(str("mode")) ?: TrainingMode.OLD_SCHOOL,
+                    amrap = o["amrap"]?.jsonPrimitive?.booleanOrNull ?: false,
                     perExercise = o["perExercise"]?.jsonObject?.mapValues { (_, v) ->
                         val x = v.jsonObject
                         ExerciseSettings(
                             mode = modeNamed(x["mode"]?.jsonPrimitive?.content),
                             sets = x["sets"]?.jsonPrimitive?.int,
-                            reps = x["reps"]?.jsonPrimitive?.int
+                            reps = x["reps"]?.jsonPrimitive?.int,
+                            amrap = x["amrap"]?.jsonPrimitive?.booleanOrNull
                         )
                     }.orEmpty()
                 )

@@ -84,6 +84,7 @@ fun WorkoutPlanScreen(
     onRename: (String) -> Unit,
     onProgression: (Progression, step: Int, weeks: Int) -> Unit,
     onMode: (TrainingMode) -> Unit = {},
+    onAmrap: (Boolean) -> Unit = {},
     onExerciseSettings: (ExerciseCard, ExerciseSettings) -> Unit = { _, _ -> },
     onMove: (ExerciseCard, delta: Int) -> Unit = { _, _ -> },
     onGroupByEquipment: () -> Unit = {}
@@ -138,7 +139,9 @@ fun WorkoutPlanScreen(
                 TrainingMode.entries.forEach { m ->
                     CleanFilterChip(m.label, selected = workout.mode == m, onClick = { onMode(m) })
                 }
+                CleanFilterChip("AMRAP", selected = workout.amrap, onClick = { onAmrap(!workout.amrap) })
             }
+            if (workout.amrap) Text(AMRAP_HINT, style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
             Text(
                 "The base for every exercise. Tap Edit on an exercise to give it its own mode, sets or reps.",
                 style = MaterialTheme.typography.bodySmall,
@@ -325,6 +328,7 @@ private fun ExerciseSettingsDialog(
     var mode by remember { mutableStateOf(workout.modeFor(exercise.id)) }
     var sets by remember { mutableStateOf(workout.setsFor(exercise.id)) }
     var reps by remember { mutableStateOf(workout.repsFor(exercise.id)) }
+    var amrap by remember { mutableStateOf(workout.amrapFor(exercise.id)) }
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.clickSounds(),
@@ -335,18 +339,19 @@ private fun ExerciseSettingsDialog(
                 SectionLabel("Training mode")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TrainingMode.entries.forEach { m -> CleanFilterChip(m.label, selected = mode == m, onClick = { mode = m }) }
+                    CleanFilterChip("AMRAP", selected = amrap, onClick = { amrap = !amrap })
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Stepper("Sets", sets.toString(), onMinus = { sets = (sets - 1).coerceAtLeast(1) }, onPlus = { sets = (sets + 1).coerceAtMost(10) }, Modifier.weight(1f))
                     Stepper("Reps", reps.toString(), onMinus = { reps = (reps - 1).coerceAtLeast(1) }, onPlus = { reps = (reps + 1).coerceAtMost(50) }, Modifier.weight(1f))
                 }
-                TextButton(onClick = { mode = workout.mode; sets = workout.sets; reps = workout.reps }) {
-                    Text("Same as routine (${workout.sets}×${workout.reps} · ${workout.mode.label})", color = CleanColors.Muted)
+                TextButton(onClick = { mode = workout.mode; sets = workout.sets; reps = workout.reps; amrap = workout.amrap }) {
+                    Text("Same as routine (${workout.sets}×${if (workout.amrap) "AMRAP" else workout.reps} · ${workout.mode.label})", color = CleanColors.Muted)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDone(ExerciseSettings(mode, sets, reps)) }) { Text("Save", color = CleanColors.Ink) }
+            TextButton(onClick = { onDone(ExerciseSettings(mode, sets, reps, amrap)) }) { Text("Save", color = CleanColors.Ink) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

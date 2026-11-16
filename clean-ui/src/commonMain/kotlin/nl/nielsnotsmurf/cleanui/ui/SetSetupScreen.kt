@@ -68,6 +68,10 @@ import nl.nielsnotsmurf.cleanui.platform.formatDecimal
 private val ECCENTRIC_OPTIONS = listOf(0, 50, 75, 100, 125, 150)
 
 /** One line on what a training mode does, under the mode chips. */
+internal const val AMRAP_HINT = "AMRAP: as many reps as possible. Every set goes to failure and stops by itself when you can't finish a rep."
+
+private fun allAmrapSets(setup: SetupState) = setup.sets.isNotEmpty() && setup.sets.all { it.kind == SetKind.AMRAP }
+
 internal fun modeHint(mode: TrainingMode): String = when (mode) {
     TrainingMode.OLD_SCHOOL -> "Old School: the same load up and down, like free weights."
     TrainingMode.PUMP -> "Pump: quick, steady reps for a pump."
@@ -137,8 +141,13 @@ fun SetSetupScreen(
                     TrainingMode.entries.forEach { m ->
                         CleanFilterChip(m.label, selected = setup.mode == m, onClick = { onUpdate { it.copy(mode = m) } })
                     }
+                    val allAmrap = allAmrapSets(setup)
+                    CleanFilterChip("AMRAP", selected = allAmrap, onClick = {
+                        onUpdate { s -> s.copy(sets = s.sets.map { it.copy(kind = if (allAmrap) SetKind.REPS else SetKind.AMRAP) }) }
+                    })
                 }
                 Text(modeHint(setup.mode), style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
+                if (allAmrapSets(setup)) Text(AMRAP_HINT, style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
             }
 
             if (!bodyweight) Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
