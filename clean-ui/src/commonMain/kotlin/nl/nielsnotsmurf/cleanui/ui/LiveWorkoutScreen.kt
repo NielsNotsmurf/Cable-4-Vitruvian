@@ -17,6 +17,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,6 +119,14 @@ fun LiveWorkoutScreen(
     onRestartSet: () -> Unit = {},
     onMoveSet: (Int) -> Unit = {},
     onMoveExercise: (Int) -> Unit = {},
+    /** Target reps of the coming set, changed on the Continue screen. */
+    onAdjustReps: (Int) -> Unit = {},
+    /** Autoplay off: after the rest a Continue screen waits. On, the weight, reps and % show during the rest. */
+    holdAfterRest: Boolean = true,
+    /** On the finished screen: offer to keep the reps and loads set by hand in this routine. */
+    saveToRoutine: String? = null,
+    onSaveToRoutine: () -> Unit = {},
+    onDismissSaveToRoutine: () -> Unit = {},
     /** Back to the app while the workout keeps going; it's picked up again from the bar at the bottom. */
     onLeave: () -> Unit = onDone
 ) {
@@ -192,9 +202,15 @@ fun LiveWorkoutScreen(
                     }
                     LivePhase.COUNTDOWN -> BigNumber(live.countdown.toString(), "Get set")
                     LivePhase.LIFTING -> Lifting(live, fmt, history, cables)
-                    LivePhase.RESTING -> Resting(live)
+                    LivePhase.RESTING -> Box(
+                        // Swipe left or right for the next or previous exercise, as with the buttons.
+                        Modifier.fillMaxSize().then(if (attemptMode) Modifier else Modifier.swipeExercises(onMoveExercise)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (live.restSeconds > 0) Resting(live) else UpNext(live, fmt, cables)
+                    }
                     LivePhase.SET_DONE -> if (attemptMode) Waiting("Set done") else SetDone(live)
-                    LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history, cables)
+                    LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history, cables, saveToRoutine, onSaveToRoutine, onDismissSaveToRoutine)
                     LivePhase.OTHER -> Waiting("")
                 }
             }
@@ -212,7 +228,8 @@ fun LiveWorkoutScreen(
                             GhostButton("Exercise ›", onClick = { onMoveExercise(1) }, modifier = Modifier.weight(1f))
                         }
                     }
-                    PrimaryButton("Start now", onClick = onSkipRest)
+                    if (live.restSeconds > 0) PrimaryButton("Skip rest", onClick = onSkipRest)
+                    else PrimaryButton("Continue", onClick = onSkipRest, accent = true)
                 }
                 LivePhase.SET_DONE -> if (!attemptMode) PrimaryButton("Continue", onClick = onContinue, accent = true)
                 LivePhase.FINISHED -> if (!attemptMode) {
@@ -229,8 +246,27 @@ fun LiveWorkoutScreen(
                 LivePhase.COUNTDOWN -> GhostButton("End set", onClick = { confirmStop = true })
                 else -> Unit
             }
-            if (percent != null && !attemptMode && live.phase != LivePhase.FINISHED) {
-                PercentSlider(percent, onPercent)
+            // The coming set is set up on the Continue screen (or during the rest with autoplay on).
+            val settingUp = !attemptMode && live.phase == LivePhase.RESTING && (live.restSeconds == 0 || !holdAfterRest)
+            if (settingUp) {
+                val step = if (unit == WeightUnit.LB) 0.45359f else 0.5f
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Stepper(
+                        "Weight per cable", fmt(live.loadKg),
+                        onMinus = { onAdjustWeight((live.loadKg - step).coerceAtLeast(0.5f)) },
+                        onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    live.targetReps?.let { reps ->
+                        Stepper(
+                            "Reps", reps.toString(),
+                            onMinus = { onAdjustReps((reps - 1).coerceAtLeast(1)) },
+                            onPlus = { onAdjustReps((reps + 1).coerceAtMost(50)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                if (percent != null) PercentSlider(percent, onPercent)
             }
             if (live.isGettingReady() && !attemptMode) {
                 // kg moves in 0.5 kg steps, lb in whole pounds.
@@ -349,7 +385,9 @@ private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<His
         Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 if (live.warmupDone) {
-                    BigNumber(live.reps.toString(), live.targetReps?.let { "of $it reps" } ?: "reps")
+                    // The rep being lifted now, not the reps already done.
+                    val current = live.targetReps?.let { (live.reps + 1).coerceAtMost(it) } ?: (live.reps + 1)
+                    BigNumber(current.toString(), live.targetReps?.let { "rep of $it" } ?: "rep")
                     live.autoStopSeconds?.let {
                         Text(
                             "Stopping in ${it}s, the load lets go",
@@ -359,14 +397,19 @@ private fun Lifting(live: LiveWorkout, fmt: (Float) -> String, history: List<His
                         )
                     }
                 } else {
-                    BigNumber(live.warmupReps.toString(), "Warm-up of ${live.warmupTarget}", CleanColors.Muted)
+                    val current = (live.warmupReps + 1).coerceAtMost(live.warmupTarget.coerceAtLeast(1))
+                    BigNumber(current.toString(), "Warm-up of ${live.warmupTarget}", CleanColors.Muted)
                 }
+            }
+            // What the cables pull right now, big enough to read from the handles.
+            Column(Modifier.padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                LoadText(fmt(live.liveLoadKg), cables, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold))
+                Text("pulling now", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
             }
             PositionBar(live.position)
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("Load", fmt(live.loadKg), Modifier.weight(1f), cables)
-            Stat("Now", fmt(live.liveLoadKg), Modifier.weight(1f), cables)
+            Stat("Set load", fmt(live.loadKg), Modifier.weight(1f), cables)
         }
         Averages(live, fmt, history, cables)
     }
@@ -449,6 +492,7 @@ private fun Resting(live: LiveWorkout) {
                 Text("Rest", color = CleanColors.Muted)
             }
         }
+        live.lastReps?.let { Text("Last set: $it reps", style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
         val next = live.nextName.ifBlank { live.exerciseName }
         if (next.isNotBlank()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -457,6 +501,42 @@ private fun Resting(live: LiveWorkout) {
             }
         }
     }
+}
+
+/** After the rest (and before the first set): the coming set, to check and change before Continue. */
+@Composable
+private fun UpNext(live: LiveWorkout, fmt: (Float) -> String, cables: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(if (live.lastReps == null) "Ready to start" else "Ready for the next set", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
+        Text(
+            live.exerciseName.ifBlank { live.nextName },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        val detail = buildList {
+            if (live.totalSets > 0) add("Set ${live.setNumber} of ${live.totalSets}")
+            add(live.targetReps?.let { "$it reps" } ?: "As many reps as you can")
+        }.joinToString(" · ")
+        Text(detail, style = MaterialTheme.typography.titleMedium, color = CleanColors.Muted, textAlign = TextAlign.Center)
+        LoadText(fmt(live.loadKg), cables, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold))
+        live.lastReps?.let { Text("Last set: $it reps", style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
+        Text("Swipe or use the buttons to pick another set or exercise.", style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted, textAlign = TextAlign.Center)
+    }
+}
+
+/** A sideways swipe moves to the next (left) or previous (right) exercise. */
+private fun Modifier.swipeExercises(onMoveExercise: (Int) -> Unit): Modifier = pointerInput(Unit) {
+    val threshold = 80.dp.toPx()
+    var dragged = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragged = 0f },
+        onDragEnd = {
+            if (dragged <= -threshold) onMoveExercise(1) else if (dragged >= threshold) onMoveExercise(-1)
+            dragged = 0f
+        },
+        onHorizontalDrag = { _, amount -> dragged += amount }
+    )
 }
 
 @Composable
@@ -473,13 +553,34 @@ private fun SetDone(live: LiveWorkout) {
 }
 
 @Composable
-private fun Finished(live: LiveWorkout, fmt: (Float) -> String, history: List<HistoryEntry>, cables: Int) {
+private fun Finished(
+    live: LiveWorkout,
+    fmt: (Float) -> String,
+    history: List<HistoryEntry>,
+    cables: Int,
+    saveToRoutine: String? = null,
+    onSave: () -> Unit = {},
+    onDismissSave: () -> Unit = {}
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Box(
             Modifier.size(88.dp).clip(RoundedCornerShape(44.dp)).background(CleanColors.Accent),
             contentAlignment = Alignment.Center
         ) { Text("✓", color = Color.White, fontSize = 40.sp) }
         Text("Nice work", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        if (saveToRoutine != null) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CleanColors.Surface).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("You changed weights or reps during this workout.", style = MaterialTheme.typography.bodyMedium)
+                Text("Keep them in \"$saveToRoutine\" for next time?", style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GhostButton("Not now", onClick = onDismissSave, modifier = Modifier.weight(1f))
+                    PrimaryButton("Save to routine", onClick = onSave, modifier = Modifier.weight(1f))
+                }
+            }
+        }
         Spacer(Modifier.height(4.dp))
         Averages(live, fmt, history, cables)
     }

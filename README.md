@@ -76,9 +76,9 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 | % of 1RM loading | Each lifter's 1RM shows next to every exercise and loads default to a % of it. A guided 1RM test fills it in, and one tested lift estimates related ones (bench 25 kg ≈ incline 22.5 kg), marked "estimated" until tested. Ratios: `one_rep_max_map.json` in `clean-ui` assets. |
 | 1RMs you control | Only the 1RM test or your own entry sets a 1RM. Tap one in Analytics to correct it. |
 | Workout builder | Pick muscle groups and a time; the app builds the workout at each lifter's % of 1RM. Swap exercises for other equipment; same-equipment exercises are grouped to save switching. |
-| Your routines | Save your own workouts (from scratch or from a built one), add or remove exercises, loads as % of each lifter's 1RM. Raise every load at once, or let it rise by itself every few weeks or after a session with all reps done. Pick a base training mode, give each exercise its own mode, sets and reps, and reorder exercises (or group them by equipment). |
+| Your routines | Save your own workouts (from scratch or from a built one), add or remove exercises, loads as % of each lifter's 1RM. Raise every load at once, or let it rise by itself every few weeks or after a session with all reps done. Pick a base training mode, give each exercise its own mode, sets and reps (Echo with its level and eccentric load), and reorder exercises (or group them by equipment). |
 | Exercise library | Short descriptions, search by name, muscle or equipment, region and muscle filters, favourites and video demos. |
-| During a workout | End a set early, skip or redo a set, jump to the next exercise, change the % of 1RM for coming sets, or pause and resume later. |
+| During a workout | After each set the rest starts by itself (Skip rest), then a Continue screen shows the coming set: change its weight, reps or % of 1RM, skip or redo a set, or swipe to another exercise, also before the first set. The big counter shows the rep you're on, next to what the cables pull right now. End a set early, or pause and resume later. Changed weights or reps can be saved to the routine at the end. The screen stays on (web too), and the rest timer keeps running when you switch apps. |
 | Live heart rate | Garmin watch broadcast or chest strap per lifter; shown during sets and in history. |
 | Sounds | Synthesized bops for taps and screens, plus workout cues (countdown, reps, warm-up, set done, records, rest over, 1RM). Separate switches for menu sounds and workout beeps; music keeps playing. |
 
@@ -205,6 +205,11 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-11-16:** Tester feedback: the rest starts by itself after a set, then a Continue screen to change
+  the coming set's weight, reps and % (Autoplay in Settings skips it). Rest between sets in Settings.
+  Swipe or step between exercises from the start. Rep counter shows the current rep, live load shown big.
+  Echo level and eccentric load per exercise in routines. Save changed weights and reps to the routine.
+  Web: the screen stays on during a workout and the rest timer keeps running in the background.
 - **2026-11-16:** AMRAP mode is back as a choice in the training-mode menu, for a single exercise,
   a whole routine or one exercise in it. Every set then goes to failure and stops by itself. Android and web.
 - **2026-11-11:** Routines: a base training mode plus each exercise's own mode, sets and reps; move

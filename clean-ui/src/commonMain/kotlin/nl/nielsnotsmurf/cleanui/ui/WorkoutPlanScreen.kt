@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.nielsnotsmurf.cleanui.logic.ExerciseSettings
 import nl.nielsnotsmurf.cleanui.logic.LoadCalculator
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.logic.WorkoutBuilder
 import nl.nielsnotsmurf.cleanui.logic.Progression
@@ -163,7 +164,7 @@ fun WorkoutPlanScreen(
                 }
             }
             Text(
-                "${WorkoutBuilder.REST_SECONDS}s rest between sets. Without a 1RM, the last load used is taken. Tap − or + next to a load to " +
+                "Rest between sets as set in Settings. Without a 1RM, the last load used is taken. Tap − or + next to a load to " +
                     "change it; a new % moves those loads too." + if (routine != null) " Changes are saved in the routine." else "",
                 style = MaterialTheme.typography.bodySmall,
                 color = CleanColors.Muted
@@ -238,7 +239,10 @@ private fun PlanRow(
                     maxLines = 1
                 )
                 Text(
-                    "${workout.setsFor(ex.id)}×${workout.repsFor(ex.id)} · ${mode.label}",
+                    "${workout.setsFor(ex.id)}×${workout.repsFor(ex.id)} · ${mode.label}" +
+                        if (mode == TrainingMode.ECHO) workout.perExercise[ex.id].let { o ->
+                            " ${(o?.echoLevel ?: EchoLevelChoice.HARDER).label} · ecc. ${o?.eccentricPercent ?: 100}%"
+                        } else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (custom) CleanColors.Accent else CleanColors.Muted,
                     maxLines = 1
@@ -328,6 +332,9 @@ private fun ExerciseSettingsDialog(
     var mode by remember { mutableStateOf(workout.modeFor(exercise.id)) }
     var sets by remember { mutableStateOf(workout.setsFor(exercise.id)) }
     var reps by remember { mutableStateOf(workout.repsFor(exercise.id)) }
+    val own = workout.perExercise[exercise.id]
+    var echo by remember { mutableStateOf(own?.echoLevel ?: EchoLevelChoice.HARDER) }
+    var eccentric by remember { mutableStateOf(own?.eccentricPercent ?: 100) }
     var amrap by remember { mutableStateOf(workout.amrapFor(exercise.id)) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -341,17 +348,28 @@ private fun ExerciseSettingsDialog(
                     TrainingMode.entries.forEach { m -> CleanFilterChip(m.label, selected = mode == m, onClick = { mode = m }) }
                     CleanFilterChip("AMRAP", selected = amrap, onClick = { amrap = !amrap })
                 }
+                if (mode == TrainingMode.ECHO) {
+                    SectionLabel("Echo level")
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EchoLevelChoice.entries.forEach { l -> CleanFilterChip(l.label, selected = echo == l, onClick = { echo = l }) }
+                    }
+                    Stepper(
+                        "Eccentric (on the way down)", "$eccentric%",
+                        onMinus = { eccentric = (eccentric - 10).coerceAtLeast(0) },
+                        onPlus = { eccentric = (eccentric + 10).coerceAtMost(150) }
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Stepper("Sets", sets.toString(), onMinus = { sets = (sets - 1).coerceAtLeast(1) }, onPlus = { sets = (sets + 1).coerceAtMost(10) }, Modifier.weight(1f))
                     Stepper("Reps", reps.toString(), onMinus = { reps = (reps - 1).coerceAtLeast(1) }, onPlus = { reps = (reps + 1).coerceAtMost(50) }, Modifier.weight(1f))
                 }
-                TextButton(onClick = { mode = workout.mode; sets = workout.sets; reps = workout.reps; amrap = workout.amrap }) {
+                TextButton(onClick = { mode = workout.mode; sets = workout.sets; reps = workout.reps; amrap = workout.amrap; echo = EchoLevelChoice.HARDER; eccentric = 100 }) {
                     Text("Same as routine (${workout.sets}×${if (workout.amrap) "AMRAP" else workout.reps} · ${workout.mode.label})", color = CleanColors.Muted)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDone(ExerciseSettings(mode, sets, reps, amrap)) }) { Text("Save", color = CleanColors.Ink) }
+            TextButton(onClick = { onDone(ExerciseSettings(mode, sets, reps, echo.takeIf { mode == TrainingMode.ECHO }, eccentric.takeIf { mode == TrainingMode.ECHO }, amrap)) }) { Text("Save", color = CleanColors.Ink) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

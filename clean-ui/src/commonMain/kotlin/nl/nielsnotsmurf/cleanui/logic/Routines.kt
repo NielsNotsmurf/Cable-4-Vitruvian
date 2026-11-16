@@ -14,6 +14,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import kotlin.math.max
 
@@ -35,10 +36,14 @@ data class ExerciseSettings(
     val mode: TrainingMode? = null,
     val sets: Int? = null,
     val reps: Int? = null,
+    /** Echo only: how hard the trainer pushes back. */
+    val echoLevel: EchoLevelChoice? = null,
+    /** Echo only: the load on the way down (eccentric / retract), 0-150 % of the way up. */
+    val eccentricPercent: Int? = null,
     /** AMRAP: every set goes to failure. */
     val amrap: Boolean? = null
 ) {
-    val isDefault: Boolean get() = mode == null && sets == null && reps == null && amrap == null
+    val isDefault: Boolean get() = mode == null && sets == null && reps == null && echoLevel == null && eccentricPercent == null && amrap == null
 }
 
 /**
@@ -160,6 +165,8 @@ object Routines {
                         x.mode?.let { put("mode", it.name) }
                         x.sets?.let { put("sets", it) }
                         x.reps?.let { put("reps", it) }
+                        x.echoLevel?.let { put("echo", it.name) }
+                        x.eccentricPercent?.let { put("eccentric", it) }
                         x.amrap?.let { put("amrap", it) }
                     }
                 }))
@@ -197,6 +204,8 @@ object Routines {
                             mode = modeNamed(x["mode"]?.jsonPrimitive?.content),
                             sets = x["sets"]?.jsonPrimitive?.int,
                             reps = x["reps"]?.jsonPrimitive?.int,
+                            echoLevel = x["echo"]?.jsonPrimitive?.content?.let { n -> EchoLevelChoice.entries.firstOrNull { it.name == n } },
+                            eccentricPercent = x["eccentric"]?.jsonPrimitive?.int,
                             amrap = x["amrap"]?.jsonPrimitive?.booleanOrNull
                         )
                     }.orEmpty()

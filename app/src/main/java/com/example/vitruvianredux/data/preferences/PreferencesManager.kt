@@ -209,7 +209,7 @@ class PreferencesManager @Inject constructor(
                 Timber.w(e, "Invalid weight unit in preferences: $weightUnitString, defaulting to KG")
                 WeightUnit.KG
             }
-            val autoplayEnabled = preferences[AUTOPLAY_ENABLED_KEY] ?: true
+            val autoplayEnabled = preferences[AUTOPLAY_ENABLED_KEY] ?: false
             val stopAtTop = preferences[STOP_AT_TOP_KEY] ?: false
             val enableVideoPlayback = preferences[ENABLE_VIDEO_PLAYBACK_KEY] ?: true
             val beepsEnabled = preferences[BEEPS_ENABLED_KEY] ?: true
@@ -304,7 +304,7 @@ class PreferencesManager @Inject constructor(
         } catch (e: IllegalArgumentException) { WeightUnit.KG }
         return AppPreferencesBackup(
             weightUnit = weightUnit.name,
-            autoplayEnabled = prefs?.get(AUTOPLAY_ENABLED_KEY) ?: true,
+            autoplayEnabled = prefs?.get(AUTOPLAY_ENABLED_KEY) ?: false,
             stopAtTop = prefs?.get(STOP_AT_TOP_KEY) ?: false,
             enableVideoPlayback = prefs?.get(ENABLE_VIDEO_PLAYBACK_KEY) ?: true,
             beepsEnabled = prefs?.get(BEEPS_ENABLED_KEY) ?: true,

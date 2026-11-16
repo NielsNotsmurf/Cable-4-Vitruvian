@@ -267,6 +267,7 @@ private fun SignedInApp(
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
     val uiSounds by vm.uiSounds.collectAsStateWithLifecycle()
     val livePercent by vm.livePercent.collectAsStateWithLifecycle()
+    val saveOffer by vm.routineSaveOffer.collectAsStateWithLifecycle()
     val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
@@ -569,7 +570,12 @@ private fun SignedInApp(
                                 onStop = { if (!left) { left = true; gateway.stopWorkout(); nav.popBackStack() } },
                                 onDone = done,
                                 guide = guide,
-                                onAdjustWeight = gateway::adjustLiveWeight,
+                                onAdjustWeight = vm::adjustLiveWeight,
+                                onAdjustReps = vm::adjustLiveReps,
+                                holdAfterRest = !settings.autoplay,
+                                saveToRoutine = saveOffer?.routineName,
+                                onSaveToRoutine = vm::saveEditsToRoutine,
+                                onDismissSaveToRoutine = vm::dismissRoutineSaveOffer,
                                 percent = livePercent,
                                 onPercent = vm::setLivePercent,
                                 onFinishSet = gateway::finishSetEarly,
