@@ -102,6 +102,8 @@ interface TrainerGateway {
     fun skipRest() {}
     /** Changes the load per cable while the set gets ready, counts down or does its warm-up reps. */
     fun adjustLiveWeight(perCableKg: Float) {}
+    /** During rest or on the Continue screen: the target reps of the coming set. */
+    fun adjustNextReps(reps: Int) {}
     fun proceedFromSummary() {}
     fun stopWorkout() {}
     fun advanceToNextExercise() {}
@@ -110,7 +112,7 @@ interface TrainerGateway {
     fun finishSetEarly() {}
     /** Starts the set being lifted over, so the warm-up reps set the range of motion again. */
     fun restartSet() {}
-    /** During rest: the coming set moves [delta] sets forward (skip) or back (redo), across exercises. */
+    /** During rest or on the Continue screen (also before the first set): the coming set moves [delta] sets forward (skip) or back (redo), across exercises. */
     fun moveSet(delta: Int) {}
     /** During rest: the coming set becomes the first set of the next (1) or previous (-1) exercise. */
     fun moveExercise(delta: Int) {}

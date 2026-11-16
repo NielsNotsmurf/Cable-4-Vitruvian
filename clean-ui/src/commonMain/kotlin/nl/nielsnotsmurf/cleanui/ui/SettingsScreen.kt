@@ -1,5 +1,7 @@
 package nl.nielsnotsmurf.cleanui.ui
 
+import nl.nielsnotsmurf.cleanui.platform.formatClock
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -153,6 +155,12 @@ fun SettingsScreen(
                 "Sets per exercise", settings.defaultSets.toString(),
                 onMinus = { onUpdate { it.copy(defaultSets = (it.defaultSets - 1).coerceAtLeast(1)) } },
                 onPlus = { onUpdate { it.copy(defaultSets = (it.defaultSets + 1).coerceAtMost(10)) } },
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
+            Stepper(
+                "Rest between sets", formatClock(settings.defaultRestSeconds),
+                onMinus = { onUpdate { it.copy(defaultRestSeconds = (it.defaultRestSeconds - 15).coerceAtLeast(15)) } },
+                onPlus = { onUpdate { it.copy(defaultRestSeconds = (it.defaultRestSeconds + 15).coerceAtMost(600)) } },
                 modifier = Modifier.padding(vertical = 10.dp)
             )
             Stepper(

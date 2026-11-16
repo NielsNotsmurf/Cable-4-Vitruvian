@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -239,6 +240,11 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     // The set: on the trainer over Bluetooth, or simulated
 
     override val liveWorkout: Flow<LiveWorkout?> = live
+
+    init {
+        // Keeps the screen on while a workout runs (Screen Wake Lock), as the Android app does.
+        scope.launch { live.map { it != null && it.phase != LivePhase.FINISHED }.distinctUntilChanged().collect { ScreenWakeLock.keep(it) } }
+    }
     private val records = MutableSharedFlow<String>(extraBufferCapacity = 8)
     override val personalRecords: Flow<String> = records
     private var job: Job? = null
@@ -274,13 +280,18 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     }
 
     /**
-     * The workout as a cursor over (exercise, turn), where a turn is one lifter's set. After each
-     * set comes the summary (Continue), then rest; during rest [moveSet] and [moveExercise] move
-     * the cursor back or forward, like the app. Every finished set is saved straight away, so
-     * ending or leaving the workout keeps it.
+     * The workout as a cursor over (exercise, turn), where a turn is one lifter's set. It opens on
+     * the Continue screen for the first set; after each set comes a short summary, then the rest
+     * and (autoplay off) the Continue screen again. During rest and on the Continue screen
+     * [moveSet] and [moveExercise] move the cursor, and the weight, reps and % of the coming set
+     * can be changed, like the app. Every finished set is saved straight away, so ending or
+     * leaving the workout keeps it.
      */
-    private fun run(plans: List<SetPlan>, attempt: Boolean) {
+    private fun run(original: List<SetPlan>, attempt: Boolean) {
         job?.cancel()
+        overrides.clear()
+        val plans = original.toMutableList()
+        runPlans = plans
         val lifters = data.value.lifters.associateBy { it.id }
         fun order(p: Int) = plans[p].loads.map { it.lifterId }.ifEmpty { data.value.active }.ifEmpty { listOf("") }
         fun turns(p: Int) = plans[p].sets.size * order(p).size
@@ -290,8 +301,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             val s = (turn / ord.size).coerceIn(0, plan.sets.lastIndex)
             val lifterId = ord[turn % ord.size]
             val lifter = lifters[lifterId]
-            val spec = plan.sets[s]
-            val kg = plan.loads.firstOrNull { it.lifterId == lifterId }?.setWeightsKg?.let { it.getOrNull(s) ?: it.lastOrNull() } ?: 0f
+            val spec = specFor(p, turn, plan.sets[s])
+            val kg = overrides[p to turn]?.kg
+                ?: plan.loads.firstOrNull { it.lifterId == lifterId }?.setWeightsKg?.let { it.getOrNull(s) ?: it.lastOrNull() } ?: 0f
             return LiveWorkout(
                 phase = LivePhase.COUNTDOWN, exerciseName = plan.exercise.name,
                 targetReps = if (spec.kind == SetKind.AMRAP) null else spec.reps,
@@ -318,9 +330,21 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             val done = mutableMapOf<Pair<Int, String>, Pair<Int, Float>>() // (exercise, lifter) -> reps, top kg
             var p = 0
             var turn = 0
+            var lastReps: Int? = null
+            fun upcoming(c: Pair<Int, Int>, fallback: LiveWorkout) =
+                if (c.first < plans.size && c.second < turns(c.first)) baseFor(c.first, c.second).copy(lastReps = lastReps)
+                else fallback.copy(lastReps = lastReps)
+            if (!attempt) {
+                // Opens on the Continue screen, so the first set or exercise can still be changed.
+                cursor = 0 to 0
+                rest(0, hold = true) { c -> upcoming(c, baseFor(0, 0)) }
+                val first = cursor ?: (0 to 0)
+                p = first.first
+                turn = first.second
+            }
             while (p < plans.size && turn < turns(p)) {
                 val plan = plans[p]
-                val spec = plan.sets[turn / order(p).size]
+                val spec = specFor(p, turn, plan.sets[turn / order(p).size])
                 val base = baseFor(p, turn)
                 val lifterId = base.lifterId.orEmpty()
                 for (c in 3 downTo 1) { live.value = base.copy(countdown = c); delay(1000) }
@@ -337,8 +361,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 proceed = go
                 live.value = live.value?.copy(phase = LivePhase.SET_DONE, doneReps = reps)
                 go.await()
+                lastReps = reps
                 cursor = navigate?.invoke(p, turn, 1, false) ?: (p to turn + 1)
-                rest(spec.restSeconds) { c -> if (c.first < plans.size && c.second < turns(c.first)) baseFor(c.first, c.second) else base }
+                rest(spec.restSeconds, hold = !data.value.settings.autoplay) { c -> upcoming(c, base) }
                 val next = cursor ?: break
                 p = next.first
                 turn = next.second
@@ -352,6 +377,16 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
 
     /** The set coming after the rest, moved by [moveSet] / [moveExercise]. */
     private var cursor: Pair<Int, Int>? = null
+
+    /** The running workout's plans; [setUpcomingLoads] changes their loads mid-workout. */
+    private var runPlans: MutableList<SetPlan> = mutableListOf()
+
+    /** What was changed by hand for one set (exercise, turn): its load per cable and target reps. */
+    private data class SetOverride(val kg: Float? = null, val reps: Int? = null)
+    private val overrides = mutableMapOf<Pair<Int, Int>, SetOverride>()
+
+    private fun specFor(p: Int, turn: Int, spec: SetSpec): SetSpec =
+        overrides[p to turn]?.reps?.let { spec.copy(reps = it) } ?: spec
     private var navigate: ((p: Int, turn: Int, delta: Int, byExercise: Boolean) -> Pair<Int, Int>)? = null
 
     /**
@@ -472,16 +507,21 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         return reps
     }
 
-    /** Rest before the set at [cursor]; the screen shows that set, also after moving it. */
-    private suspend fun rest(seconds: Int, upcoming: (Pair<Int, Int>) -> LiveWorkout) {
+    /**
+     * Rest before the set at [cursor]; the screen shows that set, also after moving it. The time
+     * runs on the clock, not on ticks, so it keeps going while the browser is in the background
+     * (iOS pauses the page). With [hold] the Continue screen waits after the rest.
+     */
+    private suspend fun rest(seconds: Int, hold: Boolean, upcoming: (Pair<Int, Int>) -> LiveWorkout) {
         val s = CompletableDeferred<Unit>().also { skip = it }
-        var left = seconds.coerceAtLeast(1)
-        while (left > 0 && !s.isCompleted) {
+        val endsAt = nowMillis() + seconds.coerceAtLeast(0) * 1000L
+        while (!s.isCompleted) {
             val c = cursor ?: return
+            val left = ((endsAt - nowMillis() + 999) / 1000).toInt().coerceAtLeast(0)
+            if (left == 0 && !hold) return
             live.value = upcoming(c).copy(phase = LivePhase.RESTING, restSeconds = left)
-            // Tick in short steps so a moved set shows at once.
-            repeat(10) { if (!s.isCompleted && cursor == c) delay(100) }
-            if (cursor == c) left--
+            // Short steps so a moved set or a change shows at once.
+            delay(100)
         }
     }
 
@@ -517,7 +557,30 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     }
 
     override fun skipRest() { skip?.complete(Unit) }
-    override fun adjustLiveWeight(perCableKg: Float) { live.value = live.value?.copy(loadKg = perCableKg, liveLoadKg = perCableKg) }
+    override fun adjustLiveWeight(perCableKg: Float) {
+        val c = cursor
+        if (live.value?.phase == LivePhase.RESTING && c != null) {
+            overrides[c] = (overrides[c] ?: SetOverride()).copy(kg = perCableKg)
+            live.value = live.value?.copy(loadKg = perCableKg)
+            return
+        }
+        live.value = live.value?.copy(loadKg = perCableKg, liveLoadKg = perCableKg)
+    }
+    override fun adjustNextReps(reps: Int) {
+        val c = cursor ?: return
+        if (live.value?.phase != LivePhase.RESTING) return
+        overrides[c] = (overrides[c] ?: SetOverride()).copy(reps = reps.coerceIn(1, 50))
+        live.value = live.value?.copy(targetReps = reps.coerceIn(1, 50))
+    }
+    override fun setUpcomingLoads(exerciseId: String, loadsByLifter: Map<String, List<Float>>) {
+        val plans = runPlans
+        plans.indices.filter { plans[it].exercise.id == exerciseId }.forEach { i ->
+            val plan = plans[i]
+            plans[i] = plan.copy(loads = plan.loads.map { l -> loadsByLifter[l.lifterId]?.let { l.copy(setWeightsKg = it) } ?: l })
+            // A new % replaces loads set by hand for this exercise.
+            overrides.keys.filter { it.first == i }.forEach { k -> overrides[k] = overrides.getValue(k).copy(kg = null) }
+        }
+    }
     override fun proceedFromSummary() { proceed?.complete(Unit) }
     override fun stopWorkout() { job?.cancel(); cursor = null; live.value = null }
     override fun advanceToNextExercise() { skip?.complete(Unit) }
@@ -595,15 +658,16 @@ private data class SavedPlan(
 @Serializable
 private data class SavedSettings(
     val lb: Boolean = false, val defaultReps: Int = 10, val defaultSets: Int = 3, val defaultPercent: Int = 60,
-    val autoplay: Boolean = true, val stopAtTop: Boolean = false, val beeps: Boolean = true, val videos: Boolean = true,
-    val warmupReps: Int = 3, val defaultAmrap: Boolean = false
+    val autoplay: Boolean = false, val stopAtTop: Boolean = false, val beeps: Boolean = true, val videos: Boolean = true,
+    val warmupReps: Int = 3, val defaultAmrap: Boolean = false, val defaultRest: Int = 90
 ) {
     fun unit() = if (lb) WeightUnit.LB else WeightUnit.KG
-    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, warmupReps, beeps, videos, defaultAmrap)
+    fun toClean() = CleanSettings(unit(), defaultReps, defaultSets, defaultPercent, autoplay, stopAtTop, warmupReps, beeps, videos, defaultAmrap, defaultRest)
 
     companion object {
         fun from(s: CleanSettings) = SavedSettings(
-            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos, s.warmupReps, s.defaultAmrap
+            s.unit == WeightUnit.LB, s.defaultReps, s.defaultSets, s.defaultPercent, s.autoplay, s.stopAtTop, s.beeps, s.videos, s.warmupReps, s.defaultAmrap,
+            s.defaultRestSeconds.coerceIn(15, 600)
         )
     }
 }

@@ -158,7 +158,8 @@ class CleanUiBridge(
             loadKg = a.params.weightPerCableKg,
             liveLoadKg = a.metric?.let { maxOf(it.loadA, it.loadB) } ?: 0f,
             position = position,
-            setNumber = (st as? WorkoutState.Resting)?.currentSet ?: b.setDisplay?.first ?: 0,
+            // Resting counts the coming set from 0.
+            setNumber = (st as? WorkoutState.Resting)?.let { it.currentSet + 1 } ?: b.setDisplay?.first ?: 0,
             totalSets = (st as? WorkoutState.Resting)?.totalSets ?: b.setDisplay?.second ?: 0,
             restSeconds = (st as? WorkoutState.Resting)?.restSecondsRemaining ?: 0,
             nextName = (st as? WorkoutState.Resting)?.nextExerciseName.orEmpty(),
@@ -170,7 +171,8 @@ class CleanUiBridge(
             peakPower = (st as? WorkoutState.SetSummary)?.peakPower ?: 0f,
             avgPower = (st as? WorkoutState.SetSummary)?.averagePower ?: 0f,
             bodyweight = b.bodyweight,
-            autoStopSeconds = autoStop.secondsRemaining.takeIf { autoStop.isActive && st == WorkoutState.Active }
+            autoStopSeconds = autoStop.secondsRemaining.takeIf { autoStop.isActive && st == WorkoutState.Active },
+            lastReps = if (st is WorkoutState.Resting) vm.lastSetReps.value else null
         )
     }
 
@@ -180,6 +182,7 @@ class CleanUiBridge(
 
     override fun skipRest() = vm.skipRest()
     override fun adjustLiveWeight(perCableKg: Float) = vm.adjustWeightLive(perCableKg)
+    override fun adjustNextReps(reps: Int) = vm.adjustUpcomingReps(reps)
     override fun proceedFromSummary() = vm.proceedFromSummary()
     override fun stopWorkout() = vm.stopWorkout()
     override fun advanceToNextExercise() = vm.advanceToNextExercise()
@@ -300,7 +303,8 @@ class CleanUiBridge(
                 }
                 vm.ensureConnection(
                     onConnected = {
-                        vm.startWorkout()
+                        // The first set waits on the Continue screen, where the set or exercise can still be changed.
+                        vm.holdBeforeFirstSet()
                         onStarted()
                     },
                     onFailed = { onFailed("Couldn't reach the trainer. Check it's switched on and nearby.") }
@@ -460,7 +464,7 @@ class CleanUiBridge(
         ids.forEach { vm.deleteWorkout(it) }
     }
 
-    override val settings: Flow<CleanSettings> =
+    override val settings: Flow<CleanSettings> = combine(
         combine(vm.userPreferences, store.defaultSets, store.defaultPercent, store.warmupReps, store.defaultAmrap) { p, sets, pct, warmup, amrap ->
             currentSets = sets
             currentAmrap = amrap
@@ -468,7 +472,11 @@ class CleanUiBridge(
             currentWarmup = warmup
             vm.setWarmupReps(warmup)
             p.toCleanSettings().copy(defaultSets = sets, defaultPercent = pct, warmupReps = warmup, defaultAmrap = amrap)
-        }
+        },
+        store.defaultRest
+    ) { s, rest -> currentRest = rest; s.copy(defaultRestSeconds = rest) }
+
+    private var currentRest = 90
 
     private var currentSets = 3
     private var currentPercent = 60
@@ -476,8 +484,15 @@ class CleanUiBridge(
     private var currentAmrap = false
 
     override fun updateSettings(transform: (CleanSettings) -> CleanSettings) {
-        val old = vm.userPreferences.value.toCleanSettings().copy(defaultSets = currentSets, defaultPercent = currentPercent, warmupReps = currentWarmup, defaultAmrap = currentAmrap)
+        val old = vm.userPreferences.value.toCleanSettings().copy(
+            defaultSets = currentSets, defaultPercent = currentPercent, warmupReps = currentWarmup,
+            defaultAmrap = currentAmrap, defaultRestSeconds = currentRest
+        )
         val new = transform(old)
+        if (new.defaultRestSeconds != old.defaultRestSeconds) {
+            currentRest = new.defaultRestSeconds.coerceIn(15, 600)
+            scope.launch { store.setDefaultRest(currentRest) }
+        }
         if (new.warmupReps != old.warmupReps) {
             currentWarmup = new.warmupReps.coerceIn(1, 3)
             vm.setWarmupReps(currentWarmup)

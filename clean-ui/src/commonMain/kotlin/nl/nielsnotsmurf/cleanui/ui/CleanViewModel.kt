@@ -12,12 +12,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -32,6 +34,7 @@ import nl.nielsnotsmurf.cleanui.logic.ExerciseSettings
 import nl.nielsnotsmurf.cleanui.logic.Routine
 import nl.nielsnotsmurf.cleanui.logic.Routines
 import nl.nielsnotsmurf.cleanui.model.LivePhase
+import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.platform.formatDate
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -267,7 +270,9 @@ class CleanViewModel(
     private val defaultPercent: Int get() = settings.value.defaultPercent.coerceIn(30, 100)
 
     /** Sets and reps always come from Settings, never from what was done last time. */
-    private fun defaultSetList(rest: Int = 90) = List(defaultSets) { SetSpec(kind = defaultKind, reps = defaultReps, restSeconds = rest) }
+    private val defaultRest: Int get() = settings.value.defaultRestSeconds.coerceIn(0, 600)
+
+    private fun defaultSetList(rest: Int = defaultRest) = List(defaultSets) { SetSpec(kind = defaultKind, reps = defaultReps, restSeconds = rest) }
 
     private val _setup = MutableStateFlow<SetupState?>(null)
     val setup: StateFlow<SetupState?> = _setup.asStateFlow()
@@ -496,7 +501,9 @@ class CleanViewModel(
         val clean = ExerciseSettings(
             mode = settings.mode?.takeIf { it != w.mode },
             sets = settings.sets?.coerceIn(1, 10)?.takeIf { it != w.sets },
-            reps = settings.reps?.coerceIn(1, 50)?.takeIf { it != w.reps }
+            reps = settings.reps?.coerceIn(1, 50)?.takeIf { it != w.reps },
+            echoLevel = settings.echoLevel?.takeIf { it != EchoLevelChoice.HARDER },
+            eccentricPercent = settings.eccentricPercent?.coerceIn(0, 150)?.takeIf { it != 100 }
         )
         w.copy(perExercise = if (clean.isDefault) w.perExercise - exercise.id else w.perExercise + (exercise.id to clean))
     }
@@ -640,6 +647,87 @@ class CleanViewModel(
         }
     }
 
+    // ---- Changes made during the workout, offered to the routine at the end ----
+
+    /** Exercise id -> what was set by hand on the Continue screen: reps, and kg per lifter id. */
+    data class LiveEdit(val reps: Int? = null, val kgByLifter: Map<String, Float> = emptyMap())
+
+    /** Shown on the finished screen: keep the reps and loads set by hand in the routine? */
+    data class RoutineSaveOffer(val routineId: String, val routineName: String, val edits: Map<String, LiveEdit>)
+
+    private val liveEdits = mutableMapOf<String, LiveEdit>()
+    /** Id and name of the routine being trained, if the workout came from one. */
+    private var liveRoutine: Pair<String, String>? = null
+    private var livePlans: List<SetPlan> = emptyList()
+    private val _routineSaveOffer = MutableStateFlow<RoutineSaveOffer?>(null)
+    val routineSaveOffer: StateFlow<RoutineSaveOffer?> = _routineSaveOffer.asStateFlow()
+
+    private fun liveExerciseId(live: LiveWorkout?): String? =
+        live?.let { l -> livePlans.firstOrNull { it.exercise.name == l.exerciseName }?.exercise?.id }
+
+    /** The load per cable of the coming set (or the set getting ready), remembered for the routine. */
+    fun adjustLiveWeight(perCableKg: Float) {
+        gateway.adjustLiveWeight(perCableKg)
+        viewModelScope.launch {
+            val live = gateway.liveWorkout.first()
+            val ex = liveExerciseId(live) ?: return@launch
+            val lifter = live?.lifterId ?: return@launch
+            val e = liveEdits[ex] ?: LiveEdit()
+            liveEdits[ex] = e.copy(kgByLifter = e.kgByLifter + (lifter to perCableKg))
+        }
+    }
+
+    /** The target reps of the coming set, remembered for the routine. */
+    fun adjustLiveReps(reps: Int) {
+        val r = reps.coerceIn(1, 50)
+        gateway.adjustNextReps(r)
+        viewModelScope.launch {
+            val ex = liveExerciseId(gateway.liveWorkout.first()) ?: return@launch
+            liveEdits[ex] = (liveEdits[ex] ?: LiveEdit()).copy(reps = r)
+        }
+    }
+
+    /** Puts the reps and loads set by hand into the routine (reps for the exercise, loads per lifter). */
+    fun saveEditsToRoutine() {
+        val offer = _routineSaveOffer.value ?: return
+        _routineSaveOffer.value = null
+        updateRoutine(offer.routineId) { r ->
+            var perExercise = r.perExercise
+            var overrides = r.overridesKg
+            offer.edits.forEach { (exId, e) ->
+                e.reps?.let { reps ->
+                    val own = perExercise[exId] ?: ExerciseSettings()
+                    perExercise = perExercise + (exId to own.copy(reps = reps.takeIf { it != r.reps }))
+                }
+                e.kgByLifter.forEach { (lifterId, kg) -> overrides = overrides + (relatedKey(lifterId, exId) to kg) }
+            }
+            r.copy(perExercise = perExercise.filterValues { !it.isDefault }, overridesKg = overrides)
+        }
+    }
+
+    fun dismissRoutineSaveOffer() { _routineSaveOffer.value = null }
+
+    init {
+        // After a set the rest starts by itself (a 1RM attempt has no plans and handles its own end).
+        viewModelScope.launch {
+            gateway.liveWorkout.map { it?.phase }.distinctUntilChanged().collect { phase ->
+                if (phase == LivePhase.SET_DONE && livePlans.isNotEmpty()) {
+                    delay(AUTO_REST_DELAY_MS)
+                    if (gateway.liveWorkout.first()?.phase == LivePhase.SET_DONE) gateway.proceedFromSummary()
+                }
+                if (phase == LivePhase.FINISHED) {
+                    val routine = liveRoutine
+                    if (routine != null && liveEdits.isNotEmpty()) {
+                        _routineSaveOffer.value = RoutineSaveOffer(routine.first, routine.second, liveEdits.toMap())
+                    }
+                    liveEdits.clear()
+                    liveRoutine = null
+                }
+                if (phase == null) { liveEdits.clear(); liveRoutine = null }
+            }
+        }
+    }
+
     /** Marks the routine done and applies its progression for next time. */
     private fun finishRoutine(run: RoutineRun) {
         val now = nowMillis()
@@ -700,14 +788,17 @@ class CleanViewModel(
             return
         }
         val plans = w.exercises.map { ex ->
-            val sets = List(w.setsFor(ex.id)) { SetSpec(kind = defaultKind, reps = w.repsFor(ex.id), restSeconds = WorkoutBuilder.REST_SECONDS) }
+            val sets = List(w.setsFor(ex.id)) { SetSpec(kind = defaultKind, reps = w.repsFor(ex.id), restSeconds = defaultRest) }
+            val own = w.perExercise[ex.id]
             SetPlan(
                 exercise = ex,
                 mode = w.modeFor(ex.id),
                 percentOfOneRepMax = w.percent,
                 sets = sets,
                 loads = lifters.map { l -> LifterLoad(l.id, List(sets.size) { workoutLoad(l.id, ex, w) }) },
-                cableConfig = if (ex.cableConfig == "SINGLE") "SINGLE" else "DOUBLE"
+                cableConfig = if (ex.cableConfig == "SINGLE") "SINGLE" else "DOUBLE",
+                eccentricLoadPercent = own?.eccentricPercent ?: 100,
+                echoLevel = own?.echoLevel ?: EchoLevelChoice.HARDER
             )
         }
         _workout.update { it?.copy(isStarting = true, error = null) }
@@ -720,6 +811,7 @@ class CleanViewModel(
                     RoutineRun(id, w.totalSets * lifters.size, w.exercises.associate { it.name to w.repsFor(it.id) })
                 }
                 startedLive(plans)
+                liveRoutine = w.routineId?.let { id -> id to w.title }
                 onStarted()
             },
             onFailed = { msg -> _workout.update { it?.copy(isStarting = false, error = msg) } }
@@ -865,13 +957,15 @@ class CleanViewModel(
 
     // ---- Training % during the workout ----
 
-    private var livePlans: List<SetPlan> = emptyList()
     private val _livePercent = MutableStateFlow<Int?>(null)
     /** % of 1RM of the running workout; null when none was started from here (or for a 1RM attempt). */
     val livePercent: StateFlow<Int?> = _livePercent.asStateFlow()
 
     private fun startedLive(plans: List<SetPlan>) {
         livePlans = plans
+        liveEdits.clear()
+        liveRoutine = null
+        _routineSaveOffer.value = null
         _livePercent.value = plans.firstOrNull()?.percentOfOneRepMax
     }
 
@@ -1029,6 +1123,8 @@ class CleanViewModel(
         const val MAX_LIFTERS = 4
         private const val DEFAULT_LOAD_KG = 10f
         private const val KEY_SEP = "::"
+        /** How long "set done" shows before the rest starts by itself. */
+        private const val AUTO_REST_DELAY_MS = 1500L
 
         fun factory(gateway: TrainerGateway, store: CleanUiStore): ViewModelProvider.Factory =
             viewModelFactory { initializer { CleanViewModel(gateway, store) } }

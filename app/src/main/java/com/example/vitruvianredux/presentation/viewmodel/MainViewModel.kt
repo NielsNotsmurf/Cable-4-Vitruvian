@@ -1388,6 +1388,12 @@ class MainViewModel @Inject constructor(
     fun adjustWeightLive(weightPerCableKg: Float) {
         val params = _workoutParameters.value.copy(weightPerCableKg = weightPerCableKg.coerceIn(0.5f, 100f))
         _workoutParameters.value = params
+        if (_workoutState.value is WorkoutState.Resting) {
+            // For the coming set: it wins over the lifter's planned load when the set starts.
+            upcomingWeightOverride = params.weightPerCableKg
+            _parametersModifiedDuringRest.value = true
+            return
+        }
         val warmingUp = _workoutState.value is WorkoutState.Active && params.warmupReps > 0 &&
             !params.isJustLift && !_isCurrentExerciseBodyweight.value && !repCounter.getRepCount().isWarmupComplete
         if (!warmingUp) return
@@ -1492,9 +1498,10 @@ class MainViewModel @Inject constructor(
             // Issue #218: Don't modify warmupReps in persisted state for bodyweight exercises.
             // Bodyweight exercises are just timers - no BLE commands, no rep counting.
             // Modifying warmupReps here would incorrectly carry over to subsequent cable exercises.
-            val turnLoad = if (isJustLiftMode) null else currentExercise?.exercise?.id?.let { exId ->
+            val turnLoad = if (isJustLiftMode) null else upcomingWeightOverride ?: currentExercise?.exercise?.id?.let { exId ->
                 turnLoads[exId to turnProfileId()]?.let { it.getOrNull(_currentSetIndex.value) ?: it.lastOrNull() }
             }
+            upcomingWeightOverride = null
             var params = _workoutParameters.value.copy(
                 weightPerCableKg = turnLoad ?: _workoutParameters.value.weightPerCableKg,
                 isJustLift = isJustLiftMode,
@@ -1903,7 +1910,33 @@ class MainViewModel @Inject constructor(
      * Proceed from set summary to rest timer or completion
      * Called when user clicks "Continue" button on set summary screen
      */
+    /** Reps of the set just finished, shown during the rest; null before the first set. */
+    private val _lastSetReps = MutableStateFlow<Int?>(null)
+    val lastSetReps: StateFlow<Int?> = _lastSetReps.asStateFlow()
+
+    /** Load per cable set by hand for the coming set during rest; wins over the per-lifter loads once. */
+    private var upcomingWeightOverride: Float? = null
+
+    /**
+     * Starts a loaded routine on the Continue screen: rest at 0 for its first set, so the set,
+     * exercise, weight and reps can still be changed before Continue starts it.
+     */
+    fun holdBeforeFirstSet() {
+        _lastSetReps.value = null
+        upcomingWeightOverride = null
+        if (_loadedRoutine.value == null) { startWorkout(); return }
+        jumpToTurn(0, 0, 0)
+    }
+
+    /** During rest: the target reps of the coming set. */
+    fun adjustUpcomingReps(reps: Int) {
+        if (_workoutState.value !is WorkoutState.Resting) return
+        _workoutParameters.value = _workoutParameters.value.copy(reps = reps.coerceIn(1, 50))
+        _parametersModifiedDuringRest.value = true
+    }
+
     fun proceedFromSummary() {
+        (_workoutState.value as? WorkoutState.SetSummary)?.let { _lastSetReps.value = it.repCount }
         viewModelScope.launch {
             val routine = _loadedRoutine.value
             val isJustLift = workoutParameters.value.isJustLift
@@ -1966,7 +1999,17 @@ class MainViewModel @Inject constructor(
             // Show rest timer if there are more sets/exercises OR in single exercise mode
             // (regardless of autoplay preference)
             // Autoplay preference only controls whether we auto-advance after rest
-            if (shouldShowRestTimer) {
+            if (shouldShowRestTimer && routine != null) {
+                // The rest already points at the coming set (also when it's the next exercise), so
+                // its weight and reps show and can be changed during the rest and on the Continue screen.
+                val n = numParticipants
+                val current = routine.exercises.getOrNull(_currentExerciseIndex.value)
+                val rest = current?.getRestForSet(_currentSetIndex.value)?.takeIf { it > 0 } ?: 90
+                var idx = _currentExerciseIndex.value
+                var turn = _exerciseTurnCount.value
+                if (current != null && turn >= current.setReps.size * n && idx < routine.exercises.size - 1) { idx++; turn = 0 }
+                jumpToTurn(idx, turn, rest)
+            } else if (shouldShowRestTimer) {
                 Timber.d("? Starting rest timer...")
                 startRestTimer()
             } else {
@@ -2024,7 +2067,8 @@ class MainViewModel @Inject constructor(
             val numParticipants = _workoutParticipants.value.size.coerceAtLeast(1)
 
             val completedSetIndex = _currentSetIndex.value
-            val restDuration = durationOverride?.coerceAtLeast(1)
+            // 0 = no countdown: wait on the Continue screen straight away.
+            val restDuration = durationOverride?.coerceAtLeast(0)
                 ?: currentExercise?.getRestForSet(completedSetIndex)?.takeIf { it > 0 } ?: 90
             val autoplay = userPreferences.value.autoplayEnabled
 
@@ -2082,7 +2126,7 @@ class MainViewModel @Inject constructor(
                 delay(1000)
             }
 
-            if (autoplay) {
+            if (autoplay && restDuration > 0) {
                 Timber.d("Autoplay enabled - starting next set/exercise")
                 if (isSingleExercise) {
                     val currentExerciseSets = routine?.exercises?.getOrNull(_currentExerciseIndex.value)
@@ -2124,8 +2168,8 @@ class MainViewModel @Inject constructor(
                         restSecondsRemaining = 0,
                         nextExerciseName = nextNameFinal,
                         isLastExercise = false,
-                        currentSet = 0,
-                        totalSets = 0
+                        currentSet = upcomingSetIdx,
+                        totalSets = currentExercise?.setReps?.size ?: 0
                     )
                 } else {
                     WorkoutState.Resting(
@@ -2271,6 +2315,13 @@ class MainViewModel @Inject constructor(
     /** Sets the loads of the coming sets of [exerciseId], per profile id, in set order. */
     fun setUpcomingLoads(exerciseId: String, loadsByProfile: Map<String, List<Float>>) {
         turnLoads = turnLoads + loadsByProfile.mapKeys { (profileId, _) -> exerciseId to profileId }
+        // During rest the coming set shows its new load at once (a load set by hand is replaced).
+        if (_workoutState.value is WorkoutState.Resting && _workoutParameters.value.selectedExerciseId == exerciseId) {
+            turnLoads[exerciseId to turnProfileId()]?.let { it.getOrNull(_currentSetIndex.value) ?: it.lastOrNull() }?.let { kg ->
+                upcomingWeightOverride = null
+                _workoutParameters.value = _workoutParameters.value.copy(weightPerCableKg = kg)
+            }
+        }
     }
 
     /** Ends the set being lifted now with the reps done so far, as if its target was reached. */
@@ -2331,7 +2382,8 @@ class MainViewModel @Inject constructor(
         )
         // Keep these parameters when the next set starts.
         _parametersModifiedDuringRest.value = true
-        startRestTimer(restSeconds.coerceAtLeast(1))
+        upcomingWeightOverride = null
+        startRestTimer(restSeconds.coerceAtLeast(0))
     }
 
     fun skipRest() {

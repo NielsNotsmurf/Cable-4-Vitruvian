@@ -101,6 +101,13 @@ class CleanUiStore(
     }
 
     /** Training % of 1RM from Settings; 60 until changed. */
+    /** Rest after each set of a new exercise or workout, in seconds. */
+    val defaultRest: Flow<Int> = kv.data.map { it[DEFAULT_REST] ?: 90 }
+
+    suspend fun setDefaultRest(seconds: Int) {
+        kv.edit { it[DEFAULT_REST] = seconds.coerceIn(15, 600) }
+    }
+
     val defaultPercent: Flow<Int> = kv.data.map { it[DEFAULT_PERCENT] ?: 60 }
 
     suspend fun setDefaultPercent(percent: Int) {
@@ -183,6 +190,7 @@ class CleanUiStore(
         private val WARMUP_REPS = Key<Int>("warmup_reps")
         private val DEFAULT_AMRAP = Key<Boolean>("default_amrap")
         private val DEFAULT_PERCENT = Key<Int>("default_percent")
+        private val DEFAULT_REST = Key<Int>("default_rest")
         private val ONBOARDED = Key<Boolean>("onboarded")
         private val LAST_ACCOUNT = Key<String>("last_account")
         private val ROUTINES = Key<String>("routines")

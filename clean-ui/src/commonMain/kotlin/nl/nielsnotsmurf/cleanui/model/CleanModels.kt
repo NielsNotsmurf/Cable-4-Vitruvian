@@ -189,14 +189,17 @@ data class CleanSettings(
     val defaultSets: Int = 3,
     /** Training load as % of 1RM that every exercise and workout starts at. */
     val defaultPercent: Int = 60,
-    val autoplay: Boolean = true,
+    /** After the rest the next set starts by itself; off, a Continue screen waits for you. */
+    val autoplay: Boolean = false,
     val stopAtTop: Boolean = false,
     /** Warm-up reps (1-3) at the start of every set; the trainer sets the range of motion from them. */
     val warmupReps: Int = 3,
     val beeps: Boolean = true,
     val videos: Boolean = true,
     /** New sets start as AMRAP (to failure) instead of [defaultReps]. */
-    val defaultAmrap: Boolean = false
+    val defaultAmrap: Boolean = false,
+    /** Rest after every set of a new exercise or workout, in seconds. */
+    val defaultRestSeconds: Int = 90
 )
 
 /** A trainer LED colour scheme: its name and the colours it cycles through. */
@@ -233,5 +236,7 @@ data class LiveWorkout(
     /** True for a bodyweight exercise, which only the classic screen times. */
     val bodyweight: Boolean = false,
     /** AMRAP / Just Lift: seconds until the set stops by itself (failure or handles down); null when not counting. */
-    val autoStopSeconds: Int? = null
+    val autoStopSeconds: Int? = null,
+    /** During rest: the reps of the set just done; null before the first set. */
+    val lastReps: Int? = null
 )
