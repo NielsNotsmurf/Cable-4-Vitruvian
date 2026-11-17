@@ -613,6 +613,16 @@ class CleanViewModel(
         editWorkout { it.copy(name = name.trim()) }
     }
 
+    /** Moves a routine one place up (-1) or down (+1) in the list. */
+    fun moveRoutine(id: String, delta: Int) {
+        updateRoutines { list ->
+            val from = list.indexOfFirst { it.id == id }
+            val to = from + delta
+            if (from < 0 || to !in list.indices) list
+            else list.toMutableList().apply { add(to, removeAt(from)) }
+        }
+    }
+
     fun deleteRoutine(id: String) {
         updateRoutines { list -> list.filterNot { it.id == id } }
         _workout.update { if (it?.routineId == id) it.copy(routineId = null) else it }
@@ -716,6 +726,64 @@ class CleanViewModel(
     }
 
     fun dismissRoutineSaveOffer() { _routineSaveOffer.value = null }
+
+    init {
+        // The rest-over beep is queued with the platform when the rest starts, so it also sounds
+        // when the phone shows another app or the browser tab is hidden (the screen isn't drawn then).
+        viewModelScope.launch {
+            var endsAt = 0L
+            var lastLeft = 0
+            gateway.liveWorkout.collect { live ->
+                val left = if (live?.phase == LivePhase.RESTING) live.restSeconds else 0
+                val now = nowMillis()
+                if (left > 0) {
+                    // Only (re)queue when the rest starts or gets longer; ticks can lag in a hidden tab.
+                    if (endsAt == 0L || left > lastLeft) {
+                        endsAt = now + left * 1000L
+                        CleanSounds.scheduleRestOver(endsAt - now)
+                    }
+                } else if (endsAt != 0L) {
+                    // Rest skipped or workout stopped well before the end: no beep.
+                    if (now < endsAt - 1_500L) CleanSounds.cancelRestOver()
+                    endsAt = 0L
+                }
+                lastLeft = left
+            }
+        }
+    }
+
+    // Declared here: the flow below reads it while the view model is built.
+    private val _livePercent = MutableStateFlow<Int?>(null)
+
+    /**
+     * While resting: the 1RM (kg per cable) that makes the coming load match the training %, when the
+     * load was set by hand away from it. Null when the load still follows the %.
+     */
+    val liveOneRepMaxUpdate: StateFlow<Float?> = combine(gateway.liveWorkout, _livePercent, state) { live, p, s ->
+        if (live == null || p == null || p <= 0 || live.phase != LivePhase.RESTING || live.loadKg <= 0f) return@combine null
+        val ex = liveExerciseId(live) ?: return@combine null
+        val lifter = live.lifterId ?: return@combine null
+        val planned = s.oneRepMax(lifter, ex)?.kg?.let { LoadCalculator.loadForPercent(it, p) }
+            ?: livePlans.firstOrNull { it.exercise.id == ex }?.loads?.firstOrNull { it.lifterId == lifter }?.weightPerCableKg
+        if (planned != null && kotlin.math.abs(live.loadKg - planned) < LoadCalculator.STEP_KG / 2) null
+        else LoadCalculator.roundToStep(live.loadKg * 100f / p).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Makes the load set by hand the new 1RM basis: 1RM = load ÷ training %. The routine's own
+     * load for this lifter is dropped, so its loads follow the new 1RM from now on.
+     */
+    fun updateOneRepMaxFromLive() {
+        val kg = liveOneRepMaxUpdate.value ?: return
+        viewModelScope.launch {
+            val live = gateway.liveWorkout.first() ?: return@launch
+            val ex = liveExerciseId(live) ?: return@launch
+            val lifter = live.lifterId ?: return@launch
+            setManualOneRepMax(lifter, ex, kg)
+            liveEdits[ex]?.let { e -> liveEdits[ex] = e.copy(kgByLifter = e.kgByLifter - lifter) }
+            liveRoutine?.first?.let { id -> updateRoutine(id) { it.copy(overridesKg = it.overridesKg - relatedKey(lifter, ex)) } }
+        }
+    }
 
     init {
         // After a set the rest starts by itself (a 1RM attempt has no plans and handles its own end).
@@ -967,7 +1035,6 @@ class CleanViewModel(
 
     // ---- Training % during the workout ----
 
-    private val _livePercent = MutableStateFlow<Int?>(null)
     /** % of 1RM of the running workout; null when none was started from here (or for a 1RM attempt). */
     val livePercent: StateFlow<Int?> = _livePercent.asStateFlow()
 

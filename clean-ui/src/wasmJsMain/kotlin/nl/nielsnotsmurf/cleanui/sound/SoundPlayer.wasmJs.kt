@@ -26,17 +26,45 @@ private fun jsPlay(buffer: JsAny): Unit = js(
     }"""
 )
 
+// Queued on the audio clock: it plays on time even when a hidden tab's timers are throttled.
+private fun jsPlayAt(buffer: JsAny, delaySeconds: Double): Unit = js(
+    """{
+        const c = window.__cleanUiAudio;
+        if (c.state === 'suspended') c.resume();
+        if (window.__cleanUiQueued) { try { window.__cleanUiQueued.stop(); } catch (e) {} }
+        const s = c.createBufferSource();
+        s.buffer = buffer;
+        s.connect(c.destination);
+        s.start(c.currentTime + Math.max(0, delaySeconds));
+        window.__cleanUiQueued = s;
+    }"""
+)
+
+private fun jsCancelQueued(): Unit = js(
+    """{
+        if (window.__cleanUiQueued) { try { window.__cleanUiQueued.stop(); } catch (e) {} }
+        window.__cleanUiQueued = null;
+    }"""
+)
+
 private val buffers = HashMap<Sfx, JsAny>()
 
+private fun bufferFor(sfx: Sfx, render: () -> ShortArray): JsAny? = buffers[sfx] ?: run {
+    val pcm = render()
+    val b = jsNewBuffer(pcm.size, CleanSounds.RATE) ?: return null
+    val channel = jsChannel(b)
+    for (i in pcm.indices) jsSetSample(channel, i, pcm[i] / 32768.0)
+    b.also { buffers[sfx] = it }
+}
+
 internal actual fun playPcm(sfx: Sfx, render: () -> ShortArray) {
-    runCatching {
-        val buffer = buffers[sfx] ?: run {
-            val pcm = render()
-            val b = jsNewBuffer(pcm.size, CleanSounds.RATE) ?: return
-            val channel = jsChannel(b)
-            for (i in pcm.indices) jsSetSample(channel, i, pcm[i] / 32768.0)
-            b.also { buffers[sfx] = it }
-        }
-        jsPlay(buffer)
-    }
+    runCatching { bufferFor(sfx, render)?.let { jsPlay(it) } }
+}
+
+internal actual fun schedulePcm(sfx: Sfx, delayMs: Long, render: () -> ShortArray) {
+    runCatching { bufferFor(sfx, render)?.let { jsPlayAt(it, delayMs / 1000.0) } }
+}
+
+internal actual fun cancelScheduledPcm() {
+    runCatching { jsCancelQueued() }
 }

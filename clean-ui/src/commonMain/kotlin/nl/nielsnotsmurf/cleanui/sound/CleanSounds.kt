@@ -43,6 +43,15 @@ object CleanSounds {
         Sfx.MISS -> listOf(Note(523.0, 140), Note(392.0, 260)) to 0.45f
     }
 
+    /** Queues the rest-over beep [delayMs] from now; it plays even when the app is in the background. */
+    fun scheduleRestOver(delayMs: Long) {
+        if (!workoutEnabled) return
+        schedulePcm(Sfx.REST_OVER, delayMs) { val (seq, volume) = notes(Sfx.REST_OVER); render(seq, volume) }
+    }
+
+    /** Drops a queued rest-over beep (rest skipped or workout stopped). */
+    fun cancelRestOver() = cancelScheduledPcm()
+
     /** Plays [sfx] if its kind of sound is switched on. Safe to call from any thread. */
     fun play(sfx: Sfx) {
         val ui = sfx == Sfx.TAP || sfx == Sfx.NAV

@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,7 +52,8 @@ fun RoutinesScreen(
     onBack: () -> Unit,
     onOpen: (Routine) -> Unit,
     onNew: () -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    onMove: (String, Int) -> Unit = { _, _ -> }
 ) {
     var deleting by remember { mutableStateOf<Routine?>(null) }
     deleting?.let { r ->
@@ -84,14 +87,28 @@ fun RoutinesScreen(
             if (routines.isEmpty()) {
                 Text("No routines yet.", style = MaterialTheme.typography.bodyMedium)
             }
-            routines.forEach { r -> RoutineRow(r, onOpen = { onOpen(r) }, onDelete = { deleting = r }) }
+            routines.forEachIndexed { i, r ->
+                RoutineRow(
+                    r,
+                    onOpen = { onOpen(r) },
+                    onDelete = { deleting = r },
+                    onUp = if (i > 0) ({ onMove(r.id, -1) }) else null,
+                    onDown = if (i < routines.lastIndex) ({ onMove(r.id, 1) }) else null
+                )
+            }
             Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun RoutineRow(routine: Routine, onOpen: () -> Unit, onDelete: () -> Unit) {
+private fun RoutineRow(
+    routine: Routine,
+    onOpen: () -> Unit,
+    onDelete: () -> Unit,
+    onUp: (() -> Unit)?,
+    onDown: (() -> Unit)?
+) {
     val shape = RoundedCornerShape(18.dp)
     Column(
         Modifier
@@ -115,6 +132,16 @@ private fun RoutineRow(routine: Routine, onOpen: () -> Unit, onDelete: () -> Uni
                     style = MaterialTheme.typography.bodySmall,
                     color = CleanColors.Muted
                 )
+            }
+            if (onUp != null || onDown != null) {
+                Column {
+                    IconButton(onClick = { onUp?.invoke() }, enabled = onUp != null) {
+                        Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up")
+                    }
+                    IconButton(onClick = { onDown?.invoke() }, enabled = onDown != null) {
+                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down")
+                    }
+                }
             }
             TextButton(onClick = onDelete) { Text("Delete", color = CleanColors.Muted) }
         }
