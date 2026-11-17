@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +45,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -234,41 +241,90 @@ fun Tile(title: String, subtitle: String, onClick: () -> Unit, modifier: Modifie
     }
 }
 
+/**
+ * A − value + control. The value never wraps over two lines: it shrinks to fit. With [onTyped],
+ * tapping the value opens a field to type it ([typedSuffix] is shown behind it, e.g. "kg").
+ */
 @Composable
 fun Stepper(
     label: String,
     value: String,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTyped: ((Float) -> Unit)? = null,
+    typedSuffix: String = ""
 ) {
+    var typing by remember { mutableStateOf(false) }
+    if (typing && onTyped != null) {
+        val start = value.substringBefore(' ').filter { it.isDigit() || it == '.' || it == ',' }
+        var text by remember { mutableStateOf(start) }
+        val entered = text.replace(',', '.').toFloatOrNull()?.takeIf { it > 0f }
+        AlertDialog(
+            onDismissRequest = { typing = false },
+            containerColor = CleanColors.Background,
+            title = { Text(label) },
+            text = {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.filter { c -> c.isDigit() || c == '.' || c == ',' }.take(6) },
+                    singleLine = true,
+                    suffix = { if (typedSuffix.isNotEmpty()) Text(typedSuffix) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = entered != null, onClick = { onTyped(entered!!); typing = false }) {
+                    Text("Set", color = CleanColors.Ink)
+                }
+            },
+            dismissButton = { TextButton(onClick = { typing = false }) { Text("Cancel", color = CleanColors.Ink) } }
+        )
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SectionLabel(label)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Narrow rows (two steppers side by side in a dialog) get smaller keys, leaving room for the value.
+        val key = if (maxWidth < 170.dp) 36.dp else 48.dp
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(CleanColors.Surface)
-                .padding(6.dp),
+                .padding(if (key < 48.dp) 4.dp else 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StepperKey("−", onMinus)
-            Text(
-                value,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.headlineMedium
-            )
-            StepperKey("+", onPlus)
+            StepperKey("−", onMinus, key)
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(if (onTyped != null) Modifier.clickable(role = Role.Button) { typing = true } else Modifier),
+                contentAlignment = Alignment.Center
+            ) {
+                // Shrink long values ("10", "102.5 lb") so they stay on one line in narrow rows.
+                val base = MaterialTheme.typography.headlineMedium
+                val fits = with(LocalDensity.current) { maxWidth.toPx() / (base.fontSize.toPx() * 0.62f) }
+                val style = if (value.length <= fits) base else base.copy(fontSize = base.fontSize * (fits / value.length).coerceIn(0.5f, 1f))
+                Text(
+                    value,
+                    textAlign = TextAlign.Center,
+                    style = style,
+                    maxLines = 1,
+                    softWrap = false,
+                    textDecoration = if (onTyped != null) TextDecoration.Underline else null
+                )
+            }
+            StepperKey("+", onPlus, key)
+        }
         }
     }
 }
 
 @Composable
-private fun StepperKey(symbol: String, onClick: () -> Unit) {
+private fun StepperKey(symbol: String, onClick: () -> Unit, size: Dp = 48.dp) {
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(size)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .clickable(role = Role.Button, onClick = onClick),

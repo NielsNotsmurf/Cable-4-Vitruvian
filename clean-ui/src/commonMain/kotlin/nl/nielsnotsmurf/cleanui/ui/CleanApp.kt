@@ -267,6 +267,7 @@ private fun SignedInApp(
     val ledScheme by vm.ledScheme.collectAsStateWithLifecycle()
     val uiSounds by vm.uiSounds.collectAsStateWithLifecycle()
     val livePercent by vm.livePercent.collectAsStateWithLifecycle()
+    val liveOneRepMaxUpdate by vm.liveOneRepMaxUpdate.collectAsStateWithLifecycle()
     val saveOffer by vm.routineSaveOffer.collectAsStateWithLifecycle()
     val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
     val nav = rememberNavController()
@@ -433,7 +434,8 @@ private fun SignedInApp(
                             onBack = { nav.popBackStack() },
                             onOpen = { vm.openRoutine(it); nav.navigate(CleanRoutes.WORKOUT_PLAN) },
                             onNew = { vm.newRoutine(); nav.navigate(CleanRoutes.WORKOUT_PLAN) },
-                            onDelete = vm::deleteRoutine
+                            onDelete = vm::deleteRoutine,
+                            onMove = vm::moveRoutine
                         )
                     }
                     composable(CleanRoutes.WORKOUT_ADD) {
@@ -578,6 +580,8 @@ private fun SignedInApp(
                                 onDismissSaveToRoutine = vm::dismissRoutineSaveOffer,
                                 percent = livePercent,
                                 onPercent = vm::setLivePercent,
+                                oneRepMaxUpdate = liveOneRepMaxUpdate,
+                                onUpdateOneRepMax = vm::updateOneRepMaxFromLive,
                                 onFinishSet = gateway::finishSetEarly,
                                 onRestartSet = gateway::restartSet,
                                 onMoveSet = gateway::moveSet,

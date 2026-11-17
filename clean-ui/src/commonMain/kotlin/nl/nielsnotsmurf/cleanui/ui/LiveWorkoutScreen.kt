@@ -115,6 +115,9 @@ fun LiveWorkoutScreen(
     /** % of 1RM for the coming sets; null hides the slider. */
     percent: Int? = null,
     onPercent: (Int) -> Unit = {},
+    /** New 1RM (kg per cable) when the load was set away from the %: offered as "Update 1RM". */
+    oneRepMaxUpdate: Float? = null,
+    onUpdateOneRepMax: () -> Unit = {},
     onFinishSet: () -> Unit = {},
     onRestartSet: () -> Unit = {},
     onMoveSet: (Int) -> Unit = {},
@@ -255,6 +258,8 @@ fun LiveWorkoutScreen(
                         "Weight per cable", fmt(live.loadKg),
                         onMinus = { onAdjustWeight((live.loadKg - step).coerceAtLeast(0.5f)) },
                         onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) },
+                        onTyped = { v -> onAdjustWeight((if (unit == WeightUnit.LB) v / 2.20462f else v).coerceIn(0.5f, 100f)) },
+                        typedSuffix = if (unit == WeightUnit.LB) "lb" else "kg",
                         modifier = Modifier.weight(1f)
                     )
                     live.targetReps?.let { reps ->
@@ -267,6 +272,9 @@ fun LiveWorkoutScreen(
                     }
                 }
                 if (percent != null) PercentSlider(percent, onPercent)
+                if (percent != null && oneRepMaxUpdate != null) {
+                    GhostButton("Update 1RM to ${fmt(oneRepMaxUpdate)} (weight ÷ $percent%)", onClick = onUpdateOneRepMax)
+                }
             }
             if (live.isGettingReady() && !attemptMode) {
                 // kg moves in 0.5 kg steps, lb in whole pounds.
@@ -275,7 +283,9 @@ fun LiveWorkoutScreen(
                     if (live.phase == LivePhase.LIFTING) "Weight per cable · warm-up restarts" else "Weight per cable",
                     fmt(live.loadKg),
                     onMinus = { onAdjustWeight((live.loadKg - step).coerceAtLeast(0.5f)) },
-                    onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) }
+                    onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) },
+                    onTyped = { v -> onAdjustWeight((if (unit == WeightUnit.LB) v / 2.20462f else v).coerceIn(0.5f, 100f)) },
+                    typedSuffix = if (unit == WeightUnit.LB) "lb" else "kg"
                 )
             }
         }
