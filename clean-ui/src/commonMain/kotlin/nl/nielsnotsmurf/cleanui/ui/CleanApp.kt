@@ -331,6 +331,12 @@ private fun SignedInApp(
         )
     }
 
+    // Once a month (and after "Later"), a short donation request; never over the tour or a workout.
+    DonationPrompt(
+        store = rememberCleanUiStore(),
+        allowed = !tour.isRunning && live == null && (tourOffered || account.tour(me) != TourStatus.NotSeen)
+    )
+
     // Phones get the tab bar at the bottom; tablets, iPads, landscape and desktop a rail on the
     // left, with the screens kept to a readable width.
     BoxWithConstraints(Modifier.fillMaxSize()) {

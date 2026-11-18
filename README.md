@@ -87,6 +87,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 | Feature | What it does |
 | --- | --- |
 | History and analytics | Workouts, personal records and volume over time. Opens on a body map coloured by the measure (reps, volume, …) and period (week, year, …) you pick, with each region's heaviest load. Those filters drive the whole screen: trends, headline numbers, insights, balance and exercise cards. |
+| Donation request | Once a month a short card compares the official app (€35 a month) with Cable and asks for a donation. Later asks again in a week; Don't show again leaves only the monthly one. |
 | Backup and restore | Full JSON backup saved to `Download/Cable`. |
 
 **App**
@@ -206,6 +207,7 @@ no imports from `:app`).
 ## Changelog
 
 - **2026-11-18:** Settings shows the price: €35 once to use Cable, versus €35 a month for the official app.
+  A short donation request shows once a month, with Later and Don't show again (app and web).
 - **2026-11-16:** Tester feedback: the rest starts by itself after a set, then a Continue screen to change
   the coming set's weight, reps and % (Autoplay in Settings skips it). Rest between sets in Settings.
   Swipe or step between exercises from the start. Rep counter shows the current rep, live load shown big.
