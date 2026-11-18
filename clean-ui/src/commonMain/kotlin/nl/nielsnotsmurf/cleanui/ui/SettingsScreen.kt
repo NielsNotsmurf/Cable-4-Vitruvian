@@ -248,9 +248,10 @@ fun SettingsScreen(
             LinkRow("Send feedback", "Report a problem or share an idea on GitHub", {
                 uriHandler.openUri(feedbackUrl)
             })
+            InfoRow("Price", "€35 once to use Cable, versus €35 a month for the official Vitruvian app")
             LinkRow(
                 "Support Cable",
-                "Cable is free and stays free. Donate on GoFundMe, no account needed; about €200 brings it to TestFlight (iPhone) and the Play Store",
+                "Donate on GoFundMe, no account needed; about €200 brings it to TestFlight (iPhone) and the Play Store",
                 { uriHandler.openUri(DONATE_URL) }
             )
             LinkRow("Sponsor on GitHub", "If you'd rather give through GitHub Sponsors", { uriHandler.openUri(SPONSOR_URL) })
@@ -328,6 +329,14 @@ private fun Toggle(title: String, subtitle: String, checked: Boolean, onChange: 
             onCheckedChange = null,
             colors = SwitchDefaults.colors(checkedTrackColor = CleanColors.Accent, checkedThumbColor = Color.White)
         )
+    }
+}
+
+@Composable
+private fun InfoRow(title: String, subtitle: String) {
+    Column(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall)
     }
 }
 

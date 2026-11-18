@@ -169,6 +169,19 @@ class CleanUiStore(
         }
     }
 
+    /** Donation prompt: the month (yyyymm) it last showed, a "Later" time, and "Don't show again". */
+    val donationPrompt: Flow<DonationPromptState> = kv.data.map {
+        DonationPromptState(it[DONATE_MONTH] ?: 0, it[DONATE_SNOOZE] ?: 0L, it[DONATE_NO_EXTRA] ?: false)
+    }
+
+    suspend fun setDonationPrompt(state: DonationPromptState) {
+        kv.edit {
+            it[DONATE_MONTH] = state.shownMonth
+            it[DONATE_SNOOZE] = state.snoozeUntil
+            it[DONATE_NO_EXTRA] = state.noExtra
+        }
+    }
+
     private fun prefixed(prefix: String): Flow<Map<String, String>> =
         kv.data.map { prefs ->
             prefs.mapNotNull { (name, value) ->
@@ -194,6 +207,9 @@ class CleanUiStore(
         private val ONBOARDED = Key<Boolean>("onboarded")
         private val LAST_ACCOUNT = Key<String>("last_account")
         private val ROUTINES = Key<String>("routines")
+        private val DONATE_MONTH = Key<Int>("donate_month")
+        private val DONATE_SNOOZE = Key<Long>("donate_snooze")
+        private val DONATE_NO_EXTRA = Key<Boolean>("donate_no_extra")
         private const val PIN_PREFIX = "pin|"
         private const val TOUR_PREFIX = "tour|"
         private const val ORM_PREFIX = "orm|"
@@ -202,5 +218,31 @@ class CleanUiStore(
         private const val PCT_PREFIX = "pct|"
         // Profile ids are UUIDs or simple slugs and exercise ids are UUID-like, so this never collides.
         private const val SEP = "::"
+    }
+}
+
+/**
+ * When the donation prompt shows: always at the first start of each calendar month, and again
+ * after "Later" (a week on) unless "Don't show again" was picked.
+ */
+data class DonationPromptState(val shownMonth: Int, val snoozeUntil: Long, val noExtra: Boolean) {
+    fun isDue(now: Long): Boolean =
+        monthOf(now) != shownMonth || (!noExtra && snoozeUntil in 1..now)
+
+    companion object {
+        const val SNOOZE_MS = 7L * 24 * 60 * 60 * 1000
+
+        /** The UTC calendar month of [millis] as yyyymm. */
+        fun monthOf(millis: Long): Int {
+            val z = millis.floorDiv(86_400_000L) + 719_468
+            val era = z.floorDiv(146_097L)
+            val doe = z - era * 146_097
+            val yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365
+            val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+            val mp = (5 * doy + 2) / 153
+            val m = if (mp < 10) mp + 3 else mp - 9
+            val y = yoe + era * 400 + if (m <= 2) 1 else 0
+            return (y * 100 + m).toInt()
+        }
     }
 }
