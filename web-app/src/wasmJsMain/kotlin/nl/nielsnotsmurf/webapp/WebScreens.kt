@@ -260,7 +260,7 @@ fun WebSettings(gateway: WebTrainerGateway) {
 fun AppStoreGoal() {
     SectionLabel("Toward iPhone and Play Store apps", Modifier.padding(top = 8.dp))
     Text(
-        "Cable is free and stays free. Once donations cover about €200 (Apple's developer account at \$99 a year " +
+        "Cable costs €35 once, versus €35 a month for the official app. Once donations cover about €200 (Apple's developer account at \$99 a year " +
             "for two years, and Google Play's one-time \$25), Cable moves to TestFlight on iPhone and iPad and to the Play Store.",
         style = MaterialTheme.typography.bodyMedium
     )

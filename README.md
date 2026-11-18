@@ -37,7 +37,7 @@
 
 | | |
 |---|---|
-| **Free, for good** | No subscription, no ads, no tracking. MIT licensed. |
+| **€35 once, not €35 a month** | One payment to use Cable, versus €35 a month for the official app. No ads, no tracking. MIT licensed. |
 | **Offline first** | Everything stays on your phone. Back up to a single JSON file. |
 | **Train together** | Up to 4 lifters per session, sets rotate, each with their own 1RM and PIN. |
 | **Smart loading** | Loads as a % of your 1RM, with estimated 1RMs for 362 exercises. |
@@ -101,7 +101,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 
 ## Install
 
-Android only (Android 8 or newer) and free.
+Android only (Android 8 or newer).
 
 1. Install [Obtainium](https://github.com/ImranR98/Obtainium/releases) on your phone or tablet.
    It installs apps straight from GitHub and keeps them updated.
@@ -205,6 +205,7 @@ no imports from `:app`).
 
 ## Changelog
 
+- **2026-11-18:** Settings shows the price: €35 once to use Cable, versus €35 a month for the official app.
 - **2026-11-16:** Tester feedback: the rest starts by itself after a set, then a Continue screen to change
   the coming set's weight, reps and % (Autoplay in Settings skips it). Rest between sets in Settings.
   Swipe or step between exercises from the start. Rep counter shows the current rep, live load shown big.
@@ -271,7 +272,7 @@ no imports from `:app`).
 
 ## Support
 
-Cable is free and stays free. If it saves you a subscription and you want to say thanks,
+Cable costs €35 once, versus €35 a month for the official app. If it saves you a subscription and you want to say thanks,
 you can **[donate on GoFundMe](https://gofund.me/0a5d05a21)** (no account needed) or
 [sponsor me on GitHub](https://github.com/sponsors/NielsNotsmurf). The app links to GoFundMe
 too, under Settings, "Support Cable". Stars, bug reports
