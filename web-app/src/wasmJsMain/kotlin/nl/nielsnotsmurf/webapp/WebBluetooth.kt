@@ -13,8 +13,21 @@ private fun jsConnectTrainer(service: String, rx: String, sample: String, reps: 
         .then(device => device.gatt.connect()
             .then(server => server.getPrimaryService(service))
             .then(svc => Promise.all([svc.getCharacteristic(rx), svc.getCharacteristic(sample), svc.getCharacteristic(reps)]))
-            .then(c => ({ device: device, rx: c[0], sample: c[1], reps: c[2] })))
+            .then(c => { window.__vitTrainerDevice = device; return { device: device, rx: c[0], sample: c[1], reps: c[2] }; }))
         .catch(e => (e && e.name === 'NotFoundError') ? null : Promise.reject(e))
+""")
+
+/** The trainer picked earlier in this tab again, without the picker (no tap needed); null when there is none. */
+private fun jsReconnectTrainer(service: String, rx: String, sample: String, reps: String): kotlin.js.Promise<JsAny?> = js("""
+    (() => {
+        const device = window.__vitTrainerDevice;
+        if (!device || !device.gatt) return Promise.resolve(null);
+        return device.gatt.connect()
+            .then(server => server.getPrimaryService(service))
+            .then(svc => Promise.all([svc.getCharacteristic(rx), svc.getCharacteristic(sample), svc.getCharacteristic(reps)]))
+            .then(c => ({ device: device, rx: c[0], sample: c[1], reps: c[2] }))
+            .catch(() => null);
+    })()
 """)
 
 /** Resolves with { device, hr } or null when the picker is cancelled. */
@@ -29,8 +42,12 @@ private fun jsConnectHeartRate(service: String, char: String): kotlin.js.Promise
 
 private fun jsDeviceName(link: JsAny): String = js("(link.device.name || 'Vitruvian')")
 
-private fun jsOnDisconnect(link: JsAny, onGone: () -> Unit): Unit =
-    js("link.device.addEventListener('gattserverdisconnected', () => onGone())")
+// One listener per device, calling the latest link's callback: a reconnected device isn't hooked twice.
+private fun jsOnDisconnect(link: JsAny, onGone: () -> Unit): Unit = js("""{
+    const d = link.device;
+    d.__vitOnGone = onGone;
+    if (!d.__vitHooked) { d.__vitHooked = true; d.addEventListener('gattserverdisconnected', () => { if (d.__vitOnGone) d.__vitOnGone(); }); }
+}""")
 
 private fun jsDisconnect(link: JsAny): Unit = js("{ try { link.device.gatt.disconnect(); } catch (e) {} }")
 
@@ -80,6 +97,18 @@ class TrainerLink private constructor(private val link: JsAny) {
                 TrainerProtocol.SERVICE, TrainerProtocol.COMMAND_CHAR, TrainerProtocol.SAMPLE_CHAR,
                 TrainerProtocol.REPS_CHAR, TrainerProtocol.DEVICE_NAME_PREFIX
             ).await<JsAny?>() ?: return null
+            return hook(link, onReps, onGone)
+        }
+
+        /** Connects to the trainer picked earlier in this tab, without the picker; null when that fails. */
+        suspend fun reconnect(onReps: (TrainerProtocol.Reps) -> Unit, onGone: () -> Unit): TrainerLink? {
+            val link = jsReconnectTrainer(
+                TrainerProtocol.SERVICE, TrainerProtocol.COMMAND_CHAR, TrainerProtocol.SAMPLE_CHAR, TrainerProtocol.REPS_CHAR
+            ).await<JsAny?>() ?: return null
+            return runCatching { hook(link, onReps, onGone) }.getOrNull()
+        }
+
+        private suspend fun hook(link: JsAny, onReps: (TrainerProtocol.Reps) -> Unit, onGone: () -> Unit): TrainerLink {
             jsOnDisconnect(link, onGone)
             jsNotify(link, "reps") { hex -> TrainerProtocol.parseReps(hex.hexToBytes())?.let(onReps) }.await<JsAny?>()
             return TrainerLink(link)

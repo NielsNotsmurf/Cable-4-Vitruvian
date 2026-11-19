@@ -110,6 +110,7 @@ class CleanUiBridge(
     }
 
     override fun disconnectTrainer() = vm.disconnect()
+    override fun connectTrainer() = vm.ensureConnection(onConnected = {})
 
     override val connection: Flow<TrainerConnection> = vm.connectionState.map {
         when (it) {
@@ -183,6 +184,7 @@ class CleanUiBridge(
     override fun skipRest() = vm.skipRest()
     override fun adjustLiveWeight(perCableKg: Float) = vm.adjustWeightLive(perCableKg)
     override fun adjustNextReps(reps: Int) = vm.adjustUpcomingReps(reps)
+    override fun adjustEchoLevel(level: EchoLevelChoice) = vm.adjustUpcomingEchoLevel(level.toApp())
     override fun proceedFromSummary() = vm.proceedFromSummary()
     override fun stopWorkout() = vm.stopWorkout()
     override fun advanceToNextExercise() = vm.advanceToNextExercise()

@@ -29,6 +29,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +78,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
+import nl.nielsnotsmurf.cleanui.ui.components.ConnectionPill
 import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 import nl.nielsnotsmurf.cleanui.platform.nowMillis
 import nl.nielsnotsmurf.cleanui.platform.formatClock
@@ -118,6 +122,14 @@ fun LiveWorkoutScreen(
     /** New 1RM (kg per cable) when the load was set away from the %: offered as "Update 1RM". */
     oneRepMaxUpdate: Float? = null,
     onUpdateOneRepMax: () -> Unit = {},
+    /** Echo exercises: the level of the coming set, shown instead of weight and %; null otherwise. */
+    echoLevel: EchoLevelChoice? = null,
+    onEchoLevel: (EchoLevelChoice) -> Unit = {},
+    /** The routine's name when this exercise was changed by hand and the routine doesn't have it yet. */
+    routineNudge: String? = null,
+    onUpdateRoutine: () -> Unit = {},
+    /** Connects to the trainer again when the link dropped during the workout. */
+    onConnect: () -> Unit = {},
     onFinishSet: () -> Unit = {},
     onRestartSet: () -> Unit = {},
     onMoveSet: (Int) -> Unit = {},
@@ -202,6 +214,9 @@ fun LiveWorkoutScreen(
                     LivePhase.STARTING -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Waiting("Getting the trainer ready")
                         TrainerSearchHint(connection, waiting = true, modifier = Modifier.padding(top = 16.dp))
+                        if (connection !is TrainerConnection.Connected) {
+                            Box(Modifier.padding(top = 16.dp)) { ConnectionPill(connection, onConnect = onConnect) }
+                        }
                     }
                     LivePhase.COUNTDOWN -> BigNumber(live.countdown.toString(), "Get set")
                     LivePhase.LIFTING -> Lifting(live, fmt, history, cables)
@@ -210,7 +225,7 @@ fun LiveWorkoutScreen(
                         Modifier.fillMaxSize().then(if (attemptMode) Modifier else Modifier.swipeExercises(onMoveExercise)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (live.restSeconds > 0) Resting(live) else UpNext(live, fmt, cables)
+                        if (live.restSeconds > 0) Resting(live) else UpNext(live, fmt, cables, echoLevel)
                     }
                     LivePhase.SET_DONE -> if (attemptMode) Waiting("Set done") else SetDone(live)
                     LivePhase.FINISHED -> if (attemptMode) Waiting("Back to the test") else Finished(live, fmt, history, cables, saveToRoutine, onSaveToRoutine, onDismissSaveToRoutine)
@@ -254,7 +269,16 @@ fun LiveWorkoutScreen(
             if (settingUp) {
                 val step = if (unit == WeightUnit.LB) 0.45359f else 0.5f
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Stepper(
+                    if (echoLevel != null) {
+                        // Echo sets no weight: the trainer pushes back as hard as the level says.
+                        val levels = EchoLevelChoice.entries
+                        Stepper(
+                            "Echo level", echoLevel.label,
+                            onMinus = { levels.getOrNull(echoLevel.ordinal - 1)?.let(onEchoLevel) },
+                            onPlus = { levels.getOrNull(echoLevel.ordinal + 1)?.let(onEchoLevel) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else Stepper(
                         "Weight per cable", fmt(live.loadKg),
                         onMinus = { onAdjustWeight((live.loadKg - step).coerceAtLeast(0.5f)) },
                         onPlus = { onAdjustWeight((live.loadKg + step).coerceAtMost(100f)) },
@@ -271,12 +295,15 @@ fun LiveWorkoutScreen(
                         )
                     }
                 }
-                if (percent != null) PercentSlider(percent, onPercent)
-                if (percent != null && oneRepMaxUpdate != null) {
-                    GhostButton("Update 1RM to ${fmt(oneRepMaxUpdate)} (weight ÷ $percent%)", onClick = onUpdateOneRepMax)
+                if (percent != null && echoLevel == null) PercentSlider(percent, onPercent)
+                if (percent != null && echoLevel == null && oneRepMaxUpdate != null) {
+                    GhostButton("Update 1RM for this exercise to ${fmt(oneRepMaxUpdate)} (weight ÷ $percent%)", onClick = onUpdateOneRepMax)
+                }
+                if (routineNudge != null) {
+                    GhostButton("You changed this exercise. Update \"$routineNudge\" too?", onClick = onUpdateRoutine)
                 }
             }
-            if (live.isGettingReady() && !attemptMode) {
+            if (live.isGettingReady() && !attemptMode && echoLevel == null) {
                 // kg moves in 0.5 kg steps, lb in whole pounds.
                 val step = if (unit == WeightUnit.LB) 0.45359f else 0.5f
                 Stepper(
@@ -490,7 +517,11 @@ private fun Resting(live: LiveWorkout) {
     )
     val accent = CleanColors.Accent
     val track = CleanColors.Line
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    Column(
+        Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
         Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val stroke = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
@@ -515,8 +546,13 @@ private fun Resting(live: LiveWorkout) {
 
 /** After the rest (and before the first set): the coming set, to check and change before Continue. */
 @Composable
-private fun UpNext(live: LiveWorkout, fmt: (Float) -> String, cables: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun UpNext(live: LiveWorkout, fmt: (Float) -> String, cables: Int, echoLevel: EchoLevelChoice?) {
+    // Scrolls on short screens instead of running over the buttons below.
+    Column(
+        Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Text(if (live.lastReps == null) "Ready to start" else "Ready for the next set", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
         Text(
             live.exerciseName.ifBlank { live.nextName },
@@ -529,7 +565,11 @@ private fun UpNext(live: LiveWorkout, fmt: (Float) -> String, cables: Int) {
             add(live.targetReps?.let { "$it reps" } ?: "As many reps as you can")
         }.joinToString(" · ")
         Text(detail, style = MaterialTheme.typography.titleMedium, color = CleanColors.Muted, textAlign = TextAlign.Center)
-        LoadText(fmt(live.loadKg), cables, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold))
+        if (echoLevel != null) {
+            Text("Echo · ${echoLevel.label}", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold), textAlign = TextAlign.Center)
+        } else {
+            LoadText(fmt(live.loadKg), cables, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold))
+        }
         live.lastReps?.let { Text("Last set: $it reps", style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
         Text("Swipe or use the buttons to pick another set or exercise.", style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted, textAlign = TextAlign.Center)
     }

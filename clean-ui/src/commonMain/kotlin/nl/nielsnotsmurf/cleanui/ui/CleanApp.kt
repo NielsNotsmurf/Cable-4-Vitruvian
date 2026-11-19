@@ -268,6 +268,8 @@ private fun SignedInApp(
     val uiSounds by vm.uiSounds.collectAsStateWithLifecycle()
     val livePercent by vm.livePercent.collectAsStateWithLifecycle()
     val liveOneRepMaxUpdate by vm.liveOneRepMaxUpdate.collectAsStateWithLifecycle()
+    val liveEchoLevel by vm.liveEchoLevel.collectAsStateWithLifecycle()
+    val liveRoutineNudge by vm.liveRoutineNudge.collectAsStateWithLifecycle()
     val saveOffer by vm.routineSaveOffer.collectAsStateWithLifecycle()
     val live by gateway.liveWorkout.collectAsStateWithLifecycle(null)
     val nav = rememberNavController()
@@ -369,7 +371,8 @@ private fun SignedInApp(
                                 nav.navigate(CleanRoutes.ONE_REP_MAX_TEST)
                             },
                             onRowShown = vm::requestEstimates,
-                            onDisconnect = vm::disconnectTrainer
+                            onDisconnect = vm::disconnectTrainer,
+                            onConnect = vm::connectTrainer
                         )
                     }
                     composable(
@@ -420,7 +423,8 @@ private fun SignedInApp(
                             onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
                             onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
                             onSwitchToClassic = vm::switchToClassic,
-                            onDisconnect = vm::disconnectTrainer
+                            onDisconnect = vm::disconnectTrainer,
+                            onConnect = vm::connectTrainer
                         )
                     }
                     composable(CleanRoutes.PROFILES) {
@@ -588,6 +592,11 @@ private fun SignedInApp(
                                 onPercent = vm::setLivePercent,
                                 oneRepMaxUpdate = liveOneRepMaxUpdate,
                                 onUpdateOneRepMax = vm::updateOneRepMaxFromLive,
+                                echoLevel = liveEchoLevel,
+                                onEchoLevel = vm::adjustLiveEchoLevel,
+                                routineNudge = liveRoutineNudge,
+                                onUpdateRoutine = vm::saveLiveEditToRoutine,
+                                onConnect = vm::connectTrainer,
                                 onFinishSet = gateway::finishSetEarly,
                                 onRestartSet = gateway::restartSet,
                                 onMoveSet = gateway::moveSet,

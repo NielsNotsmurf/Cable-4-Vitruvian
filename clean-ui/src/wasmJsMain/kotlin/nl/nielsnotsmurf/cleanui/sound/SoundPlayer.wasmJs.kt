@@ -27,14 +27,27 @@ private fun jsPlay(buffer: JsAny): Unit = js(
 )
 
 // Queued on the audio clock: it plays on time even when a hidden tab's timers are throttled.
+// Until it has played, an inaudible hum keeps the page "playing audio", so the phone doesn't
+// suspend the audio (and with it the beep) while another app is in front.
 private fun jsPlayAt(buffer: JsAny, delaySeconds: Double): Unit = js(
     """{
         const c = window.__cleanUiAudio;
         if (c.state === 'suspended') c.resume();
         if (window.__cleanUiQueued) { try { window.__cleanUiQueued.stop(); } catch (e) {} }
+        if (window.__cleanUiHum) { try { window.__cleanUiHum.stop(); } catch (e) {} }
+        const hum = c.createBufferSource();
+        const hb = c.createBuffer(1, c.sampleRate, c.sampleRate);
+        const d = hb.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.0005;
+        hum.buffer = hb;
+        hum.loop = true;
+        hum.connect(c.destination);
+        hum.start();
+        window.__cleanUiHum = hum;
         const s = c.createBufferSource();
         s.buffer = buffer;
         s.connect(c.destination);
+        s.onended = () => { if (window.__cleanUiHum === hum) { try { hum.stop(); } catch (e) {} window.__cleanUiHum = null; } };
         s.start(c.currentTime + Math.max(0, delaySeconds));
         window.__cleanUiQueued = s;
     }"""
@@ -43,7 +56,9 @@ private fun jsPlayAt(buffer: JsAny, delaySeconds: Double): Unit = js(
 private fun jsCancelQueued(): Unit = js(
     """{
         if (window.__cleanUiQueued) { try { window.__cleanUiQueued.stop(); } catch (e) {} }
+        if (window.__cleanUiHum) { try { window.__cleanUiHum.stop(); } catch (e) {} }
         window.__cleanUiQueued = null;
+        window.__cleanUiHum = null;
     }"""
 )
 

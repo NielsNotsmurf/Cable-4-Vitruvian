@@ -335,7 +335,7 @@ private fun StepperKey(symbol: String, onClick: () -> Unit, size: Dp = 48.dp) {
 }
 
 @Composable
-fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = null) {
+fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = null, onConnect: (() -> Unit)? = null) {
     val (color, text) = when (connection) {
         is TrainerConnection.Connected -> CleanColors.Success to connection.deviceName
         TrainerConnection.Connecting -> CleanColors.Accent to "Connecting"
@@ -343,6 +343,8 @@ fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = 
         TrainerConnection.Disconnected -> CleanColors.Muted to "Not connected"
     }
     val canDisconnect = onDisconnect != null && connection is TrainerConnection.Connected
+    // Not connected (also after the link dropped mid-workout): tap to connect again.
+    val canConnect = onConnect != null && (connection is TrainerConnection.Disconnected || connection is TrainerConnection.Failed)
     var asking by remember { mutableStateOf(false) }
     if (asking && canDisconnect) {
         AlertDialog(
@@ -360,7 +362,13 @@ fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = 
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .border(1.dp, CleanColors.Line, RoundedCornerShape(50))
-            .then(if (canDisconnect) Modifier.clickable(role = Role.Button) { asking = true } else Modifier)
+            .then(
+                when {
+                    canDisconnect -> Modifier.clickable(role = Role.Button) { asking = true }
+                    canConnect -> Modifier.clickable(role = Role.Button) { onConnect?.invoke() }
+                    else -> Modifier
+                }
+            )
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -368,6 +376,7 @@ fun ConnectionPill(connection: TrainerConnection, onDisconnect: (() -> Unit)? = 
         Dot(color, 8)
         Text(text, style = MaterialTheme.typography.labelMedium)
         if (canDisconnect) Text("· Disconnect", style = MaterialTheme.typography.labelMedium, color = CleanColors.Muted)
+        if (canConnect) Text("· Connect", style = MaterialTheme.typography.labelMedium, color = CleanColors.Accent)
     }
 }
 

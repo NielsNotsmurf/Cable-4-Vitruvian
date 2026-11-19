@@ -184,8 +184,9 @@ class CleanViewModel(
         gateway.lifters,
         store.storedOneRepMaxes,
         relatedCache,
-        gateway.exercises
-    ) { lifters, stored, related, exercises ->
+        gateway.exercises,
+        store.exerciseOneRepMaxes
+    ) { lifters, stored, related, exercises, ownByLifter ->
         lifters.associate { lifter ->
             val storedForLifter = stored[lifter.id].orEmpty()
             // A 1RM is only ever set by the 1RM test or by hand: normal sets never make or
@@ -205,7 +206,10 @@ class CleanViewModel(
                 if (ex.id in real) return@mapNotNull null
                 store.oneRepMaxMap.estimate(ex.id, real)?.let { ex.id to OneRepMax(it, OneRepMaxSource.RELATED) }
             }
-            lifter.id to resolved + mapped
+            // "Update 1RM" during a workout counts for that exercise only: applied last, so it
+            // never feeds the estimates of other exercises above.
+            val own = ownByLifter[lifter.id].orEmpty().mapValues { (_, kg) -> OneRepMax(kg, OneRepMaxSource.MANUAL) }
+            lifter.id to resolved + mapped + own
         }
     }.flowOn(Dispatchers.Default)
 
@@ -533,12 +537,12 @@ class CleanViewModel(
 
     /** Lets go of the trainer, so it can be used by another phone or browser without a power cycle. */
     fun disconnectTrainer() = gateway.disconnectTrainer()
+    fun connectTrainer() = gateway.connectTrainer()
 
     // ---- Routines ----
 
-    /** Saved routines, newest first. */
+    /** Saved routines in the order the user put them in (moved with the arrows). */
     val routines: StateFlow<List<Routine>> = store.routines
-        .map { list -> list.sortedByDescending { it.lastDoneAt ?: it.lastRaisedAt } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val routineLock = Mutex()
@@ -670,7 +674,13 @@ class CleanViewModel(
     // ---- Changes made during the workout, offered to the routine at the end ----
 
     /** Exercise id -> what was set by hand on the Continue screen: reps, and kg per lifter id. */
-    data class LiveEdit(val reps: Int? = null, val kgByLifter: Map<String, Float> = emptyMap())
+    data class LiveEdit(
+        val reps: Int? = null,
+        val kgByLifter: Map<String, Float> = emptyMap(),
+        val echoLevel: EchoLevelChoice? = null
+    ) {
+        val isEmpty: Boolean get() = reps == null && kgByLifter.isEmpty() && echoLevel == null
+    }
 
     /** Shown on the finished screen: keep the reps and loads set by hand in the routine? */
     data class RoutineSaveOffer(val routineId: String, val routineName: String, val edits: Map<String, LiveEdit>)
@@ -685,44 +695,104 @@ class CleanViewModel(
     private fun liveExerciseId(live: LiveWorkout?): String? =
         live?.let { l -> livePlans.firstOrNull { it.exercise.name == l.exerciseName }?.exercise?.id }
 
-    /** The load per cable of the coming set (or the set getting ready), remembered for the routine. */
+    /** Bumped on every change to [liveEdits], so [liveRoutineNudge] updates. */
+    private val _editsVersion = MutableStateFlow(0)
+    private fun editsChanged() { _editsVersion.update { it + 1 } }
+
+    /**
+     * The load per cable of the coming set (or the set getting ready), remembered for the routine.
+     * During the rest it also goes for the later sets of this exercise (this lifter only).
+     */
     fun adjustLiveWeight(perCableKg: Float) {
-        gateway.adjustLiveWeight(perCableKg)
         viewModelScope.launch {
             val live = gateway.liveWorkout.first()
-            val ex = liveExerciseId(live) ?: return@launch
-            val lifter = live?.lifterId ?: return@launch
+            val ex = liveExerciseId(live)
+            val lifter = live?.lifterId
+            if (live?.phase == LivePhase.RESTING && ex != null && lifter != null && live.totalSets > 0) {
+                gateway.setUpcomingLoads(ex, mapOf(lifter to List(live.totalSets) { perCableKg }))
+            }
+            gateway.adjustLiveWeight(perCableKg)
+            if (ex == null || lifter == null) return@launch
             val e = liveEdits[ex] ?: LiveEdit()
             liveEdits[ex] = e.copy(kgByLifter = e.kgByLifter + (lifter to perCableKg))
+            editsChanged()
         }
     }
 
-    /** The target reps of the coming set, remembered for the routine. */
+    /** The target reps of the coming set and the later sets of this exercise, remembered for the routine. */
     fun adjustLiveReps(reps: Int) {
         val r = reps.coerceIn(1, 50)
         gateway.adjustNextReps(r)
         viewModelScope.launch {
             val ex = liveExerciseId(gateway.liveWorkout.first()) ?: return@launch
             liveEdits[ex] = (liveEdits[ex] ?: LiveEdit()).copy(reps = r)
+            editsChanged()
         }
+    }
+
+    /** Echo exercises: their level (Hard … Epic) for the coming set; null when the coming set isn't Echo. */
+    val liveEchoLevel: StateFlow<EchoLevelChoice?> = combine(gateway.liveWorkout, _editsVersion) { live, _ ->
+        val ex = liveExerciseId(live) ?: return@combine null
+        val plan = livePlans.firstOrNull { it.exercise.id == ex } ?: return@combine null
+        if (plan.mode != TrainingMode.ECHO) null else liveEdits[ex]?.echoLevel ?: echoLevels[ex] ?: plan.echoLevel
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Echo levels changed during this workout (also once saved to the routine). */
+    private val echoLevels = mutableMapOf<String, EchoLevelChoice>()
+
+    /** Echo: the level for the coming and later sets of this exercise, remembered for the routine. */
+    fun adjustLiveEchoLevel(level: EchoLevelChoice) {
+        gateway.adjustEchoLevel(level)
+        viewModelScope.launch {
+            val ex = liveExerciseId(gateway.liveWorkout.first()) ?: return@launch
+            echoLevels[ex] = level
+            liveEdits[ex] = (liveEdits[ex] ?: LiveEdit()).copy(echoLevel = level)
+            editsChanged()
+        }
+    }
+
+    /**
+     * On the Continue screen: the routine's name when this exercise was changed by hand (weight,
+     * reps or Echo level) and the change isn't in the routine yet ("Update routine?").
+     */
+    val liveRoutineNudge: StateFlow<String?> = combine(gateway.liveWorkout, _editsVersion) { live, _ ->
+        val routine = liveRoutine ?: return@combine null
+        if (live?.phase != LivePhase.RESTING) return@combine null
+        val ex = liveExerciseId(live) ?: return@combine null
+        if (liveEdits[ex]?.isEmpty != false) null else routine.second
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Puts what was changed for the coming exercise into the routine now, during the workout. */
+    fun saveLiveEditToRoutine() {
+        viewModelScope.launch {
+            val routineId = liveRoutine?.first ?: return@launch
+            val ex = liveExerciseId(gateway.liveWorkout.first()) ?: return@launch
+            val edit = liveEdits.remove(ex) ?: return@launch
+            editsChanged()
+            updateRoutine(routineId) { applyEdits(it, mapOf(ex to edit)) }
+        }
+    }
+
+    /** [routine] with the reps, Echo levels and loads per lifter set by hand in [edits]. */
+    private fun applyEdits(routine: Routine, edits: Map<String, LiveEdit>): Routine {
+        var perExercise = routine.perExercise
+        var overrides = routine.overridesKg
+        edits.forEach { (exId, e) ->
+            val own = perExercise[exId] ?: ExerciseSettings()
+            perExercise = perExercise + (exId to own.copy(
+                reps = e.reps?.let { reps -> reps.takeIf { it != routine.reps } } ?: own.reps,
+                echoLevel = e.echoLevel ?: own.echoLevel
+            ))
+            e.kgByLifter.forEach { (lifterId, kg) -> overrides = overrides + (relatedKey(lifterId, exId) to kg) }
+        }
+        return routine.copy(perExercise = perExercise.filterValues { !it.isDefault }, overridesKg = overrides)
     }
 
     /** Puts the reps and loads set by hand into the routine (reps for the exercise, loads per lifter). */
     fun saveEditsToRoutine() {
         val offer = _routineSaveOffer.value ?: return
         _routineSaveOffer.value = null
-        updateRoutine(offer.routineId) { r ->
-            var perExercise = r.perExercise
-            var overrides = r.overridesKg
-            offer.edits.forEach { (exId, e) ->
-                e.reps?.let { reps ->
-                    val own = perExercise[exId] ?: ExerciseSettings()
-                    perExercise = perExercise + (exId to own.copy(reps = reps.takeIf { it != r.reps }))
-                }
-                e.kgByLifter.forEach { (lifterId, kg) -> overrides = overrides + (relatedKey(lifterId, exId) to kg) }
-            }
-            r.copy(perExercise = perExercise.filterValues { !it.isDefault }, overridesKg = overrides)
-        }
+        updateRoutine(offer.routineId) { r -> applyEdits(r, offer.edits) }
     }
 
     fun dismissRoutineSaveOffer() { _routineSaveOffer.value = null }
@@ -770,8 +840,10 @@ class CleanViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
-     * Makes the load set by hand the new 1RM basis: 1RM = load ÷ training %. The routine's own
-     * load for this lifter is dropped, so its loads follow the new 1RM from now on.
+     * Makes the load set by hand the new 1RM basis for this exercise only: 1RM = load ÷ training %.
+     * Other exercises that share the same base 1RM keep their loads. The routine's own load for
+     * this lifter and exercise is dropped, so it follows the new 1RM from now on, and so do the
+     * coming sets of this exercise.
      */
     fun updateOneRepMaxFromLive() {
         val kg = liveOneRepMaxUpdate.value ?: return
@@ -779,9 +851,11 @@ class CleanViewModel(
             val live = gateway.liveWorkout.first() ?: return@launch
             val ex = liveExerciseId(live) ?: return@launch
             val lifter = live.lifterId ?: return@launch
-            setManualOneRepMax(lifter, ex, kg)
+            store.saveExerciseOneRepMax(lifter, ex, LoadCalculator.roundToStep(kg).coerceIn(LoadCalculator.STEP_KG, LoadCalculator.MAX_KG))
             liveEdits[ex]?.let { e -> liveEdits[ex] = e.copy(kgByLifter = e.kgByLifter - lifter) }
+            editsChanged()
             liveRoutine?.first?.let { id -> updateRoutine(id) { it.copy(overridesKg = it.overridesKg - relatedKey(lifter, ex)) } }
+            if (live.totalSets > 0 && live.loadKg > 0f) gateway.setUpcomingLoads(ex, mapOf(lifter to List(live.totalSets) { live.loadKg }))
         }
     }
 
@@ -795,13 +869,13 @@ class CleanViewModel(
                 }
                 if (phase == LivePhase.FINISHED) {
                     val routine = liveRoutine
-                    if (routine != null && liveEdits.isNotEmpty()) {
+                    if (routine != null && liveEdits.values.any { !it.isEmpty }) {
                         _routineSaveOffer.value = RoutineSaveOffer(routine.first, routine.second, liveEdits.toMap())
                     }
                     liveEdits.clear()
                     liveRoutine = null
                 }
-                if (phase == null) { liveEdits.clear(); liveRoutine = null }
+                if (phase == null) { liveEdits.clear(); echoLevels.clear(); liveRoutine = null; editsChanged() }
             }
         }
     }
@@ -1025,6 +1099,8 @@ class CleanViewModel(
     /** Sets [lifterId]'s 1RM for [exerciseId] by hand (kg per cable); null or 0 clears it. */
     fun setManualOneRepMax(lifterId: String, exerciseId: String, kg: Float?) {
         viewModelScope.launch {
+            // A 1RM set here replaces an "Update 1RM" made for this exercise during a workout.
+            store.saveExerciseOneRepMax(lifterId, exerciseId, null)
             if (kg == null || kg <= 0f) store.clearOneRepMax(lifterId, exerciseId)
             else store.saveOneRepMax(
                 lifterId, exerciseId,
@@ -1041,6 +1117,8 @@ class CleanViewModel(
     private fun startedLive(plans: List<SetPlan>) {
         livePlans = plans
         liveEdits.clear()
+        echoLevels.clear()
+        editsChanged()
         liveRoutine = null
         _routineSaveOffer.value = null
         _livePercent.value = plans.firstOrNull()?.percentOfOneRepMax

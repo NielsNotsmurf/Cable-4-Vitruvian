@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import nl.nielsnotsmurf.cleanui.model.LiveWorkout
+import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import nl.nielsnotsmurf.cleanui.model.ExerciseCard
 import nl.nielsnotsmurf.cleanui.model.CleanSettings
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
@@ -44,6 +45,9 @@ interface TrainerGateway {
 
     /** Drops the Bluetooth link to the trainer (the user tapped Disconnect). */
     fun disconnectTrainer() {}
+
+    /** Connects to the trainer again (the user tapped "Not connected"), also in the middle of a workout. */
+    fun connectTrainer() {}
 
     /**
      * Live heart rate of whoever lifts next (the rotation's performer, else the active profile),
@@ -102,8 +106,10 @@ interface TrainerGateway {
     fun skipRest() {}
     /** Changes the load per cable while the set gets ready, counts down or does its warm-up reps. */
     fun adjustLiveWeight(perCableKg: Float) {}
-    /** During rest or on the Continue screen: the target reps of the coming set. */
+    /** During rest or on the Continue screen: the target reps of the coming set and the later sets of that exercise. */
     fun adjustNextReps(reps: Int) {}
+    /** During rest or on the Continue screen of an Echo exercise: its level for the coming and later sets. */
+    fun adjustEchoLevel(level: EchoLevelChoice) {}
     fun proceedFromSummary() {}
     fun stopWorkout() {}
     fun advanceToNextExercise() {}
