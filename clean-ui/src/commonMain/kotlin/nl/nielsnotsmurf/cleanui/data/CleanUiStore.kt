@@ -74,6 +74,29 @@ class CleanUiStore(
         }
     }
 
+    /**
+     * 1RMs changed for one exercise only ("Update 1RM" during a workout), as lifterId -> exerciseId -> kg.
+     * They win for that exercise but are never used to estimate other exercises.
+     */
+    val exerciseOneRepMaxes: Flow<Map<String, Map<String, Float>>> =
+        kv.data.map { prefs ->
+            val result = mutableMapOf<String, MutableMap<String, Float>>()
+            prefs.forEach { (name, value) ->
+                if (name.startsWith(ORM_EX_PREFIX) && value is Float) {
+                    val (lifterId, exerciseId) = splitKey(name.removePrefix(ORM_EX_PREFIX)) ?: return@forEach
+                    result.getOrPut(lifterId) { mutableMapOf() }[exerciseId] = value
+                }
+            }
+            result
+        }
+
+    suspend fun saveExerciseOneRepMax(lifterId: String, exerciseId: String, kg: Float?) {
+        val key = Key<Float>("$ORM_EX_PREFIX$lifterId$SEP$exerciseId")
+        kv.edit {
+            if (kg == null) it.remove(key) else { it[key] = kg }
+        }
+    }
+
     fun lastPercent(exerciseId: String): Flow<Int?> =
         kv.data.map { it[Key<Int>("$PCT_PREFIX$exerciseId")] }
 
@@ -213,6 +236,7 @@ class CleanUiStore(
         private const val PIN_PREFIX = "pin|"
         private const val TOUR_PREFIX = "tour|"
         private const val ORM_PREFIX = "orm|"
+        private const val ORM_EX_PREFIX = "orm_ex|"
         private const val SRC_PREFIX = "orm_src|"
         private const val AT_PREFIX = "orm_at|"
         private const val PCT_PREFIX = "pct|"

@@ -1931,8 +1931,31 @@ class MainViewModel @Inject constructor(
     /** During rest: the target reps of the coming set. */
     fun adjustUpcomingReps(reps: Int) {
         if (_workoutState.value !is WorkoutState.Resting) return
-        _workoutParameters.value = _workoutParameters.value.copy(reps = reps.coerceIn(1, 50))
+        val r = reps.coerceIn(1, 50)
+        _workoutParameters.value = _workoutParameters.value.copy(reps = r)
         _parametersModifiedDuringRest.value = true
+        // The later sets of this exercise get the same reps.
+        updateLoadedExercise { ex ->
+            val from = _currentSetIndex.value
+            ex.copy(setReps = ex.setReps.mapIndexed { i, v -> if (i >= from && v != null) r else v })
+        }
+    }
+
+    /** During rest (Echo exercise): the Echo level of the coming set and the later sets of this exercise. */
+    fun adjustUpcomingEchoLevel(level: EchoLevel) {
+        if (_workoutState.value !is WorkoutState.Resting) return
+        val wt = _workoutParameters.value.workoutType as? WorkoutType.Echo ?: return
+        _workoutParameters.value = _workoutParameters.value.copy(workoutType = wt.copy(level = level))
+        updateLoadedExercise { ex ->
+            (ex.workoutType as? WorkoutType.Echo)?.let { ex.copy(workoutType = it.copy(level = level)) } ?: ex
+        }
+    }
+
+    private fun updateLoadedExercise(transform: (RoutineExercise) -> RoutineExercise) {
+        val routine = _loadedRoutine.value ?: return
+        val i = _currentExerciseIndex.value
+        val ex = routine.exercises.getOrNull(i) ?: return
+        _loadedRoutine.value = routine.copy(exercises = routine.exercises.toMutableList().also { it[i] = transform(ex) })
     }
 
     fun proceedFromSummary() {

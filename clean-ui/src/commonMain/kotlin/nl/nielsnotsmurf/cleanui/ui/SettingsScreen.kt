@@ -85,7 +85,8 @@ fun SettingsScreen(
     onConnectionLogs: () -> Unit,
     onProtocolTester: () -> Unit,
     onSwitchToClassic: () -> Unit,
-    onDisconnect: () -> Unit = {}
+    onDisconnect: () -> Unit = {},
+    onConnect: () -> Unit = {}
 ) {
     val me = state.lifters.firstOrNull { it.id == account.signedInId }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
@@ -98,7 +99,7 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Settings", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
-            ConnectionPill(state.connection, onDisconnect)
+            ConnectionPill(state.connection, onDisconnect, onConnect)
         }
 
         if (me != null) {
