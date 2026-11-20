@@ -1,0 +1,58 @@
+name: Google Play bundle
+
+# Run by hand (Actions > Google Play bundle > Run workflow). Builds the signed Play version
+# (-Pplay=true: no external payment or donation links, no classic layout) as an .aab to upload
+# in Play Console. It doesn't publish anything itself.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Set version
+        run: |
+          # Play has its own versionCode line, well above the GitHub APKs (200 + run).
+          echo "APP_VERSION_CODE=$((10000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "APP_VERSION_NAME=2.0.${GITHUB_RUN_NUMBER}-play" >> "$GITHUB_ENV"
+
+      - name: Restore upload key
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
+            echo "::error::SIGNING_KEYSTORE_BASE64 secret is missing. See docs/RELEASES.md."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/release.jks"
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          {
+            echo "SIGNING_KEYSTORE_PATH=$KEYSTORE"
+            echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD"
+            echo "SIGNING_KEY_ALIAS=${SIGNING_KEY_ALIAS:-phoenix}"
+            echo "SIGNING_KEY_PASSWORD=${SIGNING_KEY_PASSWORD:-$SIGNING_STORE_PASSWORD}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build Play bundle
+        run: ./gradlew --no-daemon :app:bundleProductionRelease -Pplay=true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cable-play-${{ env.APP_VERSION_NAME }}
+          path: app/build/outputs/bundle/productionRelease/*.aab

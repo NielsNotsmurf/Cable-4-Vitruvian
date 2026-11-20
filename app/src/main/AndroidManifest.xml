@@ -14,11 +14,13 @@
         tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- Location permission (required for BLE scanning on older Android) -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Location only for BLE scanning on Android 11 and older; Android 12+ scans with neverForLocation. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="30" />
 
-    <!-- Internet permission for loading exercise video thumbnails -->
+    <!-- Internet: only to download exercise library updates from GitHub; no user data is ever sent -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Foreground service permissions -->

@@ -52,7 +52,8 @@ import nl.nielsnotsmurf.cleanui.model.SetSpec
 import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
-import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
+import nl.nielsnotsmurf.cleanui.ui.components.ExerciseDemo
+import nl.nielsnotsmurf.cleanui.ui.components.hasDemo
 import nl.nielsnotsmurf.cleanui.ui.components.Dot
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
@@ -100,7 +101,7 @@ fun SetSetupScreen(
     val bodyweight = setup.exercise.isBodyweight
     val isEcho = setup.mode == TrainingMode.ECHO && !bodyweight
     val unit = state.unit
-    val videoUrl = setup.guide?.videoUrl
+    val guide = setup.guide?.takeIf { it.hasDemo }
     var showVideo by rememberSaveable { mutableStateOf(true) }
 
     Column(Modifier.fillMaxSize()) {
@@ -123,15 +124,15 @@ fun SetSetupScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                if (videoUrl != null) {
+                if (guide != null) {
                     IconButton(onClick = { showVideo = !showVideo }) {
-                        Icon(Icons.Filled.PlayCircle, contentDescription = if (showVideo) "Hide demo video" else "Show demo video", tint = CleanColors.Accent)
+                        Icon(Icons.Filled.PlayCircle, contentDescription = if (showVideo) "Hide demo" else "Show demo", tint = CleanColors.Accent)
                     }
                 }
             }
 
-            if (showVideo && videoUrl != null) {
-                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp), setup.guide?.thumbnailUrl)
+            if (showVideo && guide != null) {
+                ExerciseDemo(guide, Modifier.padding(horizontal = 20.dp))
             }
 
             // All modes wrap onto the screen, so Eccentric and Echo are never hidden off the edge.

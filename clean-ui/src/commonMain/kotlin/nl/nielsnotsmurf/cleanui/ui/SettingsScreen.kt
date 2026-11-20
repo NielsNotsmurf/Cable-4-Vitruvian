@@ -249,13 +249,17 @@ fun SettingsScreen(
             LinkRow("Send feedback", "Report a problem or share an idea on GitHub", {
                 uriHandler.openUri(feedbackUrl)
             })
-            InfoRow("Price", "€35 once to use Cable, versus €35 a month for the official Vitruvian app")
-            LinkRow(
-                "Support Cable",
-                "Donate on GoFundMe, no account needed; about €200 brings it to TestFlight (iPhone) and the Play Store",
-                { uriHandler.openUri(DONATE_URL) }
-            )
-            LinkRow("Sponsor on GitHub", "If you'd rather give through GitHub Sponsors", { uriHandler.openUri(SPONSOR_URL) })
+            // Google Play only allows payments through Play billing, so its build shows no price or donation links.
+            if (!Distribution.playStore) {
+                InfoRow("Price", "€35 once to use Cable, versus €35 a month for the official Vitruvian app")
+                LinkRow(
+                    "Support Cable",
+                    "Donate on GoFundMe, no account needed; about €200 brings it to TestFlight (iPhone) and the Play Store",
+                    { uriHandler.openUri(DONATE_URL) }
+                )
+                LinkRow("Sponsor on GitHub", "If you'd rather give through GitHub Sponsors", { uriHandler.openUri(SPONSOR_URL) })
+            }
+            LinkRow("Privacy policy", "What Cable stores (only on this device) and what it never collects", { uriHandler.openUri(PRIVACY_URL) })
         }
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
@@ -279,7 +283,10 @@ fun SettingsScreen(
             Group {
                 LinkRow("Connection logs", "Bluetooth events, search and export", onConnectionLogs)
                 LinkRow("Protocol tester", "For debugging the trainer connection", onProtocolTester)
-                LinkRow("Switch to the classic layout", "You can switch back from its Settings", onSwitchToClassic)
+                // The classic layout still plays the official library videos, so the Play build leaves it out.
+                if (!Distribution.playStore) {
+                    LinkRow("Switch to the classic layout", "You can switch back from its Settings", onSwitchToClassic)
+                }
             }
         }
     }
@@ -353,6 +360,15 @@ private fun LinkRow(title: String, subtitle: String, onClick: () -> Unit) {
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = CleanColors.Muted)
     }
+}
+
+/** The privacy policy, hosted on GitHub Pages (docs/privacy). Linked from Settings and the Play listing. */
+const val PRIVACY_URL = "https://nielsnotsmurf.github.io/Cable-4-Vitruvian/privacy/"
+
+/** Where this build is installed from. The Android app sets it at start-up from BuildConfig. */
+object Distribution {
+    /** True in the Google Play build: no external payment or donation links. */
+    var playStore: Boolean = false
 }
 
 /** GitHub Sponsors, for people who use GitHub. Shown in Settings on the app and the web. */

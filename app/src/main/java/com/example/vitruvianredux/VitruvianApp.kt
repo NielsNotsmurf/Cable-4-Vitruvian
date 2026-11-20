@@ -29,6 +29,7 @@ class VitruvianApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        nl.nielsnotsmurf.cleanui.ui.Distribution.playStore = BuildConfig.PLAY_STORE
 
         // Initialize Timber for logging
         if (BuildConfig.DEBUG) {

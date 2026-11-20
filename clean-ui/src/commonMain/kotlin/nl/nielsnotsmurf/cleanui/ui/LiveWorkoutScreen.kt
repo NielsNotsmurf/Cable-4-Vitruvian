@@ -74,7 +74,8 @@ import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
-import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
+import nl.nielsnotsmurf.cleanui.ui.components.ExerciseDemo
+import nl.nielsnotsmurf.cleanui.ui.components.hasDemo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
@@ -190,8 +191,7 @@ fun LiveWorkoutScreen(
         // The exercise demo shows while the trainer gets ready, counts down and during warm-up reps.
         // It stays composed (folded away) the rest of the time, so the clip is already loaded and
         // playing when it's shown instead of starting to buffer when the countdown begins.
-        val videoUrl = guide?.videoUrl
-        if (videoUrl != null) {
+        if (guide != null && guide.hasDemo) {
             val shown by animateFloatAsState(if (live.isGettingReady()) 1f else 0f, tween(250), label = "video")
             Box(
                 Modifier.fillMaxWidth().clipToBounds().layout { measurable, constraints ->
@@ -200,7 +200,7 @@ fun LiveWorkoutScreen(
                     layout(p.width, h) { p.place(0, 0) }
                 }
             ) {
-                DemoVideo(videoUrl, Modifier.padding(horizontal = 20.dp, vertical = 8.dp), guide?.thumbnailUrl)
+                ExerciseDemo(guide, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
         }
         AnimatedContent(

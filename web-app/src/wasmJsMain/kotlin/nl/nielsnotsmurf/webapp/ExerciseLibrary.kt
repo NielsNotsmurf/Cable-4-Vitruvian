@@ -54,13 +54,11 @@ class ExerciseLibrary(val cards: List<ExerciseCard>, private val guides: Map<Str
                     description = ExerciseSearch.describe(name, muscleLabels, equipment.map(ExerciseSearch::equipmentLabel), region) +
                         aliases.takeIf { it.isNotEmpty() }?.joinToString(", ", prefix = " Also called ", postfix = ".").orEmpty()
                 )
-                // The short angle clips loop like a GIF, as in the app.
-                val videos = (e["videos"] as? JsonArray)?.map { it.jsonObject }.orEmpty()
-                val clip = videos.firstOrNull { it.text("angle") == "FRONT" } ?: videos.firstOrNull()
+                // No official Vitruvian videos (not ours to show); the demo lights up the region, as in the app.
                 guides[id] = ExerciseGuide(
                     description = e.text("description").orEmpty(),
-                    videoUrl = clip?.text("video"),
-                    thumbnailUrl = clip?.text("thumbnail")
+                    region = region,
+                    muscles = muscleLabels
                 )
             }
             return ExerciseLibrary(cards, guides)

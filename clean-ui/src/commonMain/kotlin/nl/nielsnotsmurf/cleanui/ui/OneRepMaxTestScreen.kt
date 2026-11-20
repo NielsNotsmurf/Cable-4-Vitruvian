@@ -51,7 +51,8 @@ import nl.nielsnotsmurf.cleanui.model.AttemptOutcome
 import nl.nielsnotsmurf.cleanui.model.OneRepMaxSource
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
-import nl.nielsnotsmurf.cleanui.ui.components.DemoVideo
+import nl.nielsnotsmurf.cleanui.ui.components.ExerciseDemo
+import nl.nielsnotsmurf.cleanui.ui.components.hasDemo
 import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.LifterChip
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
@@ -190,9 +191,8 @@ fun OneRepMaxTestScreen(
 @Composable
 private fun IntroContent(test: TestState, knownKg: Float?) {
     val guide = test.guide
-    val videoUrl = guide?.videoUrl
-    if (videoUrl != null) {
-        DemoVideo(videoUrl, thumbnailUrl = guide?.thumbnailUrl)
+    if (guide != null && guide.hasDemo) {
+        ExerciseDemo(guide)
     } else Box(
         modifier = Modifier
             .fillMaxWidth()
