@@ -51,6 +51,10 @@ android {
         }
     }
 
+    // -Pplay=true builds the Google Play version: no external payment or donation links and no classic layout.
+    val playStore = (project.findProperty("play") as String?)?.toBoolean() ?: false
+    defaultConfig.buildConfigField("boolean", "PLAY_STORE", playStore.toString())
+
     buildTypes {
         release {
              isMinifyEnabled = true

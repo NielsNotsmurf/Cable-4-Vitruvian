@@ -336,7 +336,7 @@ private fun SignedInApp(
     // Once a month (and after "Later"), a short donation request; never over the tour or a workout.
     DonationPrompt(
         store = rememberCleanUiStore(),
-        allowed = !tour.isRunning && live == null && (tourOffered || account.tour(me) != TourStatus.NotSeen)
+        allowed = !Distribution.playStore && !tour.isRunning && live == null && (tourOffered || account.tour(me) != TourStatus.NotSeen)
     )
 
     // Phones get the tab bar at the bottom; tablets, iPads, landscape and desktop a rail on the

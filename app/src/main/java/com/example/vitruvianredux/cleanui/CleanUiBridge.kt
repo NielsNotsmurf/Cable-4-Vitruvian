@@ -378,14 +378,13 @@ class CleanUiBridge(
 
     override suspend fun exerciseGuide(exerciseId: String): ExerciseGuide? {
         val entity = vm.exerciseRepository.getExerciseById(exerciseId) ?: return null
-        val videos = runCatching { vm.exerciseRepository.getVideos(exerciseId) }.getOrDefault(emptyList())
-        // The short angle clips loop like a GIF (as on the classic screens); the long tutorial is a fallback.
-        val clips = videos.filterNot { it.isTutorial }
-        val video = clips.firstOrNull { it.angle == "FRONT" } ?: clips.firstOrNull() ?: videos.firstOrNull()
+        // No official Vitruvian videos: they're not ours to show (Play policy). The demo lights up
+        // the trained region instead, the same as on the web.
+        val card = entity.toCard()
         return ExerciseGuide(
             description = entity.description,
-            videoUrl = video?.videoUrl,
-            thumbnailUrl = video?.thumbnailUrl
+            region = card.region,
+            muscles = card.muscles
         )
     }
 

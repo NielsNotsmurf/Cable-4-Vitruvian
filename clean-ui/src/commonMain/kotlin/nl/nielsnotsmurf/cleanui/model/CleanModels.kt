@@ -135,6 +135,11 @@ data class TestAnchor(
 /** How to do an exercise, shown before the first attempt. */
 data class ExerciseGuide(
     val description: String,
+    /** Body region it trains ("Chest", "Back", ...), highlighted in the exercise demo. */
+    val region: String = "",
+    /** Muscles it works, named under the demo. */
+    val muscles: List<String> = emptyList(),
+    /** Only our own clips go here; the official library's videos are not ours to show. */
     val videoUrl: String? = null,
     val thumbnailUrl: String? = null
 )
