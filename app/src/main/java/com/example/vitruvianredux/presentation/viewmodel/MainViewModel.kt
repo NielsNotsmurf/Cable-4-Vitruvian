@@ -2742,6 +2742,13 @@ class MainViewModel @Inject constructor(
     }
 
     // Data Export/Import Functions
+
+    /** Everything in the Room database and preferences as JSON (Clean Settings, Export and import). */
+    suspend fun exportDataJson(): String = dataBackupManager.exportJson()
+
+    /** Adds the backup's data; existing ids are skipped. */
+    suspend fun importDataJson(json: String): Boolean = dataBackupManager.importFromJson(json).isSuccess
+
     fun exportAllData() {
         viewModelScope.launch {
             _isExporting.value = true

@@ -150,6 +150,18 @@ interface TrainerGateway {
     /** Deletes workouts by [HistoryEntry.id]. */
     fun deleteWorkouts(ids: List<String>)
 
+    /** Deletes every workout; profiles, 1RMs and routines stay. */
+    fun deleteAllWorkouts() {}
+
+    /** Names the platform in a data export ("android" or "web"); [exportData] only restores on the same one. */
+    val dataPlatform: String get() = "unknown"
+
+    /** Everything the host stores itself (profiles, workouts, plans, settings) as text, or null. */
+    suspend fun exportData(): String? = null
+
+    /** Restores text from [exportData]. False when it can't be read. */
+    suspend fun importData(data: String): Boolean = false
+
     val settings: Flow<CleanSettings>
 
     /** Saves the settings that differ from the current ones. */

@@ -78,7 +78,7 @@ Android status:
 | LED colour scheme | Settings | Settings → LED colour (remembered, and the app takes on the colour) | Clean |
 | App accent, centre Train button and a faint edge glow in the LED colour (orange until one is picked) | — (new) | Everywhere | Clean |
 | Theme light / dark / system | Settings | Settings → Theme | Not yet (Clean is light only) |
-| Backup and restore | Settings | Settings → Data | Hosted (Settings → Data → Backup and restore) |
+| Export and import (profiles, workouts, routines, 1RMs, settings; delete all workouts) | Settings | Settings → Data → Export and import | Clean (the classic "More settings" screen is gone) |
 | Connection logs (search, level filter, export) | Connection logs | Settings → Advanced → Connection logs | Hosted (Settings → Advanced) |
 | Protocol tester | Developer screen | Settings → Advanced → Protocol tester | Hosted (Settings → Advanced) |
 | Support link, app info | Settings | Settings → About | Hosted (Settings) |
@@ -102,11 +102,10 @@ The web app (`:web-app`) runs the same Clean screens from `clean-ui/src/commonMa
 - Browser back (and Android's back gesture in the installed web app) steps back like the app's
   back button.
 - Web only: a first-launch intro with the install guide per device (Safari vs Bluefy on iOS),
-  and Settings, Backup and restore saves or restores everything the browser stores as a file
-  (the app's version saves to Download/Cable). The intro's guide is repeated there.
+  and the intro's guide is repeated under Settings, Export and import.
 - Wide screens (600 dp and up, in the app too): the tabs become a rail on the left and screens
   stay at most 720 dp wide.
 - Web only: anonymous usage counts (GoatCounter, no cookies or IDs) on the hosted beta, with an
-  off switch in Settings, Backup and restore. The Android app keeps download counts only.
+  off switch in Settings, Export and import. The Android app keeps download counts only.
 - Symbols the web's default font lacks come from a small DejaVu subset (`web-app/.../fonts`).
 

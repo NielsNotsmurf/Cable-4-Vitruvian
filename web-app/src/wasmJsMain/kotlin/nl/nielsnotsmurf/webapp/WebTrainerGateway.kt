@@ -157,7 +157,30 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     }
 
     /** Clears this browser's workout history (Settings, "Delete all workouts"). */
-    fun deleteAllWorkouts() = update { it.copy(history = emptyList()) }
+    override fun deleteAllWorkouts() = update { it.copy(history = emptyList()) }
+
+    override val dataPlatform: String get() = "web"
+
+    override suspend fun exportData(): String = json.encodeToString(Saved.serializer(), data.value)
+
+    /** Adds the file's profiles and workouts (same ids are skipped, like the Android app); its settings replace these. */
+    override suspend fun importData(data: String): Boolean {
+        val file = runCatching { json.decodeFromString(Saved.serializer(), data) }.getOrNull() ?: return false
+        update { now ->
+            val lifterIds = now.lifters.map { it.id }.toSet()
+            val historyIds = now.history.map { it.id }.toSet()
+            now.copy(
+                lifters = now.lifters + file.lifters.filter { it.id !in lifterIds },
+                active = now.active.ifEmpty { file.active },
+                favorites = now.favorites + file.favorites,
+                history = (now.history + file.history.filter { it.id !in historyIds }).sortedByDescending { it.timestamp },
+                plans = now.plans + file.plans,
+                loads = now.loads + file.loads,
+                settings = file.settings
+            )
+        }
+        return true
+    }
 
     // Heart rate: one strap per lifter, connected for this browser session.
 

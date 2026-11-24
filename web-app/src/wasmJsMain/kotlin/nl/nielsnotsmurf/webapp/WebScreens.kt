@@ -80,7 +80,7 @@ fun WebIntro(onDone: () -> Unit) {
             SectionLabel("Your data", Modifier.padding(top = 8.dp))
             Text(
                 "Everything stays in this browser on this device; nothing is sent anywhere. Browsers can clear " +
-                    "site data, so save a backup now and then: Settings, Backup and restore.",
+                    "site data, so export your data now and then: Settings, Export and import.",
                 style = MaterialTheme.typography.bodyMedium
             )
             AppStoreGoal()
@@ -141,7 +141,7 @@ fun InstallGuide() {
             )
             Text(
                 "To train with your Vitruvian, install Bluefy (free, App Store) and open this same link in it. " +
-                    "Your data doesn't move along: each browser keeps its own, so pick one to train in, or move it with a backup.",
+                    "Your data doesn't move along: each browser keeps its own, so pick one to train in, or move it with Settings, Export and import.",
                 style = MaterialTheme.typography.bodyMedium
             )
             PrimaryButton("Get Bluefy", accent = true, onClick = { openUrl(BLUEFY_URL) })
@@ -178,80 +178,30 @@ private fun Steps(vararg steps: String) {
     }
 }
 
-/**
- * The web's "More settings": backup and restore of everything this browser stores (the
- * Android app saves to Download/Cable instead), and the install guide again.
- */
+/** Web-only extras under Settings, Your data: the anonymous usage counts switch and the install guide again. */
 @Composable
-fun WebSettings(gateway: WebTrainerGateway) {
-    val scope = rememberCoroutineScope()
-    var confirmDelete by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
-    var confirmRestore by remember { mutableStateOf<String?>(null) }
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column(
-            Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+fun WebDataExtras() {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        SectionLabel("Usage counts", Modifier.padding(top = 8.dp))
+        var counting by remember { mutableStateOf(WebStats.enabled) }
+        Row(
+            Modifier.fillMaxWidth().clickable(role = Role.Switch) { counting = !counting; WebStats.enabled = counting },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SectionLabel("Backup and restore", Modifier.padding(top = 8.dp))
             Text(
-                "A backup holds every profile, PIN, 1RM, plan, workout and setting this browser keeps. " +
-                    "Restoring one replaces what's here now.",
-                style = MaterialTheme.typography.bodyMedium
+                "Count anonymous app use: opening the app, device type, browser, finished workouts and whether " +
+                    "the trainer connected. No cookies, no IDs, nothing about you or your workouts. Helps the beta.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
             )
-            PrimaryButton("Save a backup", onClick = {
-                downloadText("cable-backup-${formatDate(nowMillis(), "yyyy-MM-dd")}.json", WebBackup.export())
-                message = "Backup saved to your downloads."
-            })
-            val pending = confirmRestore
-            if (pending == null) {
-                PrimaryButton("Restore a backup", onClick = {
-                    scope.launch {
-                        val text = pickTextFile() ?: return@launch
-                        if (WebBackup.isValid(text)) { confirmRestore = text; message = null } else message = "That file isn't a Cable web backup."
-                    }
-                })
-            } else {
-                Text("Replace everything in this browser with the backup?", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                PrimaryButton("Yes, restore it", accent = true, onClick = { WebBackup.restore(pending); reloadPage() })
-                PrimaryButton("Cancel", onClick = { confirmRestore = null })
-            }
-            if (!confirmDelete) {
-                PrimaryButton("Delete all workouts", onClick = { confirmDelete = true; message = null })
-            } else {
-                Text("Delete every workout in this browser? Profiles, 1RMs and routines stay.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                PrimaryButton("Yes, delete them", accent = true, onClick = {
-                    gateway.deleteAllWorkouts()
-                    confirmDelete = false
-                    message = "All workouts deleted."
-                })
-                PrimaryButton("Cancel", onClick = { confirmDelete = false })
-            }
-            message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
-            SectionLabel("Usage counts", Modifier.padding(top = 8.dp))
-            var counting by remember { mutableStateOf(WebStats.enabled) }
-            Row(
-                Modifier.fillMaxWidth().clickable(role = Role.Switch) { counting = !counting; WebStats.enabled = counting },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "Count anonymous app use: opening the app, device type, browser, finished workouts and whether " +
-                        "the trainer connected. No cookies, no IDs, nothing about you or your workouts. Helps the beta.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
-                    checked = counting,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(checkedTrackColor = CleanColors.Accent, checkedThumbColor = Color.White)
-                )
-            }
-            InstallGuide()
+            Switch(
+                checked = counting,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedTrackColor = CleanColors.Accent, checkedThumbColor = Color.White)
+            )
         }
+        InstallGuide()
     }
 }
 
@@ -266,24 +216,4 @@ fun AppStoreGoal() {
     )
     PrimaryButton("Donate on GoFundMe", accent = true, onClick = { openUrl(DONATE_URL) })
     PrimaryButton("Sponsor on GitHub", onClick = { openUrl(SPONSOR_URL) })
-}
-
-/** Everything the web app stores, as one JSON file. */
-object WebBackup {
-    private const val FORMAT = "cable-web-backup"
-    private val KEYS = listOf("web_gateway", "clean_ui")
-
-    fun export(): String = JsonObject(
-        mapOf("format" to JsonPrimitive(FORMAT), "version" to JsonPrimitive(1), "exportedAt" to JsonPrimitive(nowMillis())) +
-            KEYS.mapNotNull { key -> LocalStorage[key]?.let { key to JsonPrimitive(it) } }
-    ).toString()
-
-    fun isValid(text: String): Boolean = runCatching {
-        Json.parseToJsonElement(text).jsonObject["format"]?.jsonPrimitive?.contentOrNull == FORMAT
-    }.getOrDefault(false)
-
-    fun restore(text: String) {
-        val root = Json.parseToJsonElement(text).jsonObject
-        KEYS.forEach { key -> root[key]?.jsonPrimitive?.contentOrNull?.let { LocalStorage[key] = it } }
-    }
 }
