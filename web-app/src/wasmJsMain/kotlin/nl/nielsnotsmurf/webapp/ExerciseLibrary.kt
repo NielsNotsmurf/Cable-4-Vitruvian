@@ -58,7 +58,8 @@ class ExerciseLibrary(val cards: List<ExerciseCard>, private val guides: Map<Str
                 guides[id] = ExerciseGuide(
                     description = e.text("description").orEmpty(),
                     region = region,
-                    muscles = muscleLabels
+                    muscles = muscleLabels,
+                    name = name
                 )
             }
             return ExerciseLibrary(cards, guides)
