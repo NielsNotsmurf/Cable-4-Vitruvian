@@ -53,9 +53,7 @@ class ExerciseImporter @Inject constructor(
             val jsonArray = JSONArray(jsonString)
 
             val exercises = mutableListOf<ExerciseEntity>()
-            // Vitruvian's demo/tutorial videos are never imported (rights, Google Play).
-        if (true) return emptyList()
-        val videos = mutableListOf<ExerciseVideoEntity>()
+            val videos = mutableListOf<ExerciseVideoEntity>()
 
             // Parse each exercise
             for (i in 0 until jsonArray.length()) {
@@ -102,7 +100,7 @@ class ExerciseImporter @Inject constructor(
         return ExerciseEntity(
             id = json.getString("id"),
             name = json.getString("name"),
-            description = "", // Vitruvian-written instructions are not bundled (rights)
+            description = json.optString("description", ""),
             created = json.optString("created", ""),
             muscleGroups = json.optJSONArray("muscleGroups")?.toStringList() ?: "",
             muscles = json.optJSONArray("muscles")?.toStringList() ?: "",
@@ -141,10 +139,50 @@ class ExerciseImporter @Inject constructor(
      * Parse videos for an exercise from JSON
      * Includes both angle demonstrations and tutorial video if present
      */
-    @Suppress("UNUSED_PARAMETER")
-    private fun parseVideos(json: JSONObject, exerciseId: String): List<ExerciseVideoEntity> =
-        // Vitruvian's demo/tutorial videos are never imported (rights, Google Play).
-        emptyList()
+    private fun parseVideos(json: JSONObject, exerciseId: String): List<ExerciseVideoEntity> {
+        val videos = mutableListOf<ExerciseVideoEntity>()
+
+        // Parse angle demonstration videos
+        val videosArray = json.optJSONArray("videos")
+        if (videosArray != null) {
+            for (i in 0 until videosArray.length()) {
+                try {
+                    val videoJson = videosArray.getJSONObject(i)
+                    val video = ExerciseVideoEntity(
+                        id = 0, // Auto-generated
+                        exerciseId = exerciseId,
+                        angle = videoJson.optString("angle", videoJson.optString("name", "FRONT")),
+                        videoUrl = videoJson.getString("video"),
+                        thumbnailUrl = videoJson.getString("thumbnail"),
+                        isTutorial = false
+                    )
+                    videos.add(video)
+                } catch (e: Exception) {
+                    Timber.w("Failed to parse video at index $i for exercise $exerciseId: ${e.message}")
+                }
+            }
+        }
+
+        // Parse tutorial video if present (separate from angle videos)
+        val tutorialJson = json.optJSONObject("tutorial")
+        if (tutorialJson != null) {
+            try {
+                val tutorial = ExerciseVideoEntity(
+                    id = 0, // Auto-generated
+                    exerciseId = exerciseId,
+                    angle = "TUTORIAL",
+                    videoUrl = tutorialJson.getString("video"),
+                    thumbnailUrl = tutorialJson.getString("thumbnail"),
+                    isTutorial = true
+                )
+                videos.add(tutorial)
+            } catch (e: Exception) {
+                Timber.w("Failed to parse tutorial video for exercise $exerciseId: ${e.message}")
+            }
+        }
+
+        return videos
+    }
     
     /**
      * Convert JSONArray to comma-separated string

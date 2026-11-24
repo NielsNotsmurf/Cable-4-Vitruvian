@@ -260,8 +260,6 @@ fun SettingsScreen(
                 LinkRow("Sponsor on GitHub", "If you'd rather give through GitHub Sponsors", { uriHandler.openUri(SPONSOR_URL) })
             }
             LinkRow("Privacy policy", "What Cable stores (only on this device) and what it never collects", { uriHandler.openUri(PRIVACY_URL) })
-            // Trademark notice (Google Play impersonation policy): Vitruvian names are used only to say what Cable works with.
-            InfoRow("About", "Cable is an unofficial, independent app for the Vitruvian V-Form and Trainer+. It is not affiliated with or endorsed by Vitruvian.")
         }
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))

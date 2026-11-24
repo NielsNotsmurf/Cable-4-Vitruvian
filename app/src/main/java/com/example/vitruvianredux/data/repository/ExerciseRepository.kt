@@ -109,9 +109,7 @@ class ExerciseRepositoryImpl @Inject constructor(
      * Get videos for an exercise
      */
     override suspend fun getVideos(exerciseId: String): List<ExerciseVideoEntity> {
-        // Vitruvian's own demo videos are not shown (rights, Google Play). Older installs may
-        // still have their links in the database, so nothing stored here is returned.
-        return emptyList()
+        return exerciseDao.getVideos(exerciseId)
     }
     
     /**
