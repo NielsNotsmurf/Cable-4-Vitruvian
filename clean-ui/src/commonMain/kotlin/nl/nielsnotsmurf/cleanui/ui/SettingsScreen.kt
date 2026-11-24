@@ -81,7 +81,7 @@ fun SettingsScreen(
     onSwitchAccount: () -> Unit,
     onStartTour: () -> Unit,
     onPairHeartRate: ((lifterId: String) -> Unit)?,
-    onBackup: () -> Unit,
+    onData: () -> Unit,
     onConnectionLogs: () -> Unit,
     onProtocolTester: () -> Unit,
     onSwitchToClassic: () -> Unit,
@@ -266,7 +266,7 @@ fun SettingsScreen(
 
         SectionLabel("Data", Modifier.padding(top = 8.dp))
         Group {
-            LinkRow("Backup and restore", "Save everything to Download/Cable, restore it, or delete all workouts", onBackup)
+            LinkRow("Export and import", "Save your profiles, workouts, routines, 1RMs and settings to a file, or load them", onData)
         }
 
         Row(

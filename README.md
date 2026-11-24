@@ -88,7 +88,7 @@ clickable web version with a simulated trainer and example lifters. Nothing to i
 | --- | --- |
 | History and analytics | Workouts, personal records and volume over time. Opens on a body map coloured by the measure (reps, volume, …) and period (week, year, …) you pick, with each region's heaviest load. Those filters drive the whole screen: trends, headline numbers, insights, balance and exercise cards. |
 | Donation request | Once a month a short card compares the official app (€35 a month) with Cable and asks for a donation. Later asks again in a week; Don't show again leaves only the monthly one. |
-| Backup and restore | Full JSON backup saved to `Download/Cable`. |
+| Export and import | Settings → Export and import saves your profiles, workouts, routines, 1RMs and settings to one file you pick, and loads it again, on Android and the web alike. |
 
 **App**
 
@@ -119,7 +119,7 @@ every update.
 > instead of over it. Your old Cable stays installed as a separate app and won't update anymore.
 > In the old app, use Settings → Backup and restore to save everything to Download/Cable. Then
 > remove it in Obtainium, add `https://github.com/NielsNotsmurf/Cable-4-Vitruvian` again, install,
-> and restore the backup in the new app.
+> and import that file in the new app under Settings → Export and import.
 
 ### Web app (beta, iPhone, iPad and any browser)
 
@@ -157,7 +157,7 @@ Known limits of the beta:
 - It can feel a little slower than the Android app, and Bluetooth in a browser can lag a bit.
 - After reloading the page, the trainer and heart rate strap have to be picked again.
 - Each browser keeps its own data on that device; Bluefy and Safari do not share it. Settings,
-  Backup and restore saves it to a file you can load elsewhere.
+  Export and import saves it to a file you can load elsewhere.
 - Screens that only exist in the classic Android layout are not on the web.
 
 Every merge to `master` builds a signed APK and publishes it as a release. How the signing
