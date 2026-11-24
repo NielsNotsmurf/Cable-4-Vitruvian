@@ -53,9 +53,7 @@ class ExerciseImporter @Inject constructor(
             val jsonArray = JSONArray(jsonString)
 
             val exercises = mutableListOf<ExerciseEntity>()
-            // Vitruvian's demo/tutorial videos are never imported (rights, Google Play).
-        if (true) return emptyList()
-        val videos = mutableListOf<ExerciseVideoEntity>()
+            val videos = mutableListOf<ExerciseVideoEntity>()
 
             // Parse each exercise
             for (i in 0 until jsonArray.length()) {
