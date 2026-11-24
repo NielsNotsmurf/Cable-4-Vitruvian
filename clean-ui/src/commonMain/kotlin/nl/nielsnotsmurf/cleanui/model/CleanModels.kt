@@ -141,7 +141,9 @@ data class ExerciseGuide(
     val muscles: List<String> = emptyList(),
     /** Only our own clips go here; the official library's videos are not ours to show. */
     val videoUrl: String? = null,
-    val thumbnailUrl: String? = null
+    val thumbnailUrl: String? = null,
+    /** Exercise name; picks the animated movement and the matching free photos in the demo. */
+    val name: String = ""
 )
 
 /** Result of one single-rep attempt in the 1RM test. */

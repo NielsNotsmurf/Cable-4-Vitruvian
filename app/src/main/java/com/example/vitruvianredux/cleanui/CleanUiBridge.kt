@@ -384,7 +384,8 @@ class CleanUiBridge(
         return ExerciseGuide(
             description = entity.description,
             region = card.region,
-            muscles = card.muscles
+            muscles = card.muscles,
+            name = entity.name
         )
     }
 
