@@ -466,6 +466,14 @@ class CleanUiBridge(
         ids.forEach { vm.deleteWorkout(it) }
     }
 
+    override fun deleteAllWorkouts() = vm.deleteAllWorkouts()
+
+    override val dataPlatform: String get() = "android"
+
+    override suspend fun exportData(): String = vm.exportDataJson()
+
+    override suspend fun importData(data: String): Boolean = vm.importDataJson(data)
+
     override val settings: Flow<CleanSettings> = combine(
         combine(vm.userPreferences, store.defaultSets, store.defaultPercent, store.warmupReps, store.defaultAmrap) { p, sets, pct, warmup, amrap ->
             currentSets = sets

@@ -1,6 +1,7 @@
 package nl.nielsnotsmurf.cleanui.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import nl.nielsnotsmurf.cleanui.logic.OneRepMaxMap
 import nl.nielsnotsmurf.cleanui.logic.Routine
@@ -37,6 +38,14 @@ class CleanUiStore(
 
     suspend fun setEnabled(enabled: Boolean) {
         kv.edit { it[ENABLED] = enabled }
+    }
+
+    /** Every stored value, for the data export ([PersonalData]). */
+    suspend fun snapshot(): Map<String, Any> = kv.data.first()
+
+    /** Puts back values from [snapshot]; values the file doesn't hold stay as they are. */
+    suspend fun restore(values: Map<String, Any>) {
+        kv.edit { it.putAll(values) }
     }
 
     /** Stored 1RMs as lifterId -> exerciseId -> 1RM. */

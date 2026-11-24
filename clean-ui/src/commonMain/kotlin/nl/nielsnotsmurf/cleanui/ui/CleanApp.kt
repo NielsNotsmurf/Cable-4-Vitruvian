@@ -78,6 +78,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.savedstate.read
 import nl.nielsnotsmurf.cleanui.model.ExerciseGuide
+import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.data.rememberCleanUiStore
 import nl.nielsnotsmurf.cleanui.gateway.TrainerGateway
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
@@ -107,6 +108,7 @@ object CleanRoutes {
     const val PROFILES = "profiles"
     const val HISTORY = "clean_history"
     const val SETTINGS = "clean_settings"
+    const val DATA = "clean_data"
     const val ANALYTICS = "clean_analytics"
     const val SETUP = "clean_setup"
     const val ONE_REP_MAX_TEST = "clean_1rm_test"
@@ -120,7 +122,6 @@ object CleanRoutes {
  */
 enum class ClassicScreen(val route: String, val title: String?, val showBack: Boolean = false) {
     ANALYTICS("analytics", "Charts and insights", showBack = true),
-    SETTINGS("settings", "More settings", showBack = true),
     ASSESSMENT("baseline_assessment", null),
     CONNECTION_LOGS("connection_logs", "Connection logs", showBack = true),
     PROTOCOL_TESTER("protocol_tester", null)
@@ -153,6 +154,8 @@ fun CleanApp(
     activeWorkoutContent: @Composable (NavController) -> Unit,
     justLiftContent: @Composable (NavController) -> Unit,
     classicContent: @Composable (ClassicScreen, NavController) -> Unit,
+    /** Platform extras shown under Settings, Your data. */
+    dataExtras: (@Composable () -> Unit)? = null,
     /** The app's heart rate sensor pairing for one lifter (Garmin watch or strap). */
     heartRateContent: (@Composable (lifterId: String, onDismiss: () -> Unit) -> Unit)? = null
 ) {
@@ -211,7 +214,9 @@ fun CleanApp(
                             onHeartRate = if (heartRateContent != null) ({ heartRateFor = it }) else null,
                             activeWorkoutContent = activeWorkoutContent,
                             justLiftContent = justLiftContent,
-                            classicContent = classicContent
+                            classicContent = classicContent,
+                            store = store,
+                            dataExtras = dataExtras
                         )
                     }
                 }
@@ -254,7 +259,9 @@ private fun SignedInApp(
     onHeartRate: ((String) -> Unit)?,
     activeWorkoutContent: @Composable (NavController) -> Unit,
     justLiftContent: @Composable (NavController) -> Unit,
-    classicContent: @Composable (ClassicScreen, NavController) -> Unit
+    classicContent: @Composable (ClassicScreen, NavController) -> Unit,
+    store: CleanUiStore,
+    dataExtras: (@Composable () -> Unit)?
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val setup by vm.setup.collectAsStateWithLifecycle()
@@ -419,13 +426,19 @@ private fun SignedInApp(
                             onSwitchAccount = vm::signOut,
                             onStartTour = tour::start,
                             onPairHeartRate = onHeartRate,
-                            onBackup = { nav.navigate(ClassicScreen.SETTINGS.route) },
+                            onData = { nav.navigate(CleanRoutes.DATA) },
                             onConnectionLogs = { nav.navigate(ClassicScreen.CONNECTION_LOGS.route) },
                             onProtocolTester = { nav.navigate(ClassicScreen.PROTOCOL_TESTER.route) },
                             onSwitchToClassic = vm::switchToClassic,
                             onDisconnect = vm::disconnectTrainer,
                             onConnect = vm::connectTrainer
                         )
+                    }
+                    composable(CleanRoutes.DATA) {
+                        Column(Modifier.fillMaxSize()) {
+                            ScreenTitle("Your data", onBack = { nav.popBackStack() })
+                            Box(Modifier.weight(1f)) { DataScreen(gateway = gateway, store = store, extras = dataExtras) }
+                        }
                     }
                     composable(CleanRoutes.PROFILES) {
                         ProfilesScreen(
