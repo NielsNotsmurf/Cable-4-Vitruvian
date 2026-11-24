@@ -29,7 +29,6 @@ import com.example.vitruvianredux.data.preferences.PreferencesManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
-import com.example.vitruvianredux.presentation.navigation.ClassicSettingsRoute
 import com.example.vitruvianredux.presentation.screen.ActiveWorkoutScreen
 import com.example.vitruvianredux.presentation.screen.AnalyticsScreen
 import com.example.vitruvianredux.presentation.screen.BaselineAssessmentScreen
@@ -132,7 +131,6 @@ fun CleanUiHost(viewModel: MainViewModel) {
 private fun ClassicScreenContent(screen: ClassicScreen, nav: NavController, viewModel: MainViewModel) {
     when (screen) {
         ClassicScreen.ANALYTICS -> AnalyticsScreen(viewModel = viewModel, themeMode = ThemeMode.LIGHT)
-        ClassicScreen.SETTINGS -> ClassicSettingsRoute(navController = nav, viewModel = viewModel)
         ClassicScreen.ASSESSMENT -> BaselineAssessmentScreen(navController = nav, viewModel = viewModel)
         ClassicScreen.CONNECTION_LOGS -> ConnectionLogsScreen(onNavigateBack = { nav.popBackStack() }, mainViewModel = viewModel)
         ClassicScreen.PROTOCOL_TESTER -> ProtocolTesterScreen(onNavigateBack = { nav.popBackStack() })

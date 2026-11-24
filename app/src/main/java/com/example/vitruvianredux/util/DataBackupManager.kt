@@ -141,6 +141,9 @@ class DataBackupManager @Inject constructor(
         )
     }
 
+    /** The full backup as JSON text, for the Clean data export. */
+    suspend fun exportJson(): String = json.encodeToString(exportAllData())
+
     suspend fun saveToDownloads(backup: BackupData): Result<Uri> = withContext(Dispatchers.IO) {
         try {
             val jsonString = json.encodeToString(backup)
