@@ -1,7 +1,11 @@
 package nl.nielsnotsmurf.cleanui.data
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.await
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 private fun jsDownload(fileName: String, text: String): Unit = js("""{
     const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -26,7 +30,18 @@ private object WebDataFiles : DataFiles {
         return true
     }
 
-    override suspend fun open(): String? = jsPick().await<JsString?>()?.toString()
+    private val state = MutableStateFlow<PickedFile?>(null)
+
+    override fun pick() {
+        MainScope().launch {
+            val text = runCatching { jsPick().await<JsString?>()?.toString() }.getOrNull() ?: return@launch
+            state.value = PickedFile(text)
+        }
+    }
+
+    override val picked: StateFlow<PickedFile?> get() = state
+
+    override fun clearPicked() { state.value = null }
 }
 
 @Composable

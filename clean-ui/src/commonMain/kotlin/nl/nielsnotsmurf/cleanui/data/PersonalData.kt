@@ -1,6 +1,7 @@
 package nl.nielsnotsmurf.cleanui.data
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -141,9 +142,20 @@ interface DataFiles {
     /** False when the person cancelled or the file couldn't be written. */
     suspend fun save(fileName: String, text: String): Boolean
 
-    /** The picked file's text, or null when cancelled. */
-    suspend fun open(): String?
+    /**
+     * Opens the file picker. The chosen file arrives in [picked], also when Android recreated the
+     * app while the picker was open (a suspended call would be lost then, and nothing would happen).
+     */
+    fun pick()
+
+    /** The last chosen file, until [clearPicked]. Cancelling the picker gives nothing. */
+    val picked: StateFlow<PickedFile?>
+
+    fun clearPicked()
 }
+
+/** A chosen file: its text, or null when it couldn't be read. */
+class PickedFile(val text: String?)
 
 @Composable
 expect fun rememberDataFiles(): DataFiles
