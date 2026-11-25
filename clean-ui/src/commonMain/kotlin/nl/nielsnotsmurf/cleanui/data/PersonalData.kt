@@ -9,6 +9,8 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -24,7 +26,12 @@ object PersonalData {
     const val VERSION = 1
     private const val LEGACY_WEB_FORMAT = "cable-web-backup"
 
-    class Parsed(val clean: Map<String, Any>, val platform: String, val host: String?)
+    class Parsed(val clean: Map<String, Any>, val platform: String, val host: String?) {
+        /** The profiles in the file's host part, so another platform can recreate them by name. */
+        val lifters: List<FileLifter> get() = hostLifters(host)
+    }
+
+    class FileLifter(val id: String, val name: String, val color: Int)
 
     fun encode(clean: Map<String, Any>, platform: String, host: String?, exportedAt: Long): String = JsonObject(
         buildMap<String, JsonElement> {
@@ -39,7 +46,8 @@ object PersonalData {
 
     /** Null when [text] isn't a Cable data file. */
     fun decode(text: String): Parsed? = runCatching {
-        val root = Json.parseToJsonElement(text).jsonObject
+        val clean = text.trim().removePrefix("\uFEFF")
+        val root = Json.parseToJsonElement(clean).jsonObject
         val format = root["format"]?.jsonPrimitive?.contentOrNull
         // Backups the web app saved before this file format existed.
         if (format == LEGACY_WEB_FORMAT) return Parsed(
@@ -47,6 +55,8 @@ object PersonalData {
             platform = "web",
             host = root["web_gateway"]?.jsonPrimitive?.contentOrNull
         )
+        // The Android app's own backup (Download/Cable), from before this file format existed.
+        if (format == null && root["data"] is JsonObject && root["appVersion"] != null) return Parsed(emptyMap(), "android", clean)
         if (format != FORMAT) return null
         Parsed(
             clean = decodeTyped(root["clean"]?.jsonObject ?: JsonObject(emptyMap())),
@@ -54,6 +64,47 @@ object PersonalData {
             host = root["host"]?.jsonPrimitive?.contentOrNull
         )
     }.getOrNull()
+
+    private fun hostLifters(host: String?): List<FileLifter> = runCatching {
+        val root = Json.parseToJsonElement(host ?: return emptyList()).jsonObject
+        // Web: {"lifters": [{id, name, color}]}; Android: {"data": {"profiles": [{id, name, colorInt}]}}.
+        val list = root["lifters"]?.jsonArray ?: root["data"]?.jsonObject?.get("profiles")?.jsonArray ?: return emptyList()
+        list.mapNotNull { e ->
+            val o = e.jsonObject
+            val id = o["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val name = o["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val color = (o["color"] ?: o["colorInt"])?.jsonPrimitive?.intOrNull ?: -10354962
+            FileLifter(id, name, color)
+        }
+    }.getOrDefault(emptyList())
+
+    /**
+     * Moves the Clean values of the file's profiles to the profiles here ([ids]: file id -> local id):
+     * 1RMs, PINs and the like are stored per profile id, and routines hold "lifterId::exerciseId" loads.
+     */
+    fun remap(clean: Map<String, Any>, ids: Map<String, String>): Map<String, Any> {
+        val moved = ids.filter { (from, to) -> from != to }
+        if (moved.isEmpty()) return clean
+        fun key(name: String): String {
+            val bar = name.indexOf('|')
+            if (bar < 0) return name
+            val rest = name.substring(bar + 1)
+            val id = rest.substringBefore(SEP)
+            val to = moved[id] ?: return name
+            return name.substring(0, bar + 1) + to + rest.removePrefix(id)
+        }
+        return clean.entries.associate { (name, value) ->
+            val v: Any = when {
+                name == "last_account" && value is String -> moved[value] ?: value
+                name == "routines" && value is String ->
+                    moved.entries.fold(value) { text, (from, to) -> text.replace("\"$from$SEP", "\"$to$SEP") }
+                else -> value
+            }
+            key(name) to v
+        }
+    }
+
+    private const val SEP = "::"
 
     /** {"name": {"t": "b|i|l|f|s", "v": value}}, so every value comes back with its type. */
     private fun encodeTyped(values: Map<String, Any>) = JsonObject(
