@@ -18,7 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import nl.nielsnotsmurf.cleanui.data.CleanUiStore
 import nl.nielsnotsmurf.cleanui.data.PersonalData
 import nl.nielsnotsmurf.cleanui.data.rememberDataFiles
@@ -81,7 +83,7 @@ fun DataScreen(
             val samePlatform = toImport.host != null && toImport.platform == gateway.dataPlatform
             Text(
                 if (samePlatform) "Import this file? Profiles, workouts and routines are added; settings and 1RMs from the file replace the ones here."
-                else "This file comes from another platform: its 1RMs, PINs, routines and settings are imported, workouts and profiles stay where they were made.",
+                else "This file comes from another platform: its profiles, 1RMs, PINs, routines and settings are imported, workouts stay where they were made.",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
@@ -89,8 +91,14 @@ fun DataScreen(
                 scope.launch {
                     busy = true
                     val hostOk = if (samePlatform) runCatching { gateway.importData(toImport.host!!) }.getOrDefault(false) else true
-                    runCatching { store.restore(toImport.clean) }
-                    message = if (hostOk) "Data imported." else "Settings and 1RMs imported, but the workouts couldn't be read."
+                    // From another platform: recreate its profiles by name, so their 1RMs and routine loads land on them.
+                    val ids = if (samePlatform) emptyMap() else runCatching { matchLifters(gateway, toImport.lifters) }.getOrDefault(emptyMap())
+                    val cleanOk = runCatching { store.restore(PersonalData.remap(toImport.clean, ids)) }.isSuccess
+                    message = when {
+                        !cleanOk -> "The file was read, but its routines, 1RMs and settings couldn't be saved."
+                        hostOk -> "Data imported."
+                        else -> "Routines, settings and 1RMs imported, but the workouts couldn't be read."
+                    }
                     pending = null
                     busy = false
                 }
@@ -113,4 +121,21 @@ fun DataScreen(
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
         extras?.invoke()
     }
+}
+
+/** File profile id -> the profile here with the same name, which is added first when there's none. */
+private suspend fun matchLifters(gateway: TrainerGateway, fileLifters: List<PersonalData.FileLifter>): Map<String, String> {
+    fun key(name: String) = name.trim().lowercase()
+    val ids = mutableMapOf<String, String>()
+    for (lifter in fileLifters) {
+        val here = gateway.lifters.first().firstOrNull { key(it.name) == key(lifter.name) && it.id !in ids.values }
+        if (here != null) { ids[lifter.id] = here.id; continue }
+        val before = gateway.lifters.first().map { it.id }.toSet()
+        gateway.addLifter(lifter.name.trim(), lifter.color)
+        val added = withTimeoutOrNull(5_000) {
+            gateway.lifters.first { list -> list.any { it.id !in before && key(it.name) == key(lifter.name) } }
+        }?.firstOrNull { it.id !in before && key(it.name) == key(lifter.name) }
+        if (added != null) ids[lifter.id] = added.id
+    }
+    return ids
 }
