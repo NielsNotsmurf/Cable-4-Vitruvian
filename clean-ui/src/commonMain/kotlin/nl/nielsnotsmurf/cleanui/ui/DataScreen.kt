@@ -10,6 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +50,19 @@ fun DataScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var pending by remember { mutableStateOf<PersonalData.Parsed?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val picked by files.picked.collectAsState()
+
+    LaunchedEffect(picked) {
+        val file = picked ?: return@LaunchedEffect
+        files.clearPicked()
+        val text = file.text
+        val parsed = text?.let { PersonalData.decode(it) }
+        when {
+            text == null -> message = "That file couldn't be opened. Save it to your phone's Downloads and try again."
+            parsed == null -> message = "That file isn't a Cable data export."
+            else -> { pending = parsed; message = null }
+        }
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
@@ -72,13 +87,7 @@ fun DataScreen(
         })
         val toImport = pending
         if (toImport == null) {
-            PrimaryButton("Import data", enabled = !busy, onClick = {
-                scope.launch {
-                    val text = files.open() ?: return@launch
-                    val parsed = PersonalData.decode(text)
-                    if (parsed == null) message = "That file isn't a Cable data export." else { pending = parsed; message = null }
-                }
-            })
+            PrimaryButton("Import data", enabled = !busy, onClick = { message = null; files.pick() })
         } else {
             val samePlatform = toImport.host != null && toImport.platform == gateway.dataPlatform
             Text(
@@ -105,6 +114,7 @@ fun DataScreen(
             })
             PrimaryButton("Cancel", onClick = { pending = null })
         }
+        message?.let { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold) }
 
         SectionLabel("Workouts", Modifier.padding(top = 8.dp))
         if (!confirmDelete) {
@@ -118,7 +128,6 @@ fun DataScreen(
             })
             PrimaryButton("Cancel", onClick = { confirmDelete = false })
         }
-        message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = CleanColors.Muted) }
         extras?.invoke()
     }
 }
