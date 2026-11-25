@@ -31,7 +31,8 @@ actual fun rememberDataFiles(): DataFiles {
 
             override suspend fun open(): String? {
                 val result = CompletableDeferred<Uri?>().also { pending[0] = it }
-                openLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                // Any file: downloaded .json files often carry another type (or none), which would grey them out.
+                openLauncher.launch(arrayOf("*/*"))
                 val uri = result.await() ?: return null
                 return withContext(Dispatchers.IO) {
                     runCatching { context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() } }.getOrNull()
