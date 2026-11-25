@@ -13,7 +13,7 @@ private fun jsDownload(fileName: String, text: String): Unit = js("""{
 private fun jsPick(): kotlin.js.Promise<JsString?> = js("""
     new Promise(resolve => {
         const input = document.createElement('input');
-        input.type = 'file'; input.accept = '.json,application/json';
+        input.type = 'file';
         input.onchange = () => input.files[0] ? input.files[0].text().then(resolve, () => resolve(null)) : resolve(null);
         input.oncancel = () => resolve(null);
         input.click();
