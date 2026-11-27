@@ -16,6 +16,7 @@ import nl.nielsnotsmurf.cleanui.model.Lifter
 import nl.nielsnotsmurf.cleanui.model.SetPlan
 import nl.nielsnotsmurf.cleanui.model.TestAnchor
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
+import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 
 /**
@@ -110,6 +111,10 @@ interface TrainerGateway {
     fun adjustNextReps(reps: Int) {}
     /** During rest or on the Continue screen of an Echo exercise: its level for the coming and later sets. */
     fun adjustEchoLevel(level: EchoLevelChoice) {}
+    /** During rest or on the Continue screen: the mode (and Echo's eccentric %) of the coming and later sets of this exercise. */
+    fun adjustNextMode(mode: TrainingMode, eccentricPercent: Int) {}
+    /** During rest or on the Continue screen: the coming set only runs as many reps as possible, or not. */
+    fun setNextAmrap(amrap: Boolean) {}
     fun proceedFromSummary() {}
     fun stopWorkout() {}
     fun advanceToNextExercise() {}

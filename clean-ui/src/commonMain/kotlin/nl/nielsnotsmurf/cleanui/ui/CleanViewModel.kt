@@ -734,8 +734,27 @@ class CleanViewModel(
     val liveEchoLevel: StateFlow<EchoLevelChoice?> = combine(gateway.liveWorkout, _editsVersion) { live, _ ->
         val ex = liveExerciseId(live) ?: return@combine null
         val plan = livePlans.firstOrNull { it.exercise.id == ex } ?: return@combine null
-        if (plan.mode != TrainingMode.ECHO) null else liveEdits[ex]?.echoLevel ?: echoLevels[ex] ?: plan.echoLevel
+        // The mode can be switched for the coming set mid-workout; the host reports it.
+        if ((live?.mode ?: plan.mode) != TrainingMode.ECHO) null else liveEdits[ex]?.echoLevel ?: echoLevels[ex] ?: plan.echoLevel
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The mode of the coming and later sets of this exercise, e.g. Old School to Echo for a hard last set. */
+    fun adjustLiveMode(mode: TrainingMode, eccentricPercent: Int) {
+        viewModelScope.launch {
+            val live = gateway.liveWorkout.first()
+            // Switching to Echo starts at the level this exercise had, so the gateway and the stepper agree.
+            if (mode == TrainingMode.ECHO && live?.mode != TrainingMode.ECHO) {
+                val ex = liveExerciseId(live)
+                val level = ex?.let { liveEdits[it]?.echoLevel ?: echoLevels[it] ?: livePlans.firstOrNull { p -> p.exercise.id == it }?.echoLevel }
+                gateway.adjustNextMode(mode, eccentricPercent)
+                level?.let(gateway::adjustEchoLevel)
+            } else gateway.adjustNextMode(mode, eccentricPercent)
+            editsChanged()
+        }
+    }
+
+    /** The coming set only: as many reps as possible, or back to its target reps. */
+    fun setLiveAmrap(amrap: Boolean) = gateway.setNextAmrap(amrap)
 
     /** Echo levels changed during this workout (also once saved to the routine). */
     private val echoLevels = mutableMapOf<String, EchoLevelChoice>()

@@ -173,7 +173,10 @@ class CleanUiBridge(
             avgPower = (st as? WorkoutState.SetSummary)?.averagePower ?: 0f,
             bodyweight = b.bodyweight,
             autoStopSeconds = autoStop.secondsRemaining.takeIf { autoStop.isActive && st == WorkoutState.Active },
-            lastReps = if (st is WorkoutState.Resting) vm.lastSetReps.value else null
+            lastReps = if (st is WorkoutState.Resting) vm.lastSetReps.value else null,
+            mode = a.params.workoutType.toClean(),
+            amrap = a.params.isAMRAP,
+            eccentricPercent = (a.params.workoutType as? WorkoutType.Echo)?.eccentricLoad?.percentage ?: 100
         )
     }
 
@@ -185,6 +188,12 @@ class CleanUiBridge(
     override fun adjustLiveWeight(perCableKg: Float) = vm.adjustWeightLive(perCableKg)
     override fun adjustNextReps(reps: Int) = vm.adjustUpcomingReps(reps)
     override fun adjustEchoLevel(level: EchoLevelChoice) = vm.adjustUpcomingEchoLevel(level.toApp())
+    override fun adjustNextMode(mode: TrainingMode, eccentricPercent: Int) {
+        // Echo keeps its level when only the eccentric changes; a switch to Echo starts at Harder.
+        val level = (vm.workoutParameters.value.workoutType as? WorkoutType.Echo)?.level ?: EchoLevel.HARDER
+        vm.adjustUpcomingWorkoutType(modeType(mode, level, eccentricPercent))
+    }
+    override fun setNextAmrap(amrap: Boolean) = vm.setUpcomingAmrap(amrap)
     override fun proceedFromSummary() = vm.proceedFromSummary()
     override fun stopWorkout() = vm.stopWorkout()
     override fun advanceToNextExercise() = vm.advanceToNextExercise()
@@ -586,6 +595,26 @@ class CleanUiBridge(
         defaultCableConfig = runCatching { CableConfiguration.valueOf(cableConfig) }.getOrDefault(CableConfiguration.DOUBLE),
         id = id
     )
+
+    private fun modeType(mode: TrainingMode, level: EchoLevel, eccentricPercent: Int): WorkoutType = when (mode) {
+        TrainingMode.OLD_SCHOOL -> WorkoutType.Program(ProgramMode.OldSchool)
+        TrainingMode.PUMP -> WorkoutType.Program(ProgramMode.Pump)
+        TrainingMode.TUT -> WorkoutType.Program(ProgramMode.TUT)
+        TrainingMode.TUT_BEAST -> WorkoutType.Program(ProgramMode.TUTBeast)
+        TrainingMode.ECCENTRIC_ONLY -> WorkoutType.Program(ProgramMode.EccentricOnly)
+        TrainingMode.ECHO -> WorkoutType.Echo(level, eccentricLoad(eccentricPercent))
+    }
+
+    private fun WorkoutType.toClean(): TrainingMode = when (this) {
+        is WorkoutType.Echo -> TrainingMode.ECHO
+        is WorkoutType.Program -> when (mode) {
+            ProgramMode.Pump -> TrainingMode.PUMP
+            ProgramMode.TUT -> TrainingMode.TUT
+            ProgramMode.TUTBeast -> TrainingMode.TUT_BEAST
+            ProgramMode.EccentricOnly -> TrainingMode.ECCENTRIC_ONLY
+            else -> TrainingMode.OLD_SCHOOL
+        }
+    }
 
     private fun SetPlan.toWorkoutType(): WorkoutType = when (mode) {
         TrainingMode.OLD_SCHOOL -> WorkoutType.Program(ProgramMode.OldSchool)

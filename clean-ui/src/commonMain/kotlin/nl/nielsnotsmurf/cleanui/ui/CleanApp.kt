@@ -607,6 +607,8 @@ private fun SignedInApp(
                                 onUpdateOneRepMax = vm::updateOneRepMaxFromLive,
                                 echoLevel = liveEchoLevel,
                                 onEchoLevel = vm::adjustLiveEchoLevel,
+                                onMode = vm::adjustLiveMode,
+                                onAmrap = vm::setLiveAmrap,
                                 routineNudge = liveRoutineNudge,
                                 onUpdateRoutine = vm::saveLiveEditToRoutine,
                                 onConnect = vm::connectTrainer,
