@@ -43,7 +43,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v6
         if: steps.changes.outputs.code == 'true'
 
       # Shared code is tested on both platforms: Android (JVM) and web (wasm, in headless Chrome).
