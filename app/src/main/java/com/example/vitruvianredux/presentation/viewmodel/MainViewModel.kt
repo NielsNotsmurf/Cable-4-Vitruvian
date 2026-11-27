@@ -1951,6 +1951,34 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** During rest: the mode of the coming set and the later sets of this exercise (e.g. Echo for a hard last set). */
+    fun adjustUpcomingWorkoutType(type: WorkoutType) {
+        if (_workoutState.value !is WorkoutState.Resting) return
+        _workoutParameters.value = _workoutParameters.value.copy(workoutType = type)
+        updateLoadedExercise { ex ->
+            ex.copy(
+                workoutType = type,
+                echoLevel = (type as? WorkoutType.Echo)?.level ?: ex.echoLevel,
+                eccentricLoad = (type as? WorkoutType.Echo)?.eccentricLoad ?: ex.eccentricLoad
+            )
+        }
+    }
+
+    /** During rest: the coming set only runs as many reps as possible (or back to its target reps). */
+    fun setUpcomingAmrap(amrap: Boolean) {
+        if (_workoutState.value !is WorkoutState.Resting) return
+        val routine = _loadedRoutine.value
+        val ex = routine?.exercises?.getOrNull(_currentExerciseIndex.value)
+        val setIdx = _exerciseTurnCount.value / _workoutParticipants.value.size.coerceAtLeast(1)
+        val p = _workoutParameters.value
+        val reps = p.reps.takeIf { it > 0 } ?: ex?.setReps?.filterNotNull()?.firstOrNull() ?: 10
+        _workoutParameters.value = p.copy(isAMRAP = amrap, reps = reps)
+        _parametersModifiedDuringRest.value = true
+        updateLoadedExercise { e ->
+            e.copy(setReps = e.setReps.mapIndexed { i, v -> if (i == setIdx) (if (amrap) null else reps) else v })
+        }
+    }
+
     private fun updateLoadedExercise(transform: (RoutineExercise) -> RoutineExercise) {
         val routine = _loadedRoutine.value ?: return
         val i = _currentExerciseIndex.value

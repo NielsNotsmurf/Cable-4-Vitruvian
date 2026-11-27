@@ -3,6 +3,7 @@ package nl.nielsnotsmurf.webapp
 import nl.nielsnotsmurf.cleanui.logic.FailureDetector
 import com.example.vitruvianredux.data.baseline.AnchorExerciseConfig
 import com.example.vitruvianredux.util.ColorSchemes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -99,8 +100,10 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         leaving = false
         return try {
             // The trainer picked earlier in this tab connects again without the picker.
-            val link = TrainerLink.reconnect(onReps = { repCounters.value = it }, onGone = ::trainerGone)
-                ?: TrainerLink.connect(onReps = { repCounters.value = it }, onGone = ::trainerGone)
+            // Not after a failed picker: the quiet try takes time, and the picker needs a fresh tap.
+            val link = (if (pickNext) null else TrainerLink.reconnect(onReps = { repCounters.value = it }, onGone = ::trainerGone))
+                ?: run { pickNext = true; TrainerLink.connect(onReps = { repCounters.value = it }, onGone = ::trainerGone) }
+            pickNext = false
             trainer = link
             connectionState.value = TrainerConnection.Connected(link?.name ?: SIMULATED)
             WebStats.event(if (link != null) "trainer/connected" else "trainer/simulated")
@@ -111,6 +114,9 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             false
         }
     }
+
+    /** The quiet reconnect failed and the picker didn't open (it needs a tap): the next tap opens it straight away. */
+    private var pickNext = false
 
     private fun trainerGone() {
         trainer = null
@@ -136,7 +142,7 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
             trainer = link
             connectionState.value = TrainerConnection.Connected(link.name)
         }
-        if (trainer == null) connectionState.value = TrainerConnection.Failed("Trainer disconnected. Tap Connect.")
+        if (trainer == null) connectionState.value = TrainerConnection.Failed("Trainer disconnected. Switch it on and tap Connect.")
         while (trainer == null && connectionState.value !is TrainerConnection.Connected) delay(300)
     }
 
@@ -356,7 +362,8 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 loadKg = kg, liveLoadKg = kg, setNumber = s + 1, totalSets = plan.sets.size,
                 isLastExercise = p == plans.lastIndex, lifterId = lifterId,
                 lifterName = lifter?.name, lifterColorArgb = lifter?.color,
-                nextName = plans.getOrNull(p + 1)?.exercise?.name.orEmpty()
+                nextName = plans.getOrNull(p + 1)?.exercise?.name.orEmpty(),
+                mode = plan.mode, amrap = spec.kind == SetKind.AMRAP, eccentricPercent = plan.eccentricLoadPercent
             )
         }
         turnCount = { turns(it) }
@@ -397,7 +404,30 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
                 awaitTrainer(base)
                 for (c in 3 downTo 1) { live.value = base.copy(countdown = c); delay(1000) }
                 val begun = started.getOrPut(p) { nowMillis() }
-                val reps = trainer?.let { lift(it, base, spec, plan) } ?: simulate(base, spec)
+                val link = trainer
+                val reps: Int? = when {
+                    link != null -> try {
+                        lift(link, base, spec, plan).takeIf { trainer != null }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        if (trainer === link) trainerGone()
+                        null
+                    }
+                    // The link dropped during the countdown: not a simulated set.
+                    bluetooth && connectionState.value != TrainerConnection.Connected(SIMULATED) -> null
+                    else -> simulate(base, spec)
+                }
+                if (reps == null) {
+                    // The trainer went to sleep or out of reach mid-set: back to this set's Continue
+                    // screen, which offers Connect; the workout carries on here once it's back.
+                    cursor = p to turn
+                    rest(0, hold = true) { c -> upcoming(c, base) }
+                    val again = cursor ?: break
+                    p = again.first
+                    turn = again.second
+                    continue
+                }
                 val prev = done[p to lifterId]
                 val result = ((prev?.first ?: 0) + reps) to maxOf(prev?.second ?: 0f, live.value?.loadKg ?: base.loadKg)
                 done[p to lifterId] = result
@@ -430,11 +460,16 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
     private var runPlans: MutableList<SetPlan> = mutableListOf()
 
     /** What was changed by hand for one set (exercise, turn): its load per cable and target reps. */
-    private data class SetOverride(val kg: Float? = null, val reps: Int? = null)
+    private data class SetOverride(val kg: Float? = null, val reps: Int? = null, val amrap: Boolean? = null)
     private val overrides = mutableMapOf<Pair<Int, Int>, SetOverride>()
 
-    private fun specFor(p: Int, turn: Int, spec: SetSpec): SetSpec =
-        overrides[p to turn]?.reps?.let { spec.copy(reps = it) } ?: spec
+    private fun specFor(p: Int, turn: Int, spec: SetSpec): SetSpec {
+        val o = overrides[p to turn] ?: return spec
+        return spec.copy(
+            reps = o.reps ?: spec.reps,
+            kind = o.amrap?.let { if (it) SetKind.AMRAP else SetKind.REPS } ?: spec.kind
+        )
+    }
     private var navigate: ((p: Int, turn: Int, delta: Int, byExercise: Boolean) -> Pair<Int, Int>)? = null
     /** Sets × lifters of exercise p in the running workout. */
     private var turnCount: ((p: Int) -> Int)? = null
@@ -629,6 +664,16 @@ class WebTrainerGateway(private val library: ExerciseLibrary) : TrainerGateway {
         val c = cursor ?: return
         if (live.value?.phase != LivePhase.RESTING || c.first !in runPlans.indices) return
         runPlans[c.first] = runPlans[c.first].copy(echoLevel = level)
+    }
+    override fun adjustNextMode(mode: TrainingMode, eccentricPercent: Int) {
+        val c = cursor ?: return
+        if (live.value?.phase != LivePhase.RESTING || c.first !in runPlans.indices) return
+        runPlans[c.first] = runPlans[c.first].copy(mode = mode, eccentricLoadPercent = eccentricPercent.coerceIn(0, 150))
+    }
+    override fun setNextAmrap(amrap: Boolean) {
+        val c = cursor ?: return
+        if (live.value?.phase != LivePhase.RESTING) return
+        overrides[c] = (overrides[c] ?: SetOverride()).copy(amrap = amrap)
     }
     override fun setUpcomingLoads(exerciseId: String, loadsByLifter: Map<String, List<Float>>) {
         val plans = runPlans

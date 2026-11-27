@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import nl.nielsnotsmurf.cleanui.model.EchoLevelChoice
 import androidx.compose.foundation.layout.size
@@ -72,6 +73,7 @@ import nl.nielsnotsmurf.cleanui.model.HistoryEntry
 import nl.nielsnotsmurf.cleanui.model.LivePhase
 import nl.nielsnotsmurf.cleanui.model.LiveWorkout
 import nl.nielsnotsmurf.cleanui.model.TrainerConnection
+import nl.nielsnotsmurf.cleanui.model.TrainingMode
 import nl.nielsnotsmurf.cleanui.model.WeightUnit
 import nl.nielsnotsmurf.cleanui.theme.CleanColors
 import nl.nielsnotsmurf.cleanui.ui.components.ExerciseDemo
@@ -80,6 +82,7 @@ import nl.nielsnotsmurf.cleanui.ui.components.GhostButton
 import nl.nielsnotsmurf.cleanui.ui.components.PrimaryButton
 import nl.nielsnotsmurf.cleanui.ui.components.TrainerSearchHint
 import nl.nielsnotsmurf.cleanui.ui.components.ConnectionPill
+import nl.nielsnotsmurf.cleanui.ui.components.CleanFilterChip
 import nl.nielsnotsmurf.cleanui.ui.components.LoadText
 import nl.nielsnotsmurf.cleanui.platform.nowMillis
 import nl.nielsnotsmurf.cleanui.platform.formatClock
@@ -126,6 +129,10 @@ fun LiveWorkoutScreen(
     /** Echo exercises: the level of the coming set, shown instead of weight and %; null otherwise. */
     echoLevel: EchoLevelChoice? = null,
     onEchoLevel: (EchoLevelChoice) -> Unit = {},
+    /** Switches the coming (and later) sets of this exercise to another mode; Echo also takes its eccentric %. */
+    onMode: (TrainingMode, Int) -> Unit = { _, _ -> },
+    /** The coming set only: as many reps as possible, or not. */
+    onAmrap: (Boolean) -> Unit = {},
     /** The routine's name when this exercise was changed by hand and the routine doesn't have it yet. */
     routineNudge: String? = null,
     onUpdateRoutine: () -> Unit = {},
@@ -246,7 +253,16 @@ fun LiveWorkoutScreen(
                             GhostButton("Exercise ›", onClick = { onMoveExercise(1) }, modifier = Modifier.weight(1f))
                         }
                     }
-                    if (live.restSeconds > 0) PrimaryButton("Skip rest", onClick = onSkipRest)
+                    if (!attemptMode && connection !is TrainerConnection.Connected) {
+                        // The trainer went to sleep or out of reach: connect again and carry on at this set.
+                        Text(
+                            if (connection == TrainerConnection.Connecting) "Connecting to your Vitruvian…"
+                            else "Trainer disconnected. Switch it on and tap Connect: you'll carry on at this set.",
+                            style = MaterialTheme.typography.bodySmall, color = CleanColors.Muted
+                        )
+                        if (connection == TrainerConnection.Connecting) GhostButton("Connecting…", onClick = {})
+                        else PrimaryButton("Connect trainer", onClick = onConnect, accent = true)
+                    } else if (live.restSeconds > 0) PrimaryButton("Skip rest", onClick = onSkipRest)
                     else PrimaryButton("Continue", onClick = onSkipRest, accent = true)
                 }
                 LivePhase.SET_DONE -> if (!attemptMode) PrimaryButton("Continue", onClick = onContinue, accent = true)
@@ -268,6 +284,15 @@ fun LiveWorkoutScreen(
             val settingUp = !attemptMode && live.phase == LivePhase.RESTING && (live.restSeconds == 0 || !holdAfterRest)
             if (settingUp) {
                 val step = if (unit == WeightUnit.LB) 0.45359f else 0.5f
+                // Mode and AMRAP of the coming set, e.g. Echo and as many reps as possible for a hard last set.
+                live.mode?.let { mode ->
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TrainingMode.entries.forEach { m ->
+                            CleanFilterChip(m.label, selected = mode == m, onClick = { if (m != mode) onMode(m, live.eccentricPercent) })
+                        }
+                        CleanFilterChip("AMRAP", selected = live.amrap, onClick = { onAmrap(!live.amrap) })
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (echoLevel != null) {
                         // Echo sets no weight: the trainer pushes back as hard as the level says.
@@ -294,6 +319,16 @@ fun LiveWorkoutScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+                if (echoLevel != null && live.mode == TrainingMode.ECHO) {
+                    // The trainer's eccentric steps.
+                    val steps = listOf(0, 50, 75, 100, 125, 150)
+                    val ecc = live.eccentricPercent
+                    Stepper(
+                        "Eccentric (on the way down)", "$ecc%",
+                        onMinus = { steps.lastOrNull { it < ecc }?.let { onMode(TrainingMode.ECHO, it) } },
+                        onPlus = { steps.firstOrNull { it > ecc }?.let { onMode(TrainingMode.ECHO, it) } }
+                    )
                 }
                 if (percent != null && echoLevel == null) PercentSlider(percent, onPercent)
                 if (percent != null && echoLevel == null && oneRepMaxUpdate != null) {

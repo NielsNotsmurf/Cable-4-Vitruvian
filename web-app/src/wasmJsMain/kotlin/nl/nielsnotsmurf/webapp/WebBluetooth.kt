@@ -22,11 +22,15 @@ private fun jsReconnectTrainer(service: String, rx: String, sample: String, reps
     (() => {
         const device = window.__vitTrainerDevice;
         if (!device || !device.gatt) return Promise.resolve(null);
-        return device.gatt.connect()
+        // A sleeping trainer never answers: give up after 3 s, so a tap can still open the picker.
+        let timer;
+        const timeout = new Promise(resolve => { timer = setTimeout(() => { try { device.gatt.disconnect(); } catch (e) {} resolve(null); }, 3000); });
+        const attempt = device.gatt.connect()
             .then(server => server.getPrimaryService(service))
             .then(svc => Promise.all([svc.getCharacteristic(rx), svc.getCharacteristic(sample), svc.getCharacteristic(reps)]))
-            .then(c => ({ device: device, rx: c[0], sample: c[1], reps: c[2] }))
+            .then(c => { clearTimeout(timer); return { device: device, rx: c[0], sample: c[1], reps: c[2] }; })
             .catch(() => null);
+        return Promise.race([attempt, timeout]);
     })()
 """)
 

@@ -245,5 +245,11 @@ data class LiveWorkout(
     /** AMRAP / Just Lift: seconds until the set stops by itself (failure or handles down); null when not counting. */
     val autoStopSeconds: Int? = null,
     /** During rest: the reps of the set just done; null before the first set. */
-    val lastReps: Int? = null
+    val lastReps: Int? = null,
+    /** Mode of the set shown (also the coming set during rest); null when the host doesn't say. */
+    val mode: TrainingMode? = null,
+    /** True when the set shown runs as many reps as possible. */
+    val amrap: Boolean = false,
+    /** Echo: how hard the trainer pulls on the way down, in %. */
+    val eccentricPercent: Int = 100
 )
